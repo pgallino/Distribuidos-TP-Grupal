@@ -3,16 +3,28 @@ from middleware.middleware import Middleware
 import socket
 import logging
 import signal
-import os
 
 def safe_read(socket):
-    data = bytearray()
-    # while len(data) < n_bytes:
-    data = socket.recv(1024)
-        # if not packet:
-            # return None
-        # data += packet
-    return data
+    """Función que lee datos del socket, devolviendo mensajes completos uno por vez."""
+    buffer = bytearray()
+    try:
+        while True:
+            chunk = socket.recv(1024)
+            if not chunk:
+                logging.info("No data received, client may have closed the connection.")
+                return None
+            buffer.extend(chunk)
+
+            # Procesar todos los mensajes que contengan '\n'
+            if b'\n' in buffer:
+                messages = buffer.split(b'\n')  # Separar mensajes completos
+                for msg in messages[:-1]:  # Procesar todos menos el último incompleto
+                    yield msg.decode('utf-8').strip()
+                buffer = messages[-1]  # Guardar el último mensaje incompleto en el buffer
+    except OSError as e:  # Aquí cambiamos socket.error por OSError
+        logging.error(f"Error receiving data: {e}")
+        return None
+
 
 class Server:
 
@@ -24,22 +36,12 @@ class Server:
         self._middleware.declare_queue('general_queue')
 
     def _handle_sigterm(self, sig, frame):
-        """
-        Handle SIGTERM signal so the server close gracefully.
-        """
-        if not self.clean:
-            self.clean_up()
+        """Handle SIGTERM signal so the server closes gracefully."""
+        logging.info("Received SIGTERM, shutting down server.")
         self._server_socket.close()
 
     def run(self):
-        """
-        Dummy Server loop
-
-        Server that accept a new connections and establishes a
-        communication with a client. After client with communucation
-        finishes, servers starts to accept new connections again
-        """
-
+        """Server loop to accept and handle new client connections."""
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         while True:
@@ -47,42 +49,35 @@ class Server:
                 client_socket = self._accept_new_connection()
                 self.__handle_client_connection(client_socket)
             except OSError as error:
+                logging.error(f"Server error: {error}")
                 break
 
-
     def _accept_new_connection(self):
-        """
-        Accept new connections
-
-        Function blocks until a connection to a client is made.
-        Then connection created is printed and returned
-        """
-        # Connection arrived
+        """Accept new client connections."""
         logging.info('action: accept_connections | result: in_progress')
         client, addr = self._server_socket.accept()
         logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return client
-    
-    def __handle_client_connection(self, client_sock):
-        """
-        Read message from a specific client socket and closes the socket
 
-        If a problem arises in the communication with the client, the
-        client socket will also be closed
-        """
+    def __handle_client_connection(self, client_sock):
+        """Handle communication with a connected client."""
         try:
-            while True:
-                logging.info(f'action: receive_message | result: in_progress')
-                # msg_type, data = recv_message(client_sock)
-                data = safe_read(client_sock)
-                msg = data.decode()
-                logging.info(f"action: receive_message | result: success | client_msg: {msg}")
+            for msg in safe_read(client_sock):
+                if msg is None:
+                    logging.info("Client closed the connection or no data.")
+                    break
+
+                logging.info(f"action: receive_message | result: success | client_msg: '{msg}'")
+
                 if msg == "FIN":
                     logging.info(f"action: ending_connection | result: in_progress")
+                    self._middleware.send_to_queue("general_queue", msg)
                     break
+
                 self._middleware.send_to_queue("general_queue", msg)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:
             client_sock.close()
             logging.info(f"action: ending_connection | result: success")
+

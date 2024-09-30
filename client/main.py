@@ -11,14 +11,12 @@ def main():
 
         message = "Hello Server"
         for i in range(1):
-            curr_message = message + f" {i}"
+            curr_message = message + f" {i}\n"
             client_socket.send(curr_message.encode("utf-8"))
-            # response = client_socket.recv(1024)
-            # msg = response.decode()
-            # print(f"Respuesta: {msg}")
 
-        message = "FIN"
-        client_socket.send(message.encode("utf-8")) 
+        # Envía el mensaje "FIN" con un delimitador
+        message = "FIN\n"
+        client_socket.send(message.encode("utf-8"))
 
     except Exception as error:
         print(f"Error: {error}")

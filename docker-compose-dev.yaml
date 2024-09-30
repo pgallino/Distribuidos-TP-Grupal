@@ -6,6 +6,11 @@ services:
     ports:
       - "5672:5672" # Puerto para conexiones AMQP
       - "15672:15672" # Puerto para la consola de administración (opcional)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - testing_net
 

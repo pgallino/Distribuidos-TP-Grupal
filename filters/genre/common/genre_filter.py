@@ -12,3 +12,5 @@ class GenreFilter:
             logging.info('action: listening_queue | result: in_progress')
             message = self._middleware.receive_from_queue("general_queue")
             logging.info(f'action: listening_queue | result: success | msg: {message}')
+            if message == "FIN":
+                break
