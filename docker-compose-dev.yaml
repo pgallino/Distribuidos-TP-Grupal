@@ -1,0 +1,38 @@
+name: steamyanalytics
+services:
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:latest
+    ports:
+      - "5672:5672" # Puerto para conexiones AMQP
+      - "15672:15672" # Puerto para la consola de administración (opcional)
+    networks:
+      - testing_net
+
+  server:
+    container_name: server
+    image: server:latest
+    volumes:
+      - ./server/config.ini:/config.ini
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+    depends_on:
+      - rabbitmq
+
+  client:
+    container_name: client
+    image: client:latest # Asume que tienes una imagen para el cliente
+    networks:
+      - testing_net
+    depends_on:
+      - server # depende de rabbit no del server
+
+networks:
+  testing_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.25.125.0/24
