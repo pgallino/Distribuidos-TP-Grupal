@@ -1,9 +1,9 @@
+from middleware.middleware import Middleware
+
 import socket
 import logging
 import signal
-import logging
 import os
-import pika
 
 def safe_read(socket):
     data = bytearray()
@@ -20,6 +20,8 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
+        self._middleware = Middleware()
+        self._middleware.declare_queue('general_queue')
 
     def _handle_sigterm(self, sig, frame):
         """
@@ -78,6 +80,7 @@ class Server:
                 if msg == "FIN":
                     logging.info(f"action: ending_connection | result: in_progress")
                     break
+                self._middleware.send_to_queue("general_queue", msg)
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:

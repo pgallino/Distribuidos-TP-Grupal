@@ -22,13 +22,24 @@ services:
     depends_on:
       - rabbitmq
 
+  genre:
+    container_name: genre
+    image: genre:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+    depends_on:
+      - rabbitmq
+
   client:
     container_name: client
     image: client:latest # Asume que tienes una imagen para el cliente
     networks:
       - testing_net
     depends_on:
-      - server # depende de rabbit no del server
+      - server
 
 networks:
   testing_net:

@@ -10,9 +10,12 @@ def main():
         print("Connected to the server")
 
         message = "Hello Server"
-        client_socket.send(message.encode("utf-8"))
-        client_socket.send(message.encode("utf-8")) 
-        client_socket.send(message.encode("utf-8")) 
+        for i in range(1):
+            curr_message = message + f" {i}"
+            client_socket.send(curr_message.encode("utf-8"))
+            # response = client_socket.recv(1024)
+            # msg = response.decode()
+            # print(f"Respuesta: {msg}")
 
         message = "FIN"
         client_socket.send(message.encode("utf-8")) 
