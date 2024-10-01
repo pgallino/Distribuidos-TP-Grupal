@@ -1,29 +1,10 @@
+from messages.messages import decode_msg, encode_data, encode_fin, encode_handshake
 from middleware.middleware import Middleware
 
 import socket
 import logging
 import signal
-
-def safe_read(socket):
-    """Función que lee datos del socket, devolviendo mensajes completos uno por vez."""
-    buffer = bytearray()
-    try:
-        while True:
-            chunk = socket.recv(1024)
-            if not chunk:
-                logging.info("No data received, client may have closed the connection.")
-                return None
-            buffer.extend(chunk)
-
-            # Procesar todos los mensajes que contengan '\n'
-            if b'\n' in buffer:
-                messages = buffer.split(b'\n')  # Separar mensajes completos
-                for msg in messages[:-1]:  # Procesar todos menos el último incompleto
-                    yield msg.decode('utf-8').strip()
-                buffer = messages[-1]  # Guardar el último mensaje incompleto en el buffer
-    except OSError as e:  # Aquí cambiamos socket.error por OSError
-        logging.error(f"Error receiving data: {e}")
-        return None
+from utils.utils import safe_read, recv_msg
 
 
 class Server:
@@ -62,19 +43,31 @@ class Server:
     def __handle_client_connection(self, client_sock):
         """Handle communication with a connected client."""
         try:
-            for msg in safe_read(client_sock):
-                if msg is None:
-                    logging.info("Client closed the connection or no data.")
-                    break
+            while True:
+                raw_msg = recv_msg(client_sock)
+                msg = decode_msg(raw_msg)
+                logging.info(f"action: receive_message | result: succes | {msg}")
+                # Condicionales para manejar diferentes tipos de mensajes
+                if msg['tipo'] == 'handshake':
+                    # Si el mensaje es de tipo 'handshake', lo codificamos y enviamos a la cola
+                    encoded_msg = encode_handshake(msg['id'])
+                    self._middleware.send_to_queue("general_queue", encoded_msg)
 
-                logging.info(f"action: receive_message | result: success | client_msg: '{msg}'")
+                elif msg['tipo'] == 'data':
+                    # Si el mensaje es de tipo 'data', lo codificamos y enviamos a la cola
+                    encoded_msg = encode_data(msg['id'], msg['data'])
+                    self._middleware.send_to_queue("general_queue", encoded_msg)
 
-                if msg == "FIN":
-                    logging.info(f"action: ending_connection | result: in_progress")
-                    self._middleware.send_to_queue("general_queue", msg)
-                    break
+                elif msg['tipo'] == 'fin':
+                    # Si el mensaje es de tipo 'fin', lo codificamos y enviamos a la cola
+                    encoded_msg = encode_fin(msg['id'])
+                    self._middleware.send_to_queue("general_queue", encoded_msg)
 
-                self._middleware.send_to_queue("general_queue", msg)
+                else:
+                    logging.error(f"Unknown message type: {msg['tipo']}")
+        except ValueError as e:
+            # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
+            logging.info(f"Connection closed or invalid message received: {e}")
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         finally:

@@ -7,8 +7,11 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY server/main.py /
 COPY server/common /common
 
-# Copiar la carpeta completa middleware
+COPY messages /messages
+
 COPY middleware /middleware
+
+COPY utils /utils
 
 # Configura el ENTRYPOINT para ejecutar main.py al iniciar
 ENTRYPOINT ["python3", "/main.py"]

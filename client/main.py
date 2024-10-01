@@ -1,4 +1,6 @@
 import socket
+import logging
+from messages.messages import encode_handshake, encode_data, encode_fin
 
 def main():
     ip = "server"
@@ -6,20 +8,24 @@ def main():
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     
     try:
+
         client_socket.connect((ip, port))
-        print("Connected to the server")
+        # Envía el mensaje Handshake
+        print("arranco aca")
+        handshake = encode_handshake(1)
+        print("encodeeeeeeee")
+        client_socket.send(encode_handshake(1))
 
-        message = "Hello Server"
-        for i in range(1):
-            curr_message = message + f" {i}\n"
-            client_socket.send(curr_message.encode("utf-8"))
+        # Envía el mensaje Data con el texto "hola esto es un data"
+        client_socket.send(encode_data(1, "hola esto es un data"))
+        print("Data message sent")
 
-        # Envía el mensaje "FIN" con un delimitador
-        message = "FIN\n"
-        client_socket.send(message.encode("utf-8"))
+        # Envía el mensaje Fin
+        client_socket.send(encode_fin(1))
+        print("Fin message sent")
 
     except Exception as error:
-        print(f"Error: {error}")
+        logging.info(f"Error: {error}")
     
     finally:
         client_socket.close()

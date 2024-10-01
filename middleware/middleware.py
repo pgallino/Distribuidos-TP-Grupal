@@ -2,6 +2,8 @@ import pika
 import logging
 import time
 
+logging.getLogger("pika").disabled = True
+
 class Middleware:
     def __init__(self, host='rabbitmq'):
         self.connection = self._connect_to_rabbitmq()
@@ -51,8 +53,8 @@ class Middleware:
             method_frame, header_frame, body = self.channel.basic_get(queue=queue_name, auto_ack=True)
             
             if method_frame:
-                logging.info(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body.decode()}")
-                return body.decode()
+                logging.info(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body}")
+                return body
             else:
                 if not block:
                     logging.info(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")

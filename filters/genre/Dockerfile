@@ -9,6 +9,8 @@ COPY filters/genre/common /common
 
 # Copiar la carpeta completa middleware
 COPY middleware /middleware
+COPY messages /messages
+COPY utils /utils
 
 # Configura el ENTRYPOINT para ejecutar main.py al iniciar
 ENTRYPOINT ["python3", "/main.py"]
