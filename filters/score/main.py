@@ -1,14 +1,14 @@
 import logging
-from common.genre_filter import GenreFilter
+from common.score_filter import ScoreFilter
 
 def main():
     logging.basicConfig(level="WARNING")
 
-    # Crear una instancia de GenreFilter
-    genre_filter = GenreFilter()
+    # Crear una instancia de ScoreFilter
+    score_filter = ScoreFilter()
 
     # Iniciar el filtro, escuchando mensajes en la cola
-    genre_filter.run()
+    score_filter.run()
 
 if __name__ == "__main__":
     main()

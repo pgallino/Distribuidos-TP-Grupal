@@ -1,44 +1,72 @@
-import pika
 import logging
+import pika
 import time
 
-logging.getLogger("pika").disabled = True
 
 class Middleware:
     def __init__(self, host='rabbitmq'):
         self.connection = self._connect_to_rabbitmq()
         self.channel = self.connection.channel()
-
-        logging.info(f"action: init_middleware | result: success | host: {host}")
+        
+        logging.warning(f"action: init_middleware | result: success | host: {host}")
         self.queues = set()
+        self.exchanges = set()
 
     def declare_queue(self, queue_name):
         """
         Declara una nueva cola con el nombre proporcionado y la guarda.
         """
         if queue_name not in self.queues:
-            self.channel.queue_declare(queue=queue_name)
+            self.channel.queue_declare(queue=queue_name, durable=True)
             self.queues.add(queue_name)
-            logging.info(f"action: declare_queue | result: success | queue_name: {queue_name}")
+            logging.warning(f"action: declare_queue | result: success | queue_name: {queue_name}")
         else:
-            logging.info(f"action: declare_queue | result: already_exists | queue_name: {queue_name}")
+            logging.warning(f"action: declare_queue | result: fail | queue_name: {queue_name} already exist")
+    
+    def declare_exchange(self, exchange, type='direct'):
+        """
+        Declara un nuevo exchange del tipo proporcionado e identificado con el nombre
+        proporcionado, y lo guarda.
+        """
+        if exchange not in self.queues:
+            self.channel.exchange_declare(exchange=exchange, exchange_type=type)
+            self.exchanges.add(exchange)
+            logging.warning(f"action: declare_queue | result: success | exchange: {exchange}")
+        else:
+            logging.warning(f"action: declare_queue | result: fail | exchange: {exchange} already exist")
+        
+    def bind_queue(self, queue_name, exchange, key=None):
+        if queue_name not in self.queues or exchange not in self.exchanges:
+            raise ValueError(f"No se encontro la cola {queue_name} o el exchange {exchange}.")
+        self.channel.queue_bind(queue=queue_name, exchange=exchange, routing_key=key)
 
-    def send_to_queue(self, queue_name, message):
+    def send_to_queue(self, log, message, key=''):
         """
         Envía un mensaje a la cola especificada.
         """
-        if queue_name not in self.queues:
-            raise ValueError(f"La cola '{queue_name}' no está declarada.")
+        if log in self.queues:
+            try:
+                self.channel.basic_publish(
+                    exchange='',
+                    routing_key=log,  # Cola a la que se envía el mensaje
+                    body=message
+                )
+                logging.warning(f"action: send_to_queue | result: success | queue_name: {log} | message: {message}")
+            except Exception as e:
+                logging.error(f"action: send_to_queue | result: fail | error: {e}")
+        elif log in self.exchanges:
+            try:
+                self.channel.basic_publish(
+                    exchange=log,
+                    routing_key=key,
+                    body=message
+                )
+                logging.warning(f"action: send_to_queue | result: success | exchange: {log} | message: {message}")
+            except Exception as e:
+                logging.error(f"action: send_to_queue | result: fail | error: {e}")
+        else:
+            raise ValueError(f"La cola '{log}' no está declarada.")
         
-        try:
-            self.channel.basic_publish(
-                exchange='',
-                routing_key=queue_name,  # Cola a la que se envía el mensaje
-                body=message
-            )
-            logging.info(f"action: send_to_queue | result: success | queue_name: {queue_name} | message: {message}")
-        except Exception as e:
-            logging.error(f"action: send_to_queue | result: fail | error: {e}")
 
     def receive_from_queue(self, queue_name, block=True):
         """
@@ -53,11 +81,11 @@ class Middleware:
             method_frame, header_frame, body = self.channel.basic_get(queue=queue_name, auto_ack=True)
             
             if method_frame:
-                logging.info(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body}")
+                logging.warning(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body}")
                 return body
             else:
                 if not block:
-                    logging.info(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
+                    logging.warning(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
                     return None
                 time.sleep(5)  # Espera activa de 1 segundo antes de revisar de nuevo
 
@@ -66,7 +94,7 @@ class Middleware:
         Cierra la conexión a RabbitMQ.
         """
         self.connection.close()
-        logging.info("action: close_connection | result: success")
+        logging.warning("action: close_connection | result: success")
 
     def _connect_to_rabbitmq(self):
         retries = 5

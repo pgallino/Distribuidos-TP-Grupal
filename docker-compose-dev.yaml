@@ -1,19 +1,5 @@
 name: steamyanalytics
 services:
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:latest
-    ports:
-      - "5672:5672" # Puerto para conexiones AMQP
-      - "15672:15672" # Puerto para la consola de administración (opcional)
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - testing_net
-
   server:
     container_name: server
     image: server:latest
@@ -24,8 +10,15 @@ services:
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
-    depends_on:
-      - rabbitmq
+
+  trimmer:
+    container_name: trimmer
+    image: trimmer:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
 
   genre:
     container_name: genre
@@ -35,8 +28,15 @@ services:
       - LOGGING_LEVEL=DEBUG
     networks:
       - testing_net
-    depends_on:
-      - rabbitmq
+
+  score:
+    container_name: score
+    image: score:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
 
   client:
     container_name: client

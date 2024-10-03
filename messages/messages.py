@@ -7,6 +7,9 @@ MSG_TYPE_HANDSHAKE = 0x00
 MSG_TYPE_DATA= 0x01
 MSG_TYPE_FIN = 0x02
 
+GAME_CSV = 0x00
+REVIEW_CSV = 0x01
+
 # IMPORTANTE
 # IMPORTANTE
 # IMPORTANTE   En el encode se agrega el largo total del mensaje primero, en el decode ya no lo tiene
@@ -29,8 +32,9 @@ MSG_TYPE_FIN = 0x02
 # Data:
 # Byte 1: Tipo de mensaje (1 byte).
 # Byte 2: ID del mensaje (1 byte).
-# Byte 3-4: Largo de los datos (2 bytes).
-# Byte 5-N: Datos (cadena codificada).
+# Byte 3: Dataset origen (1 byte).
+# Byte 4-5: Largo de los datos (2 bytes).
+# Byte 6-N: Datos (cadena codificada).
 
 # =========================================
 
@@ -54,6 +58,10 @@ def decode_msg(data):
         raise ValueError(f"Tipo de mensaje desconocido: {tipo_mensaje}")
 
 class Message:
+    def __init__(self, id: int, type: int):
+        self.id = id
+        self.type = type
+
     def encode(self) -> bytes:
         raise NotImplementedError("Debe implementarse en las subclases")
     
@@ -63,11 +71,13 @@ class Message:
 
     def __str__(self):
         return f"Message(type={self.type})"
+    
+    def __getattribute__(self, name):
+        return super().__getattribute__(name)
 
 class Handshake(Message):
     def __init__(self, id: int):
-        self.id = id
-        self.type = MSG_TYPE_HANDSHAKE
+        super().__init__(id, MSG_TYPE_HANDSHAKE)
 
     def encode(self) -> bytes:
         # Codifica el mensaje Handshake
@@ -90,10 +100,10 @@ class Handshake(Message):
         return f"Handshake(id={self.id})"
 
 class Data(Message):
-    def __init__(self, id: int, row: str):
-        self.id = id
+    def __init__(self, id: int, row: str, dataset: int):
+        super().__init__(id, MSG_TYPE_DATA)
         self.row = row
-        self.type = MSG_TYPE_DATA
+        self.dataset = dataset
     
     def encode(self) -> bytes:
         # Codifica el mensaje Data
@@ -101,8 +111,8 @@ class Data(Message):
         data_bytes = self.row.encode('utf-8')
         data_length = len(data_bytes)
         
-        # Empaquetamos el tipo de mensaje, el ID, y la longitud de los datos (2 bytes)
-        body = struct.pack('>BBH', MSG_TYPE_DATA, self.id, data_length) + data_bytes
+        # Empaquetamos el tipo de mensaje, el ID, el dataset y la longitud de los datos (2 bytes)
+        body = struct.pack('>BBBH', MSG_TYPE_DATA, self.id, self.dataset, data_length) + data_bytes
         
         # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
         total_length = len(body)
@@ -113,17 +123,16 @@ class Data(Message):
     @staticmethod
     def decode(data: bytes) -> 'Data':
         # Decodifica el mensaje Data
-        id, data_length = struct.unpack('>BH', data[:3])
-        data_str = data[3:3+data_length].decode('utf-8')
-        return Data(id, data_str)
+        id, dataset, data_length = struct.unpack('>BBH', data[:4])
+        data_str = data[4:4+data_length].decode('utf-8')
+        return Data(id, data_str, dataset)
 
     def __str__(self):
-        return f"Data(id={self.id}, row='{self.row}')"
+        return f"Data(id={self.id}, row='{self.row}', dataset={self.dataset})"
 
 class Fin(Message):
     def __init__(self, id: int):
-        self.id = id
-        self.type = MSG_TYPE_FIN
+        super().__init__(id, MSG_TYPE_FIN)
 
     def encode(self) -> bytes:
         # Codifica el mensaje Fin
