@@ -1,6 +1,6 @@
 import socket
 import logging
-from messages.messages import encode_handshake, encode_data, encode_fin
+from messages.messages import Handshake, Fin, Data
 
 def main():
     ip = "server"
@@ -11,17 +11,18 @@ def main():
 
         client_socket.connect((ip, port))
         # Envía el mensaje Handshake
-        print("arranco aca")
-        handshake = encode_handshake(1)
-        print("encodeeeeeeee")
-        client_socket.send(encode_handshake(1))
-
+        handshake_msg = Handshake(1)  # Creamos el mensaje de tipo Handshake con ID 1
+        client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
+        print("Handshake message sent")
+        
         # Envía el mensaje Data con el texto "hola esto es un data"
-        client_socket.send(encode_data(1, "hola esto es un data"))
+        data_msg = Data(1, "hola esto es un data")  # Creamos el mensaje Data con ID 1 y la cadena de texto
+        client_socket.send(data_msg.encode())  # Codificamos y enviamos el mensaje
         print("Data message sent")
-
+        
         # Envía el mensaje Fin
-        client_socket.send(encode_fin(1))
+        fin_msg = Fin(1)  # Creamos el mensaje Fin con ID 1
+        client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
         print("Fin message sent")
 
     except Exception as error:

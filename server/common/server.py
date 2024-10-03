@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, encode_data, encode_fin, encode_handshake
+from messages.messages import decode_msg, decode_msg, Message, encode_data, encode_fin, encode_handshake
 from middleware.middleware import Middleware
 
 import socket
@@ -45,26 +45,12 @@ class Server:
         try:
             while True:
                 raw_msg = recv_msg(client_sock)
-                msg = decode_msg(raw_msg)
-                logging.info(f"action: receive_message | result: succes | {msg}")
-                # Condicionales para manejar diferentes tipos de mensajes
-                if msg['tipo'] == 'handshake':
-                    # Si el mensaje es de tipo 'handshake', lo codificamos y enviamos a la cola
-                    encoded_msg = encode_handshake(msg['id'])
-                    self._middleware.send_to_queue("general_queue", encoded_msg)
+                msg = decode_msg(raw_msg)  # Ahora devuelve directamente un objeto Handshake, Data o Fin
+                logging.info(f"action: receive_message | result: success | {msg}")
 
-                elif msg['tipo'] == 'data':
-                    # Si el mensaje es de tipo 'data', lo codificamos y enviamos a la cola
-                    encoded_msg = encode_data(msg['id'], msg['data'])
-                    self._middleware.send_to_queue("general_queue", encoded_msg)
-
-                elif msg['tipo'] == 'fin':
-                    # Si el mensaje es de tipo 'fin', lo codificamos y enviamos a la cola
-                    encoded_msg = encode_fin(msg['id'])
-                    self._middleware.send_to_queue("general_queue", encoded_msg)
-
-                else:
-                    logging.error(f"Unknown message type: {msg['tipo']}")
+                # Enviamos el mensaje ya codificado directamente a la cola
+                encoded_msg = msg.encode()
+                self._middleware.send_to_queue("general_queue", encoded_msg)
         except ValueError as e:
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
             logging.info(f"Connection closed or invalid message received: {e}")
