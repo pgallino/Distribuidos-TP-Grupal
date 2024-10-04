@@ -6,7 +6,7 @@ import logging
 import signal
 from utils.utils import safe_read, recv_msg
 
-GATEWAY_TRIMMER = 'gateway-trimmer'
+Q_GATEWAY_TRIMMER = 'gateway-trimmer'
 
 class Server:
 
@@ -15,7 +15,7 @@ class Server:
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._middleware = Middleware()
-        self._middleware.declare_queue(GATEWAY_TRIMMER)
+        self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -51,7 +51,7 @@ class Server:
 
                 # Enviamos el mensaje ya codificado directamente a la cola
                 encoded_msg = msg.encode()
-                self._middleware.send_to_queue(GATEWAY_TRIMMER, encoded_msg)
+                self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, encoded_msg)
         except ValueError as e:
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
             logging.warning(f"Connection closed or invalid message received: {e}")

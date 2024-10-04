@@ -1,6 +1,5 @@
 from enum import Enum
 import struct
-import logging
 
 # Definición de los tipos de mensajes
 MSG_TYPE_HANDSHAKE = 0x00
@@ -130,7 +129,7 @@ class Data(Message):
         # Decodifica el mensaje Data
         id, dataset, genre, data_length = struct.unpack('>BBBH', data[:5])
         data_str = data[5:5+data_length].decode('utf-8')
-        return Data(id, data_str, genre, dataset)
+        return Data(id, data_str, dataset, genre)
 
     def __str__(self):
         return f"Data(id={self.id}, row='{self.row}', dataset={self.dataset}, genero='{self.genre}')"
