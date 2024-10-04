@@ -47,6 +47,15 @@ services:
     networks:
       - testing_net
 
+  english:
+    container_name: english
+    image: english:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
   os_counter:
     container_name: os_counter
     image: os_counter:latest

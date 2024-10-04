@@ -13,6 +13,9 @@ INDIE = 0x00
 SHOOTER = 0x01
 OTHER = 0x02
 
+POSITIVE = 0x00
+NEGATIVE = 0x01
+
 # IMPORTANTE
 # IMPORTANTE
 # IMPORTANTE   En el encode se agrega el largo total del mensaje primero, en el decode ya no lo tiene
@@ -103,11 +106,12 @@ class Handshake(Message):
         return f"Handshake(id={self.id})"
 
 class Data(Message):
-    def __init__(self, id: int, row: str, dataset: int, genre: int):
+    def __init__(self, id: int, row: str, dataset: int, genre: int = 10, score: int = 10):
         super().__init__(id, MSG_TYPE_DATA)
         self.row = row
         self.dataset = dataset
         self.genre = genre
+        self.score = score
     
     def encode(self) -> bytes:
         # Codifica el mensaje Data
@@ -116,7 +120,7 @@ class Data(Message):
         data_length = len(data_bytes)
         
         # Empaquetamos el tipo de mensaje, el ID, el dataset y la longitud de los datos (2 bytes)
-        body = struct.pack('>BBBBH', MSG_TYPE_DATA, self.id, self.dataset, self.genre, data_length) + data_bytes
+        body = struct.pack('>BBBBBH', MSG_TYPE_DATA, self.id, self.dataset, self.genre, self.score, data_length) + data_bytes
         
         # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
         total_length = len(body)
@@ -127,12 +131,12 @@ class Data(Message):
     @staticmethod
     def decode(data: bytes) -> 'Data':
         # Decodifica el mensaje Data
-        id, dataset, genre, data_length = struct.unpack('>BBBH', data[:5])
-        data_str = data[5:5+data_length].decode('utf-8')
-        return Data(id, data_str, dataset, genre)
+        id, dataset, genre, score, data_length = struct.unpack('>BBBBH', data[:6])
+        data_str = data[6:6+data_length].decode('utf-8')
+        return Data(id, data_str, dataset, genre, score)
 
     def __str__(self):
-        return f"Data(id={self.id}, row='{self.row}', dataset={self.dataset}, genero='{self.genre}')"
+        return f"Data(id={self.id}, row='{self.row}', dataset={self.dataset}, genero={self.genre}, score={self.score}')"
 
 class Fin(Message):
     def __init__(self, id: int):
