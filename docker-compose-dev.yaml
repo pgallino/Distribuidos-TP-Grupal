@@ -56,6 +56,24 @@ services:
     networks:
       - testing_net
 
+  avg_counter:
+    container_name: avg_counter
+    image: avg_counter:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
+  q3_joiner:
+    container_name: q3_joiner
+    image: q3_joiner:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
   client:
     container_name: client
     image: client:latest # Asume que tienes una imagen para el cliente

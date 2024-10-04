@@ -5,6 +5,7 @@ import logging
 Q_GENRE_RELEASE_DATE = "genre-release_date"
 E_FROM_GENRE = 'from_genre'
 K_INDIE_GAMES = 'indie'
+Q_2010_GAMES = '2010_games'
 
 class ReleaseDateFilter:
 
@@ -16,9 +17,13 @@ class ReleaseDateFilter:
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)
         self._middleware.declare_exchange(E_FROM_GENRE)
         self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_GAMES)
+        self._middleware.declare_queue(Q_2010_GAMES)
 
     def run(self):
         while True:
             self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE)
-            self.logger.custom(f'action: listening_queue | result: success | msg: {decode_msg(raw_message[2:])}')
+            msg = decode_msg(raw_message[2:])
+            self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
+            self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
+            self.logger.custom(f"action: sending_data | result: success | data sent to {Q_2010_GAMES}")

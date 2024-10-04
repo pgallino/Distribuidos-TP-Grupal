@@ -1,6 +1,6 @@
 import socket
 import logging
-from messages.messages import Handshake, Fin, Data, GAME_CSV, REVIEW_CSV, OTHER, INDIE, SHOOTER
+from messages.messages import Handshake, Fin, Data, GAME_CSV, REVIEW_CSV, OTHER, INDIE, SHOOTER, POSITIVE
 from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 
@@ -34,7 +34,7 @@ def main():
         logger.custom("action: send_data | result: success | genre: OTHER")
 
         # Envía el mensaje Data (review) con el texto "hola esto es un data"
-        review_msg = Data(1, "hola esto es una review", REVIEW_CSV, OTHER)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de review
+        review_msg = Data(1, "hola esto es una review", REVIEW_CSV, OTHER, POSITIVE)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de review
         client_socket.send(review_msg.encode())  # Codificamos y enviamos el mensaje
         logger.custom("action: send_data | result: success | genre: REVIEW")
         
