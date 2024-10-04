@@ -23,5 +23,9 @@ console_handler.setLevel(CUSTOM_LOG_LEVEL)
 # Agregar el handler al logger
 logger.addHandler(console_handler)
 
+# Aplicar formato personalizado
+formatter = logging.Formatter('%(asctime)s %(levelname)-8s %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+console_handler.setFormatter(formatter)
+
 # Evitar que otros módulos como pika impriman demasiados logs
 logging.getLogger("pika").setLevel(logging.WARNING)

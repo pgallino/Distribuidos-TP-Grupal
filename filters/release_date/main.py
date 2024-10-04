@@ -1,5 +1,6 @@
 import logging
 from common.release_date_filter import ReleaseDateFilter
+from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 
 def main():

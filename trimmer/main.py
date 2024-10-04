@@ -1,4 +1,5 @@
 import logging
+from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 from common.trimmer import Trimmer
 
@@ -9,10 +10,10 @@ def main():
     logger.info(f"action: start | result: success")
 
     # Crear una instancia de Trimmer
-    score_filter = Trimmer()
+    trimmer = Trimmer()
 
     # Iniciar el filtro, escuchando mensajes en la cola
-    score_filter.run()
+    trimmer.run()
 
 if __name__ == "__main__":
     main()

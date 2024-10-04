@@ -1,6 +1,7 @@
 import socket
 import logging
 from messages.messages import Handshake, Fin, Data, GAME_CSV, REVIEW_CSV, OTHER, INDIE, SHOOTER
+from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 
 def main():
