@@ -1,6 +1,6 @@
 import socket
 import logging
-from messages.messages import Handshake, Fin, Data, GAME_CSV, REVIEW_CSV
+from messages.messages import Handshake, Fin, Data, GAME_CSV, REVIEW_CSV, OTHER, INDIE, SHOOTER
 
 def main():
     ip = "server"
@@ -16,14 +16,22 @@ def main():
         logging.warning("Handshake message sent")
         
         # Envía el mensaje Data (game) con el texto "hola esto es un data"
-        game_msg = Data(1, "hola esto es un game", GAME_CSV)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de game
+        game_msg = Data(1, "hola esto es un game indie", GAME_CSV, INDIE)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de game
         client_socket.send(game_msg.encode())  # Codificamos y enviamos el mensaje
-        logging.warning("Data message sent")
+        logging.warning("INDIE sent")
+
+        game_msg = Data(1, "hola esto es un game shooter", GAME_CSV, SHOOTER)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de game
+        client_socket.send(game_msg.encode())  # Codificamos y enviamos el mensaje
+        logging.warning("SHOOTER sent")
+
+        game_msg = Data(1, "hola esto es un game other", GAME_CSV, OTHER)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de game
+        client_socket.send(game_msg.encode())  # Codificamos y enviamos el mensaje
+        logging.warning("OTHER sent")
 
         # Envía el mensaje Data (review) con el texto "hola esto es un data"
-        review_msg = Data(1, "hola esto es una review", REVIEW_CSV)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de review
+        review_msg = Data(1, "hola esto es una review", REVIEW_CSV, OTHER)  # Creamos el mensaje Data con ID 1, la cadena de texto y el código de review
         client_socket.send(review_msg.encode())  # Codificamos y enviamos el mensaje
-        logging.warning("Data message sent")
+        logging.warning("REVIEW sent")
         
         # Envía el mensaje Fin
         fin_msg = Fin(1)  # Creamos el mensaje Fin con ID 1

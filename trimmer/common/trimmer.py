@@ -11,7 +11,7 @@ class Trimmer:
     def __init__(self):
         self._middleware = Middleware()
         self._middleware.declare_queue(GATEWAY_TRIMMER)
-        self._middleware.declare_exchange(TRIMMER_FILTERS)
+        self._middleware.declare_exchange(TRIMMER_FILTERS, type='fanout')
 
     def run(self):
 

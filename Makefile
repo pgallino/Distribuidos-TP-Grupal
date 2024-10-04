@@ -13,6 +13,8 @@ docker-image:
 	docker build -f ./trimmer/Dockerfile -t "trimmer:latest" .
 	docker build -f ./filters/genre/Dockerfile -t "genre:latest" .
 	docker build -f ./filters/score/Dockerfile -t "score:latest" .
+	docker build -f ./filters/release_date/Dockerfile -t "release_date:latest" .
+	docker build -f ./counters/os_counter/Dockerfile -t "os_counter:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 
 	# want to avoid rebuilding client image every time the docker-compose-up command 

@@ -38,6 +38,24 @@ services:
     networks:
       - testing_net
 
+  release_date:
+    container_name: release_date
+    image: release_date:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
+  os_counter:
+    container_name: os_counter
+    image: os_counter:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
   client:
     container_name: client
     image: client:latest # Asume que tienes una imagen para el cliente
