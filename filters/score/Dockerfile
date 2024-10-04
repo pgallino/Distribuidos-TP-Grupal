@@ -4,8 +4,8 @@ FROM python:3.9.7-slim
 RUN pip install --no-cache-dir pika==1.2.0
 
 # Copiamos los archivos necesarios
-COPY trimmer/main.py /
-COPY trimmer/common /common
+COPY filters/score/main.py /
+COPY filters/score/common /common
 
 # Copiar la carpeta completa middleware
 COPY middleware /middleware

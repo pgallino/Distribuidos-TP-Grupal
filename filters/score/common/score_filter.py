@@ -16,6 +16,6 @@ class ScoreFilter:
 
     def run(self):
         while True:
-            logging.warninig('action: listening_queue | result: in_progress')
+            logging.warning('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(TRIMMER_SCORE_FILTER)
-            logging.warninig(f'action: listening_queue | result: success | msg: {decode_msg(raw_message[2:])}')
+            logging.warning(f'action: listening_queue | result: success | msg: {decode_msg(raw_message[2:])}')
