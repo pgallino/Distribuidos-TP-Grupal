@@ -34,6 +34,7 @@ class GenreFilter:
                     self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
             elif msg.type == MSG_TYPE_FIN:
                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_GAMES)
+                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
                 # mandar al resto de nodos
                 self._middleware.connection.close()
                 return
