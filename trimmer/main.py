@@ -1,8 +1,12 @@
 import logging
+import utils.logging_config # Esto ejecuta la configuración del logger
 from common.trimmer import Trimmer
 
 def main():
-    logging.basicConfig(level="WARNING")
+
+    # Obtener el logger configurado
+    logger = logging.getLogger(__name__)
+    logger.info(f"action: start | result: success")
 
     # Crear una instancia de Trimmer
     score_filter = Trimmer()

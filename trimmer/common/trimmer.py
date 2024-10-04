@@ -19,6 +19,8 @@ K_REVIEW = 'review'
 
 class Trimmer:
     def __init__(self):
+
+        self.logger = logging.getLogger(__name__)
         
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
@@ -27,15 +29,15 @@ class Trimmer:
     def run(self):
 
         while True:
-            logging.warning("action: listening_queue | result: in_progress")
+            self.logger.custom("action: listening_queue | result: in_progress")
             raw_message = self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER)
             msg = decode_msg(raw_message[2:])
-            logging.warning(f"action: listening_queue | result: success | msg: {msg}")
+            self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
             if msg.type == MSG_TYPE_DATA:
-                logging.warning("action: sending_data | result: in_progress")
+                self.logger.custom("action: sending_data | result: in_progress")
                 key = K_GAME if msg.dataset == GAME_CSV else K_REVIEW
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=key)
-                logging.warning(f"action: sending_data | result: success | data sent to {key}")
+                self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
             elif msg.type == MSG_TYPE_FIN:
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)

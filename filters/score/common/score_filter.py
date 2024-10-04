@@ -9,6 +9,9 @@ K_REVIEW = 'review'
 class ScoreFilter:
 
     def __init__(self):
+
+        self.logger = logging.getLogger(__name__)
+
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_TRIMMER_SCORE_FILTER)
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
@@ -16,6 +19,6 @@ class ScoreFilter:
 
     def run(self):
         while True:
-            logging.warning('action: listening_queue | result: in_progress')
+            self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER)
-            logging.warning(f'action: listening_queue | result: success | msg: {decode_msg(raw_message[2:])}')
+            self.logger.custom(f'action: listening_queue | result: success | msg: {decode_msg(raw_message[2:])}')

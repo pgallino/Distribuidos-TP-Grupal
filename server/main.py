@@ -3,6 +3,7 @@
 from configparser import ConfigParser
 from common.server import Server
 import logging
+import utils.logging_config # Esto ejecuta la configuración del logger
 import os
 
 
@@ -44,8 +45,12 @@ def main():
 
     # Log config parameters at the beginning of the program to verify the configuration
     # of the component
-    logging.info(f"action: config | result: success | port: {port} | "
-                  f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
+    # logging.info(f"action: config | result: success | port: {port} | "
+    #               f"listen_backlog: {listen_backlog} | logging_level: {logging_level}")
+    
+    # Obtener el logger configurado
+    logger = logging.getLogger(__name__)
+    logger.info(f"action: start | result: success")
     
     # Initialize server and start server loop
     server = Server(port, listen_backlog)

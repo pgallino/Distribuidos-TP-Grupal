@@ -1,8 +1,10 @@
 import logging
 from common.os_counter import OsCounter
+import utils.logging_config # Esto ejecuta la configuración del logger
 
 def main():
-    logging.basicConfig(level="WARNING")
+    logger = logging.getLogger(__name__)
+    logger.info(f"action: start | result: success")
 
     # Crear una instancia de ReleaseDateFilter
     os_counter = OsCounter()

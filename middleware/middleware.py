@@ -1,14 +1,18 @@
 import logging
 import pika
 import time
+import utils.logging_config # Esto ejecuta la configuración del logger
 
 
 class Middleware:
     def __init__(self, host='rabbitmq'):
+
+        self.logger = logging.getLogger(__name__)
+
         self.connection = self._connect_to_rabbitmq()
         self.channel = self.connection.channel()
         
-        logging.warning(f"action: init_middleware | result: success | host: {host}")
+        self.logger.custom(f"action: init_middleware | result: success | host: {host}")
         self.queues = set()
         self.exchanges = set()
 
@@ -19,9 +23,9 @@ class Middleware:
         if queue_name not in self.queues:
             self.channel.queue_declare(queue=queue_name, durable=True)
             self.queues.add(queue_name)
-            logging.warning(f"action: declare_queue | result: success | queue_name: {queue_name}")
+            self.logger.custom(f"action: declare_queue | result: success | queue_name: {queue_name}")
         else:
-            logging.warning(f"action: declare_queue | result: fail | queue_name: {queue_name} already exist")
+            self.logger.custom(f"action: declare_queue | result: fail | queue_name: {queue_name} already exist")
     
     def declare_exchange(self, exchange, type='direct'):
         """
@@ -31,9 +35,9 @@ class Middleware:
         if exchange not in self.queues:
             self.channel.exchange_declare(exchange=exchange, exchange_type=type)
             self.exchanges.add(exchange)
-            logging.warning(f"action: declare_queue | result: success | exchange: {exchange}")
+            self.logger.custom(f"action: declare_queue | result: success | exchange: {exchange}")
         else:
-            logging.warning(f"action: declare_queue | result: fail | exchange: {exchange} already exist")
+            self.logger.custom(f"action: declare_queue | result: fail | exchange: {exchange} already exist")
         
     def bind_queue(self, queue_name, exchange, key=None):
         if queue_name not in self.queues or exchange not in self.exchanges:
@@ -51,7 +55,7 @@ class Middleware:
                     routing_key=log,  # Cola a la que se envía el mensaje
                     body=message
                 )
-                logging.warning(f"action: send_to_queue | result: success | queue_name: {log} | message: {message}")
+                self.logger.custom(f"action: send_to_queue | result: success | queue_name: {log} | message: {message}")
             except Exception as e:
                 logging.error(f"action: send_to_queue | result: fail | error: {e}")
         elif log in self.exchanges:
@@ -61,7 +65,7 @@ class Middleware:
                     routing_key=key,
                     body=message
                 )
-                logging.warning(f"action: send_to_queue | result: success | exchange: {log} | message: {message}")
+                self.logger.custom(f"action: send_to_queue | result: success | exchange: {log} | message: {message}")
             except Exception as e:
                 logging.error(f"action: send_to_queue | result: fail | error: {e}")
         else:
@@ -81,11 +85,11 @@ class Middleware:
             method_frame, header_frame, body = self.channel.basic_get(queue=queue_name, auto_ack=True)
             
             if method_frame:
-                logging.warning(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body}")
+                self.logger.custom(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body}")
                 return body
             else:
                 if not block:
-                    logging.warning(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
+                    self.logger.custom(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
                     return None
                 time.sleep(5)  # Espera activa de 1 segundo antes de revisar de nuevo
 
@@ -94,7 +98,7 @@ class Middleware:
         Cierra la conexión a RabbitMQ.
         """
         self.connection.close()
-        logging.warning("action: close_connection | result: success")
+        self.logger.custom("action: close_connection | result: success")
 
     def _connect_to_rabbitmq(self):
         retries = 5
