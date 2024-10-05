@@ -74,6 +74,15 @@ services:
     networks:
       - testing_net
 
+  q5_joiner:
+    container_name: q5_joiner
+    image: q5_joiner:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
   client:
     container_name: client
     image: client:latest # Asume que tienes una imagen para el cliente

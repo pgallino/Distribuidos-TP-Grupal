@@ -17,6 +17,7 @@ docker-image:
 	docker build -f ./counters/os_counter/Dockerfile -t "os_counter:latest" .
 	docker build -f ./counters/avg_counter/Dockerfile -t "avg_counter:latest" .
 	docker build -f ./joiners/q3_joiner/Dockerfile -t "q3_joiner:latest" .
+	docker build -f ./joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 
 	# want to avoid rebuilding client image every time the docker-compose-up command 
