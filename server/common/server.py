@@ -53,8 +53,7 @@ class Server:
                 self.logger.custom(f"action: receive_message | result: success | {msg}")
 
                 # Enviamos el mensaje ya codificado directamente a la cola
-                encoded_msg = msg.encode()
-                self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, encoded_msg)
+                self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
         except ValueError as e:
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
             self.logger.custom(f"Connection closed or invalid message received: {e}")
