@@ -4,8 +4,8 @@ FROM python:3.9.7-slim
 RUN pip install --no-cache-dir pika==1.2.0
 
 # Copiamos los archivos necesarios
-COPY filters/english/main.py /
-COPY filters/english/common /common
+COPY joiners/joiner_q4/main.py /
+COPY joiners/joiner_q4/common /common
 
 # Copiar la carpeta completa middleware
 COPY middleware /middleware

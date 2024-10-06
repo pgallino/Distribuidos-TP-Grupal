@@ -55,7 +55,6 @@ class Middleware:
                     routing_key=log,  # Cola a la que se envía el mensaje
                     body=message
                 )
-                self.logger.custom(f"action: send_to_queue | result: success | queue_name: {log} | message: {message}")
             except Exception as e:
                 logging.error(f"action: send_to_queue | result: fail | error: {e}")
         elif log in self.exchanges:
@@ -65,7 +64,6 @@ class Middleware:
                     routing_key=key,
                     body=message
                 )
-                self.logger.custom(f"action: send_to_queue | result: success | exchange: {log} | message: {message}")
             except Exception as e:
                 logging.error(f"action: send_to_queue | result: fail | error: {e}")
         else:
@@ -85,7 +83,6 @@ class Middleware:
             method_frame, header_frame, body = self.channel.basic_get(queue=queue_name, auto_ack=True)
             
             if method_frame:
-                self.logger.custom(f"action: receive_from_queue | result: success | queue_name: {queue_name} | message: {body}")
                 return body
             else:
                 if not block:
