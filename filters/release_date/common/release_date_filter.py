@@ -1,4 +1,4 @@
-from messages.messages import decode_msg
+from messages.messages import MSG_TYPE_FIN, decode_msg
 from middleware.middleware import Middleware
 import logging
 
@@ -27,3 +27,6 @@ class ReleaseDateFilter:
             self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
             self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
             self.logger.custom(f"action: sending_data | result: success | data sent to {Q_2010_GAMES}")
+            if msg.type == MSG_TYPE_FIN:
+                self._middleware.connection.close()
+                return
