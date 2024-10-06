@@ -39,7 +39,7 @@ class Trimmer:
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=key)
                 self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
             elif msg.type == MSG_TYPE_FIN:
-                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
-                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                self._middleware.connection.close()
-                return
+                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
+                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                    self._middleware.connection.close()
+                    return

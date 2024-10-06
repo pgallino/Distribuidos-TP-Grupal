@@ -1,7 +1,7 @@
 import logging
 from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
-from joiners.joiner_q4.common.joiner_q4 import JoinerQ4
+from common.joiner_q4 import JoinerQ4
 
 def main():
 

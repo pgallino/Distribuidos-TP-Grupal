@@ -16,6 +16,7 @@ docker-image:
 	docker build -f ./filters/release_date/Dockerfile -t "release_date:latest" .
 	docker build -f ./filters/english/Dockerfile -t "english:latest" .
 	docker build -f ./counters/os_counter/Dockerfile -t "os_counter:latest" .
+	docker build -f ./joiners/joiner_q4/Dockerfile -t "joiner_q4:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 
 	# want to avoid rebuilding client image every time the docker-compose-up command 
