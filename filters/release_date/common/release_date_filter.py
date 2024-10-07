@@ -20,16 +20,23 @@ class ReleaseDateFilter:
         self._middleware.declare_queue(Q_2010_GAMES)
 
     def run(self):
+        
         self.logger.custom("action: listen_to_queue")
+
         while True:
             # self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE)
             msg = decode_msg(raw_message[2:])
             # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
-            self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
-            # self.logger.custom(f"action: sending_data | result: success | data sent to {Q_2010_GAMES}")
+            
+            if msg.type == MsgType.GAME and "201" in msg.release_date:
+                self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
+                # self.logger.custom(f"action: sending_data | result: success | data sent to {Q_2010_GAMES}")
+            
             if msg.type == MsgType.FIN:
+                # Se reenvia el FIN al resto de los nodos
                 self.logger.custom("action: shutting_down | result: in_progress")
+                self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
                 self._middleware.connection.close()
                 self.logger.custom("action: shutting_down | result: success")
                 return
