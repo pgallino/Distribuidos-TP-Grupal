@@ -1,7 +1,7 @@
 FROM python:3.9.7-slim
 
-# Instalar la librería pika directamente usando pip
-RUN pip install --no-cache-dir pika==1.2.0
+# Instalar las librerías necesarias directamente usando pip
+RUN pip install --no-cache-dir pika==1.2.0 langid==1.1.6
 
 # Copiamos los archivos necesarios
 COPY filters/english/main.py /
