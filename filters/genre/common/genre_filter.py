@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, OTHER, INDIE, SHOOTER, GAME_CSV, REVIEW_CSV, MSG_TYPE_DATA, MSG_TYPE_FIN
+from messages.messages import Genre, MsgType, decode_msg
 from middleware.middleware import Middleware
 import logging
 
@@ -22,19 +22,23 @@ class GenreFilter:
         self._middleware.declare_exchange(E_FROM_GENRE)
 
     def run(self):
+        self.logger.custom("action: listen_to_queue")
         while True:
-            self.logger.custom('action: listening_queue | result: in_progress')
+            # self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_TRIMMER_GENRE_FILTER)
             msg = decode_msg(raw_message[2:])
-            self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_DATA:
-                if msg.genre != OTHER:
-                    key = K_INDIE_GAMES if msg.genre == INDIE  else K_SHOOTER_GAMES
-                    self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=key)
-                    self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
-            elif msg.type == MSG_TYPE_FIN:
+            # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
+            if msg.type == MsgType.GAME:
+                for genre in msg.genres:
+                    if genre != Genre.OTHER:
+                        key = K_INDIE_GAMES if genre == Genre.INDIE else K_SHOOTER_GAMES
+                        self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=key)
+                        # self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
+            elif msg.type == MsgType.FIN:
+                # Se reenvia el FIN al resto de los nodos
+                self.logger.custom("action: shutting_down | result: in_progress")
                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_GAMES)
                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
-                # mandar al resto de nodos
                 self._middleware.connection.close()
+                self.logger.custom("action: shutting_down | result: success")
                 return

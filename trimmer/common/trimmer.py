@@ -1,7 +1,7 @@
-from messages.messages import Dataset, Game, Genre, MsgType, Review, Score, decode_msg, MSG_TYPE_HANDSHAKE, MSG_TYPE_DATA, MSG_TYPE_FIN, GAME_CSV, REVIEW_CSV
+from messages.messages import Dataset, Game, Genre, MsgType, Review, Score, decode_msg
 from middleware.middleware import Middleware
 import logging
-from distutils.util import strtobool
+import csv
 
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
 E_TRIMMER_FILTERS = 'trimmer-filters'
@@ -33,33 +33,38 @@ class Trimmer:
 
     def run(self):
 
+        self.logger.custom("action: listen_to_queue")
         while True:
-            self.logger.custom("action: listening_queue | result: in_progress")
+            # self.logger.custom("action: listening_queue | result: in_progress")
             raw_message = self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER)
             msg = decode_msg(raw_message[2:])
-            self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
-            if MsgType(msg.type) == MsgType.DATA:
-                self.logger.custom("action: sending_data | result: in_progress")
-                values = msg.row.split(',')
+            # self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
+            if msg.type == MsgType.DATA:
+                # self.logger.custom("action: sending_data | result: in_progress")
+                values = next(csv.reader([msg.row]))
+                # self.logger.custom(f"values: {values}")
                 if msg.dataset == Dataset.GAME:
-                    next_msg = self._get_game(msg.id, values).encode()
+                    next_msg = self._get_game(msg.id, values)
+                    key = K_GAME
                 else:
-                    next_msg = self._get_review(msg.id, values).encode()
-                key = K_GAME if msg.dataset == GAME_CSV else K_REVIEW
+                    next_msg = self._get_review(msg.id, values)
+                    key = K_REVIEW
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, next_msg.encode(), key=key)
-                self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
-            elif msg.type == MSG_TYPE_FIN:
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                    self._middleware.connection.close()
-                    return
+                # self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
+            elif msg.type == MsgType.FIN:
+                self.logger.custom("action: shutting_down | result: in_progress")
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                self._middleware.connection.close()
+                self.logger.custom("action: shutting_down | result: success")
+                return
             
     def _get_game(self, client_id, values) -> Game:
-        app_id, name, release_date, windows, mac, linux, avg_playtime, genres = values[0], values[1], values[2], values[16], values[17], values[18], values[32], values[39]
+        app_id, name, release_date, windows, mac, linux, avg_playtime, genres = values[0], values[1], values[2], values[16], values[17], values[18], values[29], values[36]
         genres = get_genres(genres)
-        return Game(client_id, int(app_id), name, release_date, (avg_playtime), windows == "True", linux == "True", mac == "True", genres)
+        return Game(client_id, int(app_id), name, release_date, int(avg_playtime), windows == "True", linux == "True", mac == "True", genres)
     
     def _get_review(self, client_id, values):
         app_id, text, score = values[0], values[2], values[3]
-        return Review(client_id, app_id, text, Score.from_string(score))
+        return Review(client_id, int(app_id), text, Score.from_string(score))
          

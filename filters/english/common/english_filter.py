@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, OTHER, INDIE, SHOOTER, GAME_CSV, REVIEW_CSV, MSG_TYPE_DATA, MSG_TYPE_FIN
+from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
 import logging
 
@@ -20,16 +20,20 @@ class EnglishFilter:
         self._middleware.bind_queue(Q_SCORE_ENGLISH, E_FROM_SCORE, K_POSITIVE)
 
     def run(self):
+        self.logger.custom("action: listen_to_queue")
         while True:
-            self.logger.custom('action: listening_queue | result: in_progress')
+            # self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_SCORE_ENGLISH)
             msg = decode_msg(raw_message[2:])
-            self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_DATA:
-                self.logger.custom("action: sending_data | result: in_progress")
+            # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
+            if msg.type == MsgType.REVIEW:
+                # self.logger.custom("action: sending_data | result: in_progress")
                 self._middleware.send_to_queue(Q_ENGLISH_JOINER_Q4, msg.encode())
-                self.logger.custom(f"action: sending_data | result: success | data sent to {Q_ENGLISH_JOINER_Q4}")
-            elif msg.type == MSG_TYPE_FIN:
-                    self._middleware.send_to_queue(Q_ENGLISH_JOINER_Q4, msg.encode())
-                    self._middleware.connection.close()
-                    return
+                # self.logger.custom(f"action: sending_data | result: success | data sent to {Q_ENGLISH_JOINER_Q4}")
+            elif msg.type == MsgType.FIN:
+                # Se reenvia el FIN al resto de nodos
+                self.logger.custom("action: shutting_down | result: in_progress")
+                self._middleware.send_to_queue(Q_ENGLISH_JOINER_Q4, msg.encode())
+                self._middleware.connection.close()
+                self.logger.custom("action: shutting_down | result: success")
+                return

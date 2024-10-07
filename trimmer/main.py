@@ -1,5 +1,4 @@
 import logging
-from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 from common.trimmer import Trimmer
 

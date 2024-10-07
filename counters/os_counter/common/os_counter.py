@@ -1,4 +1,4 @@
-from messages.messages import MSG_TYPE_FIN, decode_msg
+from messages.messages import decode_msg, MsgType
 from middleware.middleware import Middleware
 import logging
 
@@ -18,11 +18,14 @@ class OsCounter:
         self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_TRIMMER_FILTERS, K_GAME)
 
     def run(self):
+        self.logger.custom("action: listen_to_queue")
         while True:
-            self.logger.custom('action: listening_queue | result: in_progress')
+            # self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER)
             msg = decode_msg(raw_message[2:])
             self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_FIN:
+            if msg.type == MsgType.FIN:
+                self.logger.custom("action: shutting_down | result: in_progress")
                 self._middleware.connection.close()
+                self.logger.custom("action: shutting_down | result: success")
                 return

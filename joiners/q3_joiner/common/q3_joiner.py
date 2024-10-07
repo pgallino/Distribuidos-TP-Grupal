@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, MSG_TYPE_FIN
+from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
 import logging
 
@@ -25,18 +25,23 @@ class Q3Joiner:
         self._middleware.bind_queue(Q_SCORE_JOINER_Q3, E_FROM_SCORE, K_POSITIVE)
 
     def run(self):
+
+        self.logger.custom("action: listen_to_queue")
         while True:
-            self.logger.custom(f'action: listening_queue: {Q_GENRE_JOINER_Q3} | result: in_progress')
+            # self.logger.custom(f'action: listening_queue: {Q_GENRE_JOINER_Q3} | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_GENRE_JOINER_Q3)
             msg = decode_msg(raw_message[2:])
             self.logger.custom(f'action: listening_queue: {Q_GENRE_JOINER_Q3} | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_FIN:
+            if msg.type == MsgType.FIN:
                 break
         
         while True:
-            self.logger.custom(f'action: listening_queue: {Q_SCORE_JOINER_Q3} | result: in_progress')
+            # self.logger.custom(f'action: listening_queue: {Q_SCORE_JOINER_Q3} | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_SCORE_JOINER_Q3)
             msg = decode_msg(raw_message[2:])
             self.logger.custom(f'action: listening_queue: {Q_SCORE_JOINER_Q3} | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_FIN:
+            if msg.type == MsgType.FIN:
+                self.logger.custom("action: shutting_down | result: in_progress")
+                self._middleware.connection.close()
+                self.logger.custom("action: shutting_down | result: success")
                 break

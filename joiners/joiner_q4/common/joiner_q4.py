@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, MSG_TYPE_HANDSHAKE, MSG_TYPE_DATA, MSG_TYPE_FIN, GAME_CSV, REVIEW_CSV
+from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
 import logging
 
@@ -21,17 +21,17 @@ class JoinerQ4:
     def run(self):
 
         while True:
-            self.logger.custom(f'action: listening_queue: {Q_GENRE_JOINER_Q4} | result: in_progress')
+            # self.logger.custom(f'action: listening_queue: {Q_GENRE_JOINER_Q4} | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_GENRE_JOINER_Q4)
             msg = decode_msg(raw_message[2:])
             self.logger.custom(f'action: listening_queue: {Q_GENRE_JOINER_Q4} | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_FIN:
+            if msg.type == MsgType.FIN:
                 break
         
         while True:
-            self.logger.custom(f'action: listening_queue: {Q_ENGLISH_JOINER_Q4} | result: in_progress')
+            # self.logger.custom(f'action: listening_queue: {Q_ENGLISH_JOINER_Q4} | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_ENGLISH_JOINER_Q4)
             msg = decode_msg(raw_message[2:])
             self.logger.custom(f'action: listening_queue: {Q_ENGLISH_JOINER_Q4} | result: success | msg: {msg}')
-            if msg.type == MSG_TYPE_FIN:
+            if msg.type == MsgType.FIN:
                 break

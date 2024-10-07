@@ -1,6 +1,6 @@
 import socket
 import logging
-from messages.messages import Game, Genre, Handshake, Fin, Data, Dataset, MsgType, Review, Score
+from messages.messages import Handshake, Fin, Data, Dataset
 from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 
@@ -31,8 +31,8 @@ def main():
         client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
         logger.custom("action: send_handshake | result: success | message: Handshake")
         
-        send_dataset("reduced_games.csv", client_socket, 1, Dataset(Dataset.GAME))
-        send_dataset("reduced_reviews.csv", client_socket, 1, Dataset(Dataset.REVIEW))
+        send_dataset("reduced_games.csv", client_socket, 1, Dataset(Dataset.GAME), logger)
+        send_dataset("reduced_reviews.csv", client_socket, 1, Dataset(Dataset.REVIEW), logger)
         
         # Envía el mensaje Fin
         fin_msg = Fin(1)  # Creamos el mensaje Fin con ID 1

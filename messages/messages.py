@@ -76,6 +76,12 @@ def decode_msg(data):
 
     elif type == MsgType.FIN:
         return Fin.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
+    
+    elif type == MsgType.GAME:
+        return Game.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
+    
+    elif type == MsgType.REVIEW:
+        return Review.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {type}")
@@ -180,7 +186,7 @@ class Fin(Message):
 class Game(Message):
 
     def __init__(self, id: int, app_id: int, name: str, release_date: str, avg_playtime: int, windows: bool, linux: bool, mac: bool, genres: List[Genre]):
-        super().__init__(id, type)
+        super().__init__(id, MsgType.GAME)
         self.app_id = app_id
         self.name = name
         self.genres = genres
@@ -199,7 +205,20 @@ class Game(Message):
 
         genres_bytes = [genre.value.to_bytes(1, "big") for genre in self.genres]
 
-        body = struct.pack(f'>BBBB{len(name_bytes)}sB{len(release_date_bytes)}sB???B', int(MsgType.GAME.value), self.id, self.app_id, len(name_bytes), name_bytes, len(release_date_bytes), release_date_bytes, self.avg_playtime, self.windows, self.linux, self.mac, len(genres_bytes)) + genres_bytes
+        body = struct.pack(f'>BBIB{len(name_bytes)}sB{len(release_date_bytes)}sI???B',
+                           int(MsgType.GAME.value), 
+                           self.id, 
+                           self.app_id, 
+                           len(name_bytes), 
+                           name_bytes, 
+                           len(release_date_bytes), 
+                           release_date_bytes, 
+                           self.avg_playtime, 
+                           self.windows, 
+                           self.linux, 
+                           self.mac, 
+                           len(genres_bytes)
+                           ) + b''.join(genres_bytes)
         
         # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
         total_length = len(body)
@@ -210,9 +229,9 @@ class Game(Message):
     @staticmethod
     def decode(data: bytes) -> "Game":
         # Decodifica el mensaje Game
-        init, end = 0, 3
+        init, end = 0, 6
         # print(data[init:end])
-        id, app_id, name_length = struct.unpack('>BBB', data[:end])
+        id, app_id, name_length = struct.unpack('>BIB', data[:end])
         init, end = end, end + name_length
         # print(data[init:end])
         name = data[init:end].decode()
@@ -222,20 +241,21 @@ class Game(Message):
         init, end = end, end + release_date_length
         # print(data[init:end])
         release_date = data[init:end].decode()
-        init, end = end, end + 5
+        init, end = end, end + 8
         # print(data[init:end])
-        avg_playtime, windows, linux, mac, genres_length = struct.unpack('>BBBBB', data[init:end])
+        avg_playtime, windows, linux, mac, genres_length = struct.unpack('>IBBBB', data[init:end])
         init, end = end, end + genres_length
-        genres = [Genre(int.from_bytes(genre[:], "big")) for genre in data[init:end]]
+        # print(data[init:end])
+        genres = [Genre(int(genre)) for genre in data[init:end]]
         return Game(id, app_id, name, release_date, avg_playtime, windows, linux, mac, genres)
     
     def __str__(self):
-        return f"Game(id={self.id}, app_id={self.app_id}, name={self.name}, genre={self.genre}, release_date={self.release_date}, avg_playtime={self.avg_playtime}, windows={self.windows}, linux={self.linux}, mac={self.mac})"
+        return f"Game(id={self.id}, app_id={self.app_id}, name={self.name}, genre={self.genres}, release_date={self.release_date}, avg_playtime={self.avg_playtime}, windows={self.windows}, linux={self.linux}, mac={self.mac})"
     
 class Review(Message):
 
     def __init__(self, id: int, app_id: int, text: str, score: Score):
-        super().__init__(id, type)
+        super().__init__(id, MsgType.REVIEW)
         self.app_id = app_id
         self.text = text
         self.score = score
@@ -246,7 +266,7 @@ class Review(Message):
         # Convertimos los datos a bytes
         text_bytes = self.text.encode()
         
-        body = struct.pack(f'>BBBH{len(text_bytes)}sB', int(MsgType.REVIEW.value), self.id, self.app_id, len(text_bytes), text_bytes, self.score.value)
+        body = struct.pack(f'>BBII{len(text_bytes)}sB', int(MsgType.REVIEW.value), self.id, self.app_id, len(text_bytes), text_bytes, self.score.value)
         
         # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
         total_length = len(body)
@@ -257,8 +277,8 @@ class Review(Message):
     @staticmethod
     def decode(data: bytes) -> "Review":
         # Decodifica el mensaje Review
-        init, end = 0, 4
-        id, app_id, name_length = struct.unpack('>BBH', data[:end])
+        init, end = 0, 9
+        id, app_id, name_length = struct.unpack('>BII', data[:end])
         init, end = end, end + name_length
         text = data[init:end].decode()
         init, end = end, end + 1
@@ -266,4 +286,4 @@ class Review(Message):
         return Review(id, app_id, text, Score(score))
     
     def __str__(self):
-        return f"Review(id={self.id}, app_id={self.app_id}, text={self.text}, score={self.score})"
+        return f"Review(id={self.id}, app_id={self.app_id}, score={self.score})"

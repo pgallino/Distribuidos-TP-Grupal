@@ -56,15 +56,6 @@ services:
     networks:
       - testing_net
 
-  joiner_q4:
-    container_name: joiner_q4
-    image: joiner_q4:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    networks:
-      - testing_net
-
   os_counter:
     container_name: os_counter
     image: os_counter:latest
@@ -86,6 +77,15 @@ services:
   q3_joiner:
     container_name: q3_joiner
     image: q3_joiner:latest
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOGGING_LEVEL=DEBUG
+    networks:
+      - testing_net
+
+  joiner_q4:
+    container_name: joiner_q4
+    image: joiner_q4:latest
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG

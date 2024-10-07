@@ -50,7 +50,7 @@ class Server:
             while True:
                 raw_msg = recv_msg(client_sock)
                 msg = decode_msg(raw_msg)  # Ahora devuelve directamente un objeto Handshake, Data o Fin
-                self.logger.custom(f"action: receive_message | result: success | {msg}")
+                # self.logger.custom(f"action: receive_message | result: success | {msg}")
 
                 # Enviamos el mensaje ya codificado directamente a la cola
                 self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
