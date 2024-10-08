@@ -7,6 +7,8 @@ import signal
 from utils.utils import safe_read, recv_msg
 
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
+Q_QUERY_RESULT_1 = "query_result_1"
+Q_QUERY_RESULT_2 = "query_result_2"
 Q_QUERY_RESULT_3 = "query_result_3"
 Q_QUERY_RESULT_4 = "query_result_4"
 Q_QUERY_RESULT_5 = "query_result_5"
@@ -22,6 +24,8 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
+        self._middleware.declare_queue(Q_QUERY_RESULT_1)
+        self._middleware.declare_queue(Q_QUERY_RESULT_2)
         self._middleware.declare_queue(Q_QUERY_RESULT_3)
         self._middleware.declare_queue(Q_QUERY_RESULT_4)
         self._middleware.declare_queue(Q_QUERY_RESULT_5)
@@ -76,23 +80,22 @@ class Server:
         """Listen to multiple queues for result messages and print the results."""
         self.logger.custom("action: listen_to_queues | result: in_progress")
         
-        queues = [Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5]
+        queues = [Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5]
         
-        while True:
-            for queue in queues:
-                try:
-                    raw_message = self._middleware.receive_from_queue(queue)
-                    msg = decode_msg(raw_message[2:])
-                    
-                    # Imprimir el mensaje de resultado recibido
-                    if msg.type == MsgType.RESULT:
-                        self.logger.custom(f"Received Result from {queue}: {msg.result}")
-                    else:
-                        self.logger.custom(f"Received Message from {queue}: {msg}")
-                    
-                except ValueError as e:
-                    self.logger.custom(f"Error decoding message from {queue}: {e}")
-                except OSError as e:
-                    logging.error(f"Error receiving from {queue}: {e}")
-                    return
+        for queue in queues:
+            try:
+                raw_message = self._middleware.receive_from_queue(queue)
+                msg = decode_msg(raw_message[4:])
+                
+                # Imprimir el mensaje de resultado recibido
+                if msg.type == MsgType.RESULT:
+                    self.logger.custom(f"Received Result from {queue}: {msg.result}")
+                else:
+                    self.logger.custom(f"Received Message from {queue}: {msg}")
+                
+            except ValueError as e:
+                self.logger.custom(f"Error decoding message from {queue}: {e}")
+            except OSError as e:
+                logging.error(f"Error receiving from {queue}: {e}")
+                return
 

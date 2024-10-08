@@ -27,12 +27,12 @@ class Q4Joiner:
 
 
     def run(self):
-        self.logger.custom("action: listen_to_queue")
+        # self.logger.custom("action: listen_to_queue")
 
         # Escuchar juegos de género "shooter" y registrar detalles
         while True:
             raw_message = self._middleware.receive_from_queue(Q_GENRE_Q4_JOINER)
-            msg = decode_msg(raw_message[2:])
+            msg = decode_msg(raw_message[4:])
             if msg.type == MsgType.GAME:
                 self.games[msg.app_id] = msg  # Almacena solo juegos shooter que representan "action"
             elif msg.type == MsgType.FIN:
@@ -41,24 +41,23 @@ class Q4Joiner:
         # Escuchar reseñas en inglés y contar las negativas para los juegos de acción
         while True:
             raw_message = self._middleware.receive_from_queue(Q_ENGLISH_Q4_JOINER)
-            msg = decode_msg(raw_message[2:])
+            msg = decode_msg(raw_message[4:])
             if msg.type == MsgType.REVIEW and msg.app_id in self.games:
                 # Incrementar el conteo de reseñas negativas en inglés
                 self.negative_review_counts[msg.app_id] += 1
             elif msg.type == MsgType.FIN:
-                break
-        
-        # Mensaje con juegos que tienen más de 5,000 reseñas negativas en inglés
-        result_text = "Q4: Action games with more than 5,000 negative reviews in English:\n"
-        for app_id, count in self.negative_review_counts.items():
-            if count > 5000:
-                game_name = self.games[app_id].name
-                result_text += f"- {game_name}: {count} negative reviews\n"
+                # Mensaje con juegos que tienen más de 5,000 reseñas negativas en inglés
+                result_text = "Q4: Action games with more than 5,000 negative reviews in English:\n"
+                for app_id, count in self.negative_review_counts.items():
+                    if count > 5000:
+                        game_name = self.games[app_id].name
+                        result_text += f"- {game_name}: {count} negative reviews\n"
 
-        # Crear y enviar el mensaje Result con el resultado concatenado
-        result_message = Result(id=1, query_number=QueryNumber.Q4.value, result=result_text)
-        self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
-    
-        self.logger.custom("action: shutting_down | result: in_progress")
-        self._middleware.connection.close()
-        self.logger.custom("action: shutting_down | result: success")
+                # Crear y enviar el mensaje Result con el resultado concatenado
+                result_message = Result(id=msg.id, query_number=QueryNumber.Q4.value, result=result_text)
+                self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
+            
+                # self.logger.custom("action: shutting_down | result: in_progress")
+                self._middleware.connection.close()
+                # self.logger.custom("action: shutting_down | result: success")
+                return

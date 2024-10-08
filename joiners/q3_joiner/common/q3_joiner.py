@@ -34,50 +34,49 @@ class Q3Joiner:
 
     def run(self):
 
-        self.logger.custom("action: listen_to_queue")
+        # self.logger.custom("action: listen_to_queue")
         while True:
             raw_message = self._middleware.receive_from_queue(Q_GENRE_Q3_JOINER)
-            msg = decode_msg(raw_message[2:])
+            msg = decode_msg(raw_message[4:])
             if msg.type == MsgType.GAME:
                 # Registrar el juego indie
                 self.games[msg.app_id] = msg
-                # self.logger.custom(f"Registered game: {msg.name} (ID: {msg.app_id})")
+                # # self.logger.custom(f"Registered game: {msg.name} (ID: {msg.app_id})")
             elif msg.type == MsgType.FIN:
                 break
         
         while True:
             raw_message = self._middleware.receive_from_queue(Q_SCORE_Q3_JOINER)
-            msg = decode_msg(raw_message[2:])
+            msg = decode_msg(raw_message[4:])
             if msg.type == MsgType.REVIEW:
                 # Contar reseñas positivas
                 if msg.app_id in self.games:
                     self.review_counts[msg.app_id] += 1
-                    # self.logger.custom(f"Incremented positive review count for app_id: {msg.app_id}")
+                    # # self.logger.custom(f"Incremented positive review count for app_id: {msg.app_id}")
             elif msg.type == MsgType.FIN:
-                break
+                # Seleccionar los 5 juegos indie con más reseñas positivas
+                top_indie_games = sorted(
+                    [(self.games[app_id].name, count) for app_id, count in self.review_counts.items()],
+                    key=lambda x: x[1], 
+                    reverse=True
+                )[:5]
 
-        # Seleccionar los 5 juegos indie con más reseñas positivas
-        top_indie_games = sorted(
-            [(self.games[app_id].name, count) for app_id, count in self.review_counts.items()],
-            key=lambda x: x[1], 
-            reverse=True
-        )[:5]
+                # Crear el mensaje de resultado para el top 5
+                result_text = "Q3: Top 5 Indie Games with Most Positive Reviews:\n"
+                for rank, (name, count) in enumerate(top_indie_games, start=1):
+                    result_text += f"{rank}. {name}: {count} positive reviews\n"
 
-        # Crear el mensaje de resultado para el top 5
-        result_text = "Q3: Top 5 Indie Games with Most Positive Reviews:\n"
-        for rank, (name, count) in enumerate(top_indie_games, start=1):
-            result_text += f"{rank}. {name}: {count} positive reviews\n"
+                # Loggear el mensaje de resultado
+                # self.logger.custom(result_text)
 
-       # Loggear el mensaje de resultado
-        self.logger.custom(result_text)
+                # Crear el mensaje Result
+                result_message = Result(id=msg.id, query_number=QueryNumber.Q3.value, result=result_text)
 
-        # Crear el mensaje Result
-        result_message = Result(id=1, query_number=QueryNumber.Q3.value, result=result_text)
+                # Enviar el mensaje Result al exchange de resultados
+                self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
-        # Enviar el mensaje Result al exchange de resultados
-        self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
-
-        # Cierre de la conexión
-        self.logger.custom("action: shutting_down | result: in_progress")
-        self._middleware.connection.close()
-        self.logger.custom("action: shutting_down | result: success")
+                # Cierre de la conexión
+                # self.logger.custom("action: shutting_down | result: in_progress")
+                self._middleware.connection.close()
+                # self.logger.custom("action: shutting_down | result: success")
+                return

@@ -12,7 +12,7 @@ class Middleware:
         self.connection = self._connect_to_rabbitmq()
         self.channel = self.connection.channel()
         
-        self.logger.custom(f"action: init_middleware | result: success | host: {host}")
+        # self.logger.custom(f"action: init_middleware | result: success | host: {host}")
         self.queues = set()
         self.exchanges = set()
 
@@ -86,7 +86,7 @@ class Middleware:
                 return body
             else:
                 if not block:
-                    self.logger.custom(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
+                    # self.logger.custom(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
                     return None
                 time.sleep(5)  # Espera activa de 1 segundo antes de revisar de nuevo
 
@@ -95,7 +95,7 @@ class Middleware:
         Cierra la conexión a RabbitMQ.
         """
         self.connection.close()
-        self.logger.custom("action: close_connection | result: success")
+        # self.logger.custom("action: close_connection | result: success")
 
     def _connect_to_rabbitmq(self):
         retries = 5

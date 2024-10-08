@@ -5,10 +5,6 @@ from common.q4_joiner import Q4Joiner
 
 def main():
 
-    # Obtener el logger configurado
-    logger = logging.getLogger(__name__)
-    logger.info(f"action: start | result: success")
-
     # Crear una instancia de Q4Joiner
     joiner = Q4Joiner()
 

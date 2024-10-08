@@ -3,8 +3,6 @@ from common.q3_joiner import Q3Joiner
 import utils.logging_config # Esto ejecuta la configuración del logger
 
 def main():
-    logger = logging.getLogger(__name__)
-    logger.info(f"action: start | result: success")
 
     # Crear una instancia de ReleaseDateFilter
     q3_joiner = Q3Joiner()

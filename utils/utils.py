@@ -2,7 +2,7 @@ import logging
 import struct
 import socket
 
-BYTES_HEADER = 2
+BYTES_HEADER = 4
 
 def safe_read(sock, n_bytes: int):
     """Función que lee datos del socket, devolviendo mensajes completos uno por vez."""
@@ -39,7 +39,7 @@ def recv_msg(sock):
     if not header:
         raise ValueError("Conexion cerrada o No se pudo leer el encabezado del mensaje.")
     
-    total_length = struct.unpack('>H', header)[0]
+    total_length = struct.unpack('>I', header)[0]
     data = _recv_all(sock, total_length)
     
     if not data:

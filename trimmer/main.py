@@ -4,10 +4,6 @@ from common.trimmer import Trimmer
 
 def main():
 
-    # Obtener el logger configurado
-    logger = logging.getLogger(__name__)
-    logger.info(f"action: start | result: success")
-
     # Crear una instancia de Trimmer
     trimmer = Trimmer()
 

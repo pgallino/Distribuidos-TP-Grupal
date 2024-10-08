@@ -10,6 +10,7 @@ class MsgType(Enum):
     GAME = 3
     REVIEW = 4
     RESULT = 5
+    RESULTQ1 = 6
 
 class Dataset(Enum):
     GAME = 0
@@ -128,7 +129,7 @@ class Handshake(Message):
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>H', total_length) + body
+        return struct.pack('>I', total_length) + body
     
     @staticmethod
     def decode(data: bytes) -> 'Handshake':
@@ -152,19 +153,19 @@ class Data(Message):
         data_length = len(data_bytes)
         
         # Empaquetamos el tipo de mensaje, el ID, el dataset y la longitud de los datos (2 bytes)
-        body = struct.pack('>BBBH', int(MsgType.DATA.value), self.id, self.dataset.value, data_length) + data_bytes
+        body = struct.pack('>BBBI', int(MsgType.DATA.value), self.id, self.dataset.value, data_length) + data_bytes
         
         # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>H', total_length) + body
+        return struct.pack('>I', total_length) + body
 
     @staticmethod
     def decode(data: bytes) -> 'Data':
         # Decodifica el mensaje Data
-        id, dataset, data_length = struct.unpack('>BBH', data[:4])
-        data_str = data[4:4+data_length].decode()
+        id, dataset, data_length = struct.unpack('>BBI', data[:6])
+        data_str = data[6:6+data_length].decode()
         return Data(id, data_str, Dataset(dataset))
 
     def __str__(self):
@@ -183,7 +184,7 @@ class Fin(Message):
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>H', total_length) + body
+        return struct.pack('>I', total_length) + body
 
     @staticmethod
     def decode(data: bytes) -> 'Fin':
@@ -235,7 +236,7 @@ class Game(Message):
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>H', total_length) + body
+        return struct.pack('>I', total_length) + body
     
     @staticmethod
     def decode(data: bytes) -> "Game":
@@ -283,7 +284,7 @@ class Review(Message):
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>H', total_length) + body
+        return struct.pack('>I', total_length) + body
     
     @staticmethod
     def decode(data: bytes) -> "Review":
@@ -323,7 +324,7 @@ class Result(Message):
         total_length = len(body)
 
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>H', total_length) + body
+        return struct.pack('>I', total_length) + body
 
     @staticmethod
     def decode(data: bytes) -> "Result":
@@ -334,3 +335,24 @@ class Result(Message):
     
     def __str__(self):
         return f"Result(id={self.id}, query_number={self.query_number}, result={self.result})"
+
+
+class ResultQ1(Message):
+
+    def __init__(self, id: int, windows: int, mac: int, linux: int):
+        super().__init__(id, MsgType.RESULTQ1)
+        self.windows = windows
+        self.mac = mac
+        self.linux = linux
+
+    def encode(self) -> bytes:
+        # Codifica el mensaje Review
+
+        # Convertimos los datos a bytes
+        body = struct.pack(f'>BBIII', int(MsgType.RESULTQ1.value), self.id, self.windows, self.mac, self.linux)
+        
+        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
+        total_length = len(body)
+        
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body

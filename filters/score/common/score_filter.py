@@ -23,11 +23,11 @@ class ScoreFilter:
         self._middleware.declare_exchange(E_FROM_SCORE)
 
     def run(self):
-        self.logger.custom("action: listen_to_queue")
+        # self.logger.custom("action: listen_to_queue")
         while True:
             # self.logger.custom("action: listening_queue | result: in_progress")
             raw_message = self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER)
-            msg = decode_msg(raw_message[2:])
+            msg = decode_msg(raw_message[4:])
             # self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
             if msg.type == MsgType.REVIEW:
                 # self.logger.custom("action: sending_data | result: in_progress")
@@ -36,9 +36,9 @@ class ScoreFilter:
                 # self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
             elif msg.type == MsgType.FIN:
                 # Se reenvia el FIN al resto de nodos
-                self.logger.custom("action: shutting_down | result: in_progress")
+                # self.logger.custom("action: shutting_down | result: in_progress")
                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=K_POSITIVE)
                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=K_NEGATIVE)
                 self._middleware.connection.close()
-                self.logger.custom("action: shutting_down | result: success")
+                # self.logger.custom("action: shutting_down | result: success")
                 return

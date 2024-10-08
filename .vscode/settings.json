@@ -1,6 +1,0 @@
-{
-  "python.analysis.extraPaths": [
-    "./counters/os_counter",
-    "./joiners/q4_joiner"
-  ]
-}

@@ -2,11 +2,15 @@ from messages.messages import Dataset, Game, Genre, MsgType, Review, Score, deco
 from middleware.middleware import Middleware
 import logging
 import csv
+import sys
 
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
 E_TRIMMER_FILTERS = 'trimmer-filters'
 K_GAME = 'game'
 K_REVIEW = 'review'
+
+# Aumenta el límite del tamaño de campo
+csv.field_size_limit(sys.maxsize)  # Esto establece el límite en el tamaño máximo permitido por el sistema
 
 
 #### ESTANDAR NOMBRE COLAS ####
@@ -33,11 +37,11 @@ class Trimmer:
 
     def run(self):
 
-        self.logger.custom("action: listen_to_queue")
+        # self.logger.custom("action: listen_to_queue")
         while True:
             # self.logger.custom("action: listening_queue | result: in_progress")
             raw_message = self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER)
-            msg = decode_msg(raw_message[2:])
+            msg = decode_msg(raw_message[4:])
             # self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
             if msg.type == MsgType.DATA:
                 # self.logger.custom("action: sending_data | result: in_progress")
@@ -52,11 +56,11 @@ class Trimmer:
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, next_msg.encode(), key=key)
                 # self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
             elif msg.type == MsgType.FIN:
-                self.logger.custom("action: shutting_down | result: in_progress")
+                # self.logger.custom("action: shutting_down | result: in_progress")
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
                 self._middleware.connection.close()
-                self.logger.custom("action: shutting_down | result: success")
+                # self.logger.custom("action: shutting_down | result: success")
                 return
             
     def _get_game(self, client_id, values) -> Game:
