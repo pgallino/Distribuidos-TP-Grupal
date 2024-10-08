@@ -1,10 +1,11 @@
 from collections import defaultdict
-from messages.messages import MsgType, decode_msg
+from messages.messages import MsgType, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 
 Q_GENRE_Q3_JOINER = "genre-q3-joiner"
 Q_SCORE_Q3_JOINER = "score-q3-joiner"
+Q_QUERY_RESULT_3 = "query_result_3"
 E_FROM_GENRE = "from_genre"
 E_FROM_SCORE = "from_score"
 K_INDIE_GAMES = "indie"
@@ -24,6 +25,8 @@ class Q3Joiner:
         self._middleware.declare_queue(Q_SCORE_Q3_JOINER)
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_SCORE_Q3_JOINER, E_FROM_SCORE, K_POSITIVE)
+
+        self._middleware.declare_queue(Q_QUERY_RESULT_3)
 
         # Estructuras para almacenar datos
         self.games = {}  # Almacenará juegos por `app_id`
@@ -60,13 +63,19 @@ class Q3Joiner:
             reverse=True
         )[:5]
 
-        # Crear un mensaje concatenado con el top 5
-        top_message = "Top 5 Indie Games with Most Positive Reviews:\n"
+        # Crear el mensaje de resultado para el top 5
+        result_text = "Q3: Top 5 Indie Games with Most Positive Reviews:\n"
         for rank, (name, count) in enumerate(top_indie_games, start=1):
-            top_message += f"{rank}. {name}: {count} positive reviews\n"
+            result_text += f"{rank}. {name}: {count} positive reviews\n"
 
-        # Loggear el mensaje grande con el top 5
-        self.logger.custom(top_message)
+       # Loggear el mensaje de resultado
+        self.logger.custom(result_text)
+
+        # Crear el mensaje Result
+        result_message = Result(id=1, query_number=QueryNumber.Q3.value, result=result_text)
+
+        # Enviar el mensaje Result al exchange de resultados
+        self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
         # Cierre de la conexión
         self.logger.custom("action: shutting_down | result: in_progress")

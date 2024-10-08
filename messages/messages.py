@@ -9,6 +9,7 @@ class MsgType(Enum):
     FIN = 2
     GAME = 3
     REVIEW = 4
+    RESULT = 5
 
 class Dataset(Enum):
     GAME = 0
@@ -32,6 +33,13 @@ class Score(Enum):
 
     def from_string(score: str) -> "Score":
         return Score.POSITIVE if score == "1" else Score.NEGATIVE
+
+class QueryNumber(Enum):
+    Q1 = 1
+    Q2 = 2
+    Q3 = 3
+    Q4 = 4
+    Q5 = 5
 
 # IMPORTANTE
 # IMPORTANTE
@@ -82,6 +90,9 @@ def decode_msg(data):
     
     elif type == MsgType.REVIEW:
         return Review.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
+
+    elif type == MsgType.RESULT:
+        return Result.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {type}")
@@ -287,3 +298,39 @@ class Review(Message):
     
     def __str__(self):
         return f"Review(id={self.id}, app_id={self.app_id}, score={self.score})"
+
+class Result(Message):
+
+    def __init__(self, id: int, query_number: int, result: str):
+        super().__init__(id, MsgType.RESULT)
+        self.query_number = query_number
+        self.result = result
+
+    def encode(self) -> bytes:
+        # Codifica el mensaje Result
+        result_bytes = self.result.encode()
+        result_length = len(result_bytes)
+
+        # Empaquetamos los campos según la estructura definida
+        body = struct.pack(f'>BBBH{result_length}s',
+                           int(MsgType.RESULT.value),  # 1 byte para el tipo de mensaje
+                           self.id,                   # 1 byte para el id
+                           self.query_number,         # 1 byte para el query_number
+                           result_length,             # 2 bytes para el len_string
+                           result_bytes)              # N bytes para el result
+
+        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
+        total_length = len(body)
+
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>H', total_length) + body
+
+    @staticmethod
+    def decode(data: bytes) -> "Result":
+        # Decodifica el mensaje Result
+        id, query_number, result_length = struct.unpack('>BBH', data[:4])
+        result = data[4:4 + result_length].decode()
+        return Result(id, query_number, result)
+    
+    def __str__(self):
+        return f"Result(id={self.id}, query_number={self.query_number}, result={self.result})"

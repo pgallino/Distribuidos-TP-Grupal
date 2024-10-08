@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, decode_msg
+from messages.messages import decode_msg, decode_msg, Result, MsgType
 from middleware.middleware import Middleware
 
 import socket
@@ -7,6 +7,9 @@ import signal
 from utils.utils import safe_read, recv_msg
 
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
+Q_QUERY_RESULT_3 = "query_result_3"
+Q_QUERY_RESULT_4 = "query_result_4"
+Q_QUERY_RESULT_5 = "query_result_5"
 
 class Server:
 
@@ -19,6 +22,9 @@ class Server:
         self._server_socket.listen(listen_backlog)
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
+        self._middleware.declare_queue(Q_QUERY_RESULT_3)
+        self._middleware.declare_queue(Q_QUERY_RESULT_4)
+        self._middleware.declare_queue(Q_QUERY_RESULT_5)
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -54,6 +60,9 @@ class Server:
 
                 # Enviamos el mensaje ya codificado directamente a la cola
                 self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
+                if msg.type == MsgType.FIN:
+                    break
+            self._listen_to_result_queues()
         except ValueError as e:
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
             self.logger.custom(f"Connection closed or invalid message received: {e}")
@@ -62,4 +71,28 @@ class Server:
         finally:
             client_sock.close()
             self.logger.custom(f"action: ending_connection | result: success")
+
+    def _listen_to_result_queues(self):
+        """Listen to multiple queues for result messages and print the results."""
+        self.logger.custom("action: listen_to_queues | result: in_progress")
+        
+        queues = [Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5]
+        
+        while True:
+            for queue in queues:
+                try:
+                    raw_message = self._middleware.receive_from_queue(queue)
+                    msg = decode_msg(raw_message[2:])
+                    
+                    # Imprimir el mensaje de resultado recibido
+                    if msg.type == MsgType.RESULT:
+                        self.logger.custom(f"Received Result from {queue}: {msg.result}")
+                    else:
+                        self.logger.custom(f"Received Message from {queue}: {msg}")
+                    
+                except ValueError as e:
+                    self.logger.custom(f"Error decoding message from {queue}: {e}")
+                except OSError as e:
+                    logging.error(f"Error receiving from {queue}: {e}")
+                    return
 

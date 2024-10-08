@@ -1,10 +1,11 @@
 from collections import defaultdict
-from messages.messages import MsgType, decode_msg
+from messages.messages import MsgType, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 
 Q_GENRE_Q5_JOINER = "genre-q5-joiner"
 Q_SCORE_Q5_JOINER = "score-q5-joiner"
+Q_QUERY_RESULT_5 = "query_result_5"
 E_FROM_GENRE = "from_genre"
 E_FROM_SCORE = "from_score"
 K_SHOOTER_GAMES = "shooter"
@@ -22,6 +23,8 @@ class Q5Joiner:
         self._middleware.declare_queue(Q_SCORE_Q5_JOINER)
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
+
+        self._middleware.declare_queue(Q_QUERY_RESULT_5)
 
        # Estructuras para almacenar datos
         self.games = {}  # Almacenará juegos por `app_id`
@@ -67,12 +70,16 @@ class Q5Joiner:
         ]
 
         # Crear un mensaje concatenado con los juegos en el percentil 90 o superior
-        top_message = f"Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
+        result_text = f"Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
         for name, count in sorted(top_games, key=lambda x: x[1], reverse=True):
-            top_message += f"- {name}: {count} negative reviews\n"
+            result_text += f"- {name}: {count} negative reviews\n"
 
         # Loggear el mensaje completo
-        self.logger.custom(top_message)
+        self.logger.custom(result_text)
+
+        # Crear y enviar el mensaje Result con el resultado concatenado
+        result_message = Result(id=1, query_number=QueryNumber.Q5.value, result=result_text)
+        self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
         # Cierre de la conexión
         self.logger.custom("action: shutting_down | result: in_progress")
