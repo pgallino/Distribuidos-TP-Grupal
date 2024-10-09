@@ -1,5 +1,5 @@
 import signal
-from messages.messages import MsgType, Score, decode_msg, BATCH_SIZE, Reviews, Review
+from messages.messages import BasicReview, BasicReviews, MsgType, Score, TextReview, TextReviews, decode_msg, BATCH_SIZE, Reviews, Review
 from middleware.middleware import Middleware
 import logging
 
@@ -8,8 +8,9 @@ E_TRIMMER_FILTERS = 'trimmer-filters'
 K_REVIEW = 'review'
 Q_SCORE_ENGLISH = "score_filter-english_filter"
 E_FROM_SCORE = 'from_score'
-K_POSITIVE = 'positive'
 K_NEGATIVE = 'negative'
+K_NEGATIVE_TEXT = 'negative_text'
+K_POSITIVE = 'positive'
 
 class ScoreFilter:
 
@@ -23,9 +24,6 @@ class ScoreFilter:
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
         self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_TRIMMER_FILTERS, K_REVIEW)
         self._middleware.declare_exchange(E_FROM_SCORE)
-        # Listas para acumular reseñas
-        self.positive_reviews = []
-        self.negative_reviews = []
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -44,24 +42,37 @@ class ScoreFilter:
                 msg = decode_msg(raw_message)
                 # self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
                 if msg.type == MsgType.REVIEWS:
+                            
+                    negative_textreviews = []
+                    positive_reviews = []
+                    negative_reviews = []
                     for review in msg.reviews:  # Procesa cada `Review` en el mensaje `REVIEWS`
                         if review.score == Score.POSITIVE:
-                            self.positive_reviews.append(review)
-                            if len(self.positive_reviews) >= BATCH_SIZE:
-                                self._send_reviews_batch(msg.id, self.positive_reviews, K_POSITIVE)
+                            # Crear `TextReview` y `BasicReview` para reseñas positivas
+                            basic_review = BasicReview(review.app_id)
+                            positive_reviews.append(basic_review)
                         else:
-                            self.negative_reviews.append(review)
-                            if len(self.negative_reviews) >= BATCH_SIZE:
-                                self._send_reviews_batch(msg.id, self.negative_reviews, K_NEGATIVE)
+                            text_review = TextReview(review.app_id, review.text)
+                            basic_review = BasicReview(review.app_id)
+                            negative_textreviews.append(text_review)
+                            negative_reviews.append(basic_review)
+
+                    if positive_reviews:
+                        reviews_msg = BasicReviews(msg.id, positive_reviews)
+                        self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_POSITIVE)
+
+                    if negative_textreviews:
+                        reviews_msg = TextReviews(msg.id, negative_textreviews)
+                        self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE_TEXT)
+
+                    if negative_reviews:
+                        reviews_msg = BasicReviews(msg.id, negative_reviews)
+                        self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)
 
                 elif msg.type == MsgType.FIN:
-                    # Enviar cualquier batch restante de reseñas
-                    if self.positive_reviews:
-                        self._send_reviews_batch(msg.id, self.positive_reviews, K_POSITIVE)
-                    if self.negative_reviews:
-                        self._send_reviews_batch(msg.id, self.negative_reviews, K_NEGATIVE)
                     # Se reenvia el FIN al resto de nodos
                     # self.logger.custom("action: shutting_down | result: in_progress")
+                    self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=K_NEGATIVE_TEXT)
                     self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=K_POSITIVE)
                     self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=K_NEGATIVE)
                     self._middleware.connection.close()

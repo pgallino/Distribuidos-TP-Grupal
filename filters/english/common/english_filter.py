@@ -1,5 +1,5 @@
 import signal
-from messages.messages import MsgType, decode_msg, Reviews
+from messages.messages import BasicReview, BasicReviews, MsgType, decode_msg, Reviews
 from middleware.middleware import Middleware
 import logging
 import langid
@@ -7,7 +7,7 @@ import langid
 
 Q_SCORE_ENGLISH = "score_filter-english_filter"
 E_FROM_SCORE = 'from_score'
-K_NEGATIVE = 'negative'
+K_NEGATIVE_TEXT = 'negative_text'
 Q_ENGLISH_Q4_JOINER = 'english-q4_joiner'
 
 class EnglishFilter:
@@ -21,7 +21,7 @@ class EnglishFilter:
         self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
         self._middleware.declare_queue(Q_SCORE_ENGLISH)
         self._middleware.declare_exchange(E_FROM_SCORE)
-        self._middleware.bind_queue(Q_SCORE_ENGLISH, E_FROM_SCORE, K_NEGATIVE)
+        self._middleware.bind_queue(Q_SCORE_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT)
     
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -50,11 +50,12 @@ class EnglishFilter:
                     # Filtrar reseñas en inglés
                     for review in msg.reviews:
                         if self.is_english(review.text):
-                            en_reviews.append(review)
+                            basic_review = BasicReview(review.app_id)
+                            en_reviews.append(basic_review)
                     
                     if en_reviews:
                         # Crear un mensaje `Reviews` con las reseñas en inglés y enviarlo
-                        english_reviews_msg = Reviews(id=msg.id, reviews=en_reviews)
+                        english_reviews_msg = BasicReviews(id=msg.id, reviews=en_reviews)
                         self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
                         en_reviews = []
 
