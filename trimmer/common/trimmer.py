@@ -1,4 +1,4 @@
-from messages.messages import Dataset, Game, Games, Genre, MsgType, Review, Score, decode_msg, Reviews
+from messages.messages import Dataset, Genre, MsgType, Review, Score, decode_msg, Reviews, Q1Game, GenreGame, Q1Games, GenreGames
 from middleware.middleware import Middleware
 import logging
 import csv
@@ -6,7 +6,8 @@ import sys
 
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
 E_TRIMMER_FILTERS = 'trimmer-filters'
-K_GAME = 'game'
+K_Q1GAME = 'q1game'
+K_GENREGAME = 'genregame'
 K_REVIEW = 'review'
 
 # Aumenta el límite del tamaño de campo
@@ -24,7 +25,7 @@ csv.field_size_limit(sys.maxsize)  # Esto establece el límite en el tamaño má
 
 def get_genres(genres_string: str):
     values = genres_string.split(',')
-    return [Genre.from_string(value) for value in values]
+    return [genre for value in values if (genre := Genre.from_string(value)) != Genre.OTHER]
 
 class Trimmer:
     def __init__(self):
@@ -36,7 +37,8 @@ class Trimmer:
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
 
     def run(self):
-        games_batch = []
+        genre_games_batch = []
+        q1_games_batch = []
         reviews_batch = []
         # self.logger.custom("action: listen_to_queue")
         while True:
@@ -51,13 +53,23 @@ class Trimmer:
                     for row in msg.rows:
                         values = next(csv.reader([row]))
                         
-                        game = self._get_game(values)
-                        games_batch.append(game)
+                        # Crear instancias de Q1Game y GenreGame
+                        q1_game, genre_game = self._get_game(values)
+                        if q1_game:
+                            q1_games_batch.append(q1_game)
+                        if genre_game:
+                            genre_games_batch.append(genre_game)
 
-                    games_msg = Games(msg.id, games_batch)
-                    # self.logger.custom(f"games: {games_msg}")
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, games_msg.encode(), key=K_GAME)
-                    games_batch = []  # Limpiar el batch después de enviar
+                    # Enviar lotes por separado para cada tipo de juego
+                    if q1_games_batch:
+                        q1_games_msg = Q1Games(msg.id, q1_games_batch)
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
+                        q1_games_batch = []
+
+                    if genre_games_batch:
+                        genre_games_msg = GenreGames(msg.id, genre_games_batch)
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
+                        genre_games_batch = []
 
                 elif msg.dataset == Dataset.REVIEW:
                     for row in msg.rows:
@@ -75,19 +87,34 @@ class Trimmer:
 
             elif msg.type == MsgType.FIN:
                 # self.logger.custom("action: shutting_down | result: in_progress")
-                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GAME)
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
                 self._middleware.connection.close()
                 # self.logger.custom("action: shutting_down | result: success")
                 return
 
             
-    def _get_game(self, values) -> Game:
-        app_id, name, release_date, windows, mac, linux, avg_playtime, genres = values[0], values[1], values[2], values[17], values[18], values[19], values[29], values[37]
-        genres = get_genres(genres)
-        game = Game(int(app_id), name, release_date, int(avg_playtime), windows == "True", linux == "True", mac == "True", genres)
-        # self.logger.custom(f"Game: {game}")
-        return game
+    def _get_game(self, values):
+        """
+        Crea una instancia de Q1Game y/o GenreGame a partir de los datos.
+        """
+        app_id = int(values[0])
+        name = values[1]
+        release_date = values[2]
+        avg_playtime = int(values[29])
+        windows = values[17] == "True"
+        mac = values[18] == "True"
+        linux = values[19] == "True"
+        genres = get_genres(values[37])
+
+        # Crear Q1Game con compatibilidad de plataformas
+        q1_game = Q1Game(app_id, windows, linux, mac) if any([windows, linux, mac]) else None
+
+        # Crear GenreGame si hay géneros y otros detalles
+        genre_game = GenreGame(app_id, name, release_date, avg_playtime, genres) if genres else None
+
+        return q1_game, genre_game
     
     def _get_review(self, values):
         app_id, text, score = values[0], values[2], values[3]

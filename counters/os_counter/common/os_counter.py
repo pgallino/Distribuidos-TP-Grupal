@@ -5,7 +5,7 @@ import logging
 Q_TRIMMER_OS_COUNTER = "trimmer-os_counter"
 Q_QUERY_RESULT_1 = "query_result_1"
 E_TRIMMER_FILTERS = 'trimmer-filters'
-K_GAME = 'game'
+K_Q1GAME = 'q1game'
 
 class OsCounter:
 
@@ -16,7 +16,7 @@ class OsCounter:
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_TRIMMER_OS_COUNTER)
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
-        self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_TRIMMER_FILTERS, K_GAME)
+        self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_TRIMMER_FILTERS, K_Q1GAME)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_1)
 

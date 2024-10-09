@@ -9,7 +9,7 @@ Q_QUERY_RESULT_4 = "query_result_4"
 E_FROM_GENRE = 'from_genre'
 K_SHOOTER_GAMES = 'shooter'
 
-REVIEWS_NUMBER = 3
+REVIEWS_NUMBER = 5000
 
 class Q4Joiner:
     def __init__(self):

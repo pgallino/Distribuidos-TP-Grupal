@@ -8,7 +8,7 @@ Q_SCORE_Q3_JOINER = "score-q3-joiner"
 Q_QUERY_RESULT_3 = "query_result_3"
 E_FROM_GENRE = "from_genre"
 E_FROM_SCORE = "from_score"
-K_INDIE_GAMES = "indie"
+K_INDIE_BASICGAMES = "indiebasic"
 K_POSITIVE = 'positive'
 
 class Q3Joiner:
@@ -20,7 +20,7 @@ class Q3Joiner:
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GENRE_Q3_JOINER)
         self._middleware.declare_exchange(E_FROM_GENRE)
-        self._middleware.bind_queue(Q_GENRE_Q3_JOINER, E_FROM_GENRE, K_INDIE_GAMES)
+        self._middleware.bind_queue(Q_GENRE_Q3_JOINER, E_FROM_GENRE, K_INDIE_BASICGAMES)
 
         self._middleware.declare_queue(Q_SCORE_Q3_JOINER)
         self._middleware.declare_exchange(E_FROM_SCORE)

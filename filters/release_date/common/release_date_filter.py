@@ -1,10 +1,10 @@
-from messages.messages import MsgType, decode_msg, Games
+from messages.messages import MsgType, Q2Games, decode_msg, Games
 from middleware.middleware import Middleware
 import logging
 
 Q_GENRE_RELEASE_DATE = "genre-release_date"
 E_FROM_GENRE = 'from_genre'
-K_INDIE_GAMES = 'indie'
+K_INDIE_Q2GAMES = 'indieq2'
 Q_2010_GAMES = '2010_games'
 
 class ReleaseDateFilter:
@@ -16,7 +16,7 @@ class ReleaseDateFilter:
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)
         self._middleware.declare_exchange(E_FROM_GENRE)
-        self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_GAMES)
+        self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES)
         self._middleware.declare_queue(Q_2010_GAMES)
 
     def run(self):
@@ -34,7 +34,7 @@ class ReleaseDateFilter:
                 for game in msg.games:
                     if "201" in game.release_date:
                         batch.append(game)
-                msg = Games(msg.id, batch)
+                msg = Q2Games(msg.id, batch)
                 self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
                 # # self.logger.custom(f"action: sending_data | result: success | data sent to {Q_2010_GAMES}")
             
