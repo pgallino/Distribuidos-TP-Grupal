@@ -1,5 +1,5 @@
 import signal
-from messages.messages import decode_msg, MsgType, Result, QueryNumber
+from messages.messages import Q1Result, decode_msg, MsgType, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 
@@ -54,13 +54,15 @@ class OsCounter:
                     # Crear el mensaje de resultado
                     counter = self.counters[msg.id]
 
-                    result_text = "OS Count Summary:\n"
-                    result_text += f"Windows: {counter[0]}\n"
-                    result_text += f"Mac: {counter[1]}\n"
-                    result_text += f"Linux: {counter[2]}\n"
+                    # Extraer los conteos para cada sistema operativo
+                    windows_count = counter[0]
+                    mac_count = counter[1]
+                    linux_count = counter[2]
 
-                    # Crear el mensaje Result y enviarlo a la cola de resultados
-                    result_message = Result(id=msg.id, query_number=QueryNumber.Q1.value, result=result_text)
+                    # Crear el mensaje Q1Result
+                    result_message = Q1Result(id=msg.id, windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
+
+                    # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
                     # self.logger.custom(f"action: shutting_down | result: in_progress")

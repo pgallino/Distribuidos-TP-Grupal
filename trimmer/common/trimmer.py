@@ -81,18 +81,18 @@ class Trimmer:
                             self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
                             genre_games_batch = []
 
-                        elif msg.dataset == Dataset.REVIEW:
-                            for row in msg.rows:
-                                values = next(csv.reader([row]))
+                    elif msg.dataset == Dataset.REVIEW:
+                        for row in msg.rows:
+                            values = next(csv.reader([row]))
 
-                                # Acumula `Review` en el batch de reseñas
-                                review = self._get_review(values)
-                                reviews_batch.append(review)
-                            
-                            reviews_msg = Reviews(msg.id, reviews_batch)
-                            # self.logger.custom(f"reviews: {reviews_msg}")
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
-                            reviews_batch = []  # Limpiar el batch después de enviar
+                            # Acumula `Review` en el batch de reseñas
+                            review = self._get_review(values)
+                            reviews_batch.append(review)
+                        
+                        reviews_msg = Reviews(msg.id, reviews_batch)
+                        # self.logger.custom(f"reviews: {reviews_msg}")
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
+                        reviews_batch = []  # Limpiar el batch después de enviar
 
 
                 elif msg.type == MsgType.FIN:

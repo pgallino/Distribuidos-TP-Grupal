@@ -1,6 +1,6 @@
 from collections import defaultdict
 import signal
-from messages.messages import MsgType, decode_msg, Result, QueryNumber
+from messages.messages import MsgType, Q4Result, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 
@@ -44,6 +44,7 @@ class Q4Joiner:
             while True:
                 raw_message = self._middleware.receive_from_queue(Q_GENRE_Q4_JOINER)
                 msg = decode_msg(raw_message)
+                
                 if msg.type == MsgType.GAMES:
                     for game in msg.games:
                         self.games[game.app_id] = game
@@ -54,20 +55,25 @@ class Q4Joiner:
             while True:
                 raw_message = self._middleware.receive_from_queue(Q_ENGLISH_Q4_JOINER)
                 msg = decode_msg(raw_message)
+
                 if msg.type == MsgType.REVIEWS:
                     for review in msg.reviews:  # Itera sobre cada `Review` en el mensaje `Reviews`
                         if review.app_id in self.games:
                             self.negative_review_counts[review.app_id] += 1
-                elif msg.type == MsgType.FIN:
-                    # Mensaje con juegos que tienen más de 5,000 reseñas negativas en inglés
-                    result_text = "Q4: Action games with more than 5,000 negative reviews in English:\n"
-                    for app_id, count in self.negative_review_counts.items():
-                        if count > REVIEWS_NUMBER:
-                            game_name = self.games[app_id].name
-                            result_text += f"- {game_name}: {count} negative reviews\n"
 
-                    # Crear y enviar el mensaje Result con el resultado concatenado
-                    result_message = Result(id=msg.id, query_number=QueryNumber.Q4.value, result=result_text)
+                elif msg.type == MsgType.FIN:
+
+                    # Filtrar los juegos de acción con más de 5,000 reseñas negativas en inglés
+                    negative_reviews = [
+                        (self.games[app_id].name, count)
+                        for app_id, count in self.negative_review_counts.items()
+                        if count > REVIEWS_NUMBER
+                    ]
+
+                    # Crear el mensaje Q4Result
+                    result_message = Q4Result(id=msg.id, negative_reviews=negative_reviews)
+
+                    # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
                 
                     self._middleware.connection.close()

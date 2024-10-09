@@ -1,6 +1,6 @@
 from collections import defaultdict
 import signal
-from messages.messages import MsgType, decode_msg, Result, QueryNumber
+from messages.messages import MsgType, Q5Result, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 
@@ -47,6 +47,7 @@ class Q5Joiner:
             while True:
                 raw_message = self._middleware.receive_from_queue(Q_GENRE_Q5_JOINER)
                 msg = decode_msg(raw_message)
+
                 if msg.type == MsgType.GAMES:
                     for game in msg.games:  # Itera sobre cada `Game` en el mensaje `Games`
                         self.games[game.app_id] = game
@@ -57,11 +58,14 @@ class Q5Joiner:
             while True:
                 raw_message = self._middleware.receive_from_queue(Q_SCORE_Q5_JOINER)
                 msg = decode_msg(raw_message)
+
                 if msg.type == MsgType.REVIEWS:
                     for review in msg.reviews:  # Itera sobre cada `Review` en el mensaje `Reviews`
                         if review.app_id in self.games:
                             self.negative_review_counts[review.app_id] += 1
+
                 elif msg.type == MsgType.FIN:
+
                     # Calcular el umbral del percentil 90
                     counts = list(self.negative_review_counts.values())
                     threshold = 0 if not counts else sorted(counts)[int(0.9 * len(counts)) - 1]
@@ -73,13 +77,10 @@ class Q5Joiner:
                         if count >= threshold
                     ]
 
-                    # Crear el texto del resultado con los juegos seleccionados
-                    result_text = "Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
-                    for name, count in sorted(top_games, key=lambda x: x[1], reverse=True):
-                        result_text += f"- {name}: {count} negative reviews\n"
-
-                    # Crear y enviar el mensaje Result con el resultado
-                    result_message = Result(id=msg.id, query_number=QueryNumber.Q5.value, result=result_text)
+                    # Crear el mensaje Q5Result
+                    result_message = Q5Result(id=msg.id, top_negative_reviews=top_games)
+                    
+                    # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
                     # Cierre de la conexión

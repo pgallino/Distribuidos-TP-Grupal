@@ -1,5 +1,5 @@
 import signal
-from messages.messages import MsgType, decode_msg, Result, QueryNumber
+from messages.messages import MsgType, decode_msg, Q2Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 import heapq
@@ -51,18 +51,13 @@ class AvgCounter:
                     # Obtener el top 10 de juegos de la década del 2010 con mayor average playtime
                     result = sorted(self.top_10_games, key=lambda x: x[AVG_PLAYTIME], reverse=True)
 
-                    # Crear un mensaje concatenado con los resultados
-                    top_message = f"Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
-                    for avg_playtime, app_id, game in result:
-                        top_message += f"- {game.name}: {avg_playtime} average playtime\n"
+                    top_games = [(game.name, avg_playtime) for avg_playtime, app_id, game in result[:10]]
 
-                    # Loggear el mensaje completo
-                    # self.logger.custom(top_message)
 
-                    # Crear el mensaje Result
-                    result_message = Result(id=msg.id, query_number=QueryNumber.Q2.value, result=top_message)
+                    # Crear el mensaje Q2Result
+                    result_message = Q2Result(id=msg.id, top_games=top_games)
 
-                    # Enviar el mensaje Result al exchange de resultados
+                    # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 
                     # Cierre de la conexión

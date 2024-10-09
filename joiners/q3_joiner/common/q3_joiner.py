@@ -1,6 +1,6 @@
 from collections import defaultdict
 import signal
-from messages.messages import MsgType, decode_msg, Result, QueryNumber
+from messages.messages import MsgType, Q3Result, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
 
@@ -73,18 +73,10 @@ class Q3Joiner:
                         reverse=True
                     )[:5]
 
-                    # Crear el mensaje de resultado para el top 5
-                    result_text = "Q3: Top 5 Indie Games with Most Positive Reviews:\n"
-                    for rank, (name, count) in enumerate(top_indie_games, start=1):
-                        result_text += f"{rank}. {name}: {count} positive reviews\n"
+                    # Crear el mensaje Q3Result
+                    result_message = Q3Result(id=msg.id, top_indie_games=top_indie_games)
 
-                    # Loggear el mensaje de resultado
-                    # self.logger.custom(result_text)
-
-                    # Crear el mensaje Result
-                    result_message = Result(id=msg.id, query_number=QueryNumber.Q3.value, result=result_text)
-
-                    # Enviar el mensaje Result al exchange de resultados
+                    # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
                     # Cierre de la conexión

@@ -1,4 +1,4 @@
-from messages.messages import decode_msg, decode_msg, Result, MsgType
+from messages.messages import QueryNumber, decode_msg, decode_msg, Result, MsgType
 from middleware.middleware import Middleware
 
 import socket
@@ -97,9 +97,48 @@ class Server:
                 raw_message = self._middleware.receive_from_queue(queue)
                 msg = decode_msg(raw_message)
                 
-                # Imprimir el mensaje de resultado recibido
+                # Verifica si el mensaje es del tipo Result
                 if msg.type == MsgType.RESULT:
-                    self.logger.custom(f"Received Result from {queue}: {msg.result}")
+                    # Imprime los resultados de acuerdo al tipo específico utilizando result_type
+                    if msg.result_type == QueryNumber.Q1:
+                        self.logger.custom(
+                            f"Received Result from {queue}: OS Count Summary:\n"
+                            f"Windows: {msg.windows_count}\n"
+                            f"Mac: {msg.mac_count}\n"
+                            f"Linux: {msg.linux_count}\n"
+                        )
+                    
+                    elif msg.result_type == QueryNumber.Q2:
+                        top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.top_games)
+                        self.logger.custom(
+                            f"Received Result from {queue}: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
+                            f"{top_games_str}\n"
+                        )
+                    
+                    elif msg.result_type == QueryNumber.Q3:
+                        indie_games_str = "\n".join(f"{rank}. {name}: {reviews} positive reviews" 
+                                                    for rank, (name, reviews) in enumerate(msg.top_indie_games, start=1))
+                        self.logger.custom(
+                            f"Received Result from {queue}: Q3: Top 5 Indie Games with Most Positive Reviews:\n"
+                            f"{indie_games_str}\n"
+                        )
+                    
+                    elif msg.result_type == QueryNumber.Q4:
+                        negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for name, count in msg.negative_reviews)
+                        self.logger.custom(
+                            f"Received Result from {queue}: Q4: Action games with more than 5,000 negative reviews in English:\n"
+                            f"{negative_reviews_str}\n"
+                        )
+                    
+                    elif msg.result_type == QueryNumber.Q5:
+                        top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for name, count in msg.top_negative_reviews)
+                        self.logger.custom(
+                            f"Received Result from {queue}: Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
+                            f"{top_negative_str}\n"
+                        )
+                    
+                    else:
+                        self.logger.custom(f"Received Unknown Result Type from {queue}: {msg}")
                 else:
                     self.logger.custom(f"Received Message from {queue}: {msg}")        
         except ValueError as e:
@@ -112,4 +151,5 @@ class Server:
             self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+
 
