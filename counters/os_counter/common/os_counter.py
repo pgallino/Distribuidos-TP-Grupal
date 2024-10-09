@@ -38,15 +38,18 @@ class OsCounter:
             while True:
                 # self.logger.custom('action: listening_queue | result: in_progress')
                 raw_message = self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER)
-                msg = decode_msg(raw_message[4:])
-                if msg.type == MsgType.GAME:
-                    client_counters = self.counters.get(msg.id, (0, 0, 0))
-                    windows, mac, linux = client_counters
-                    if msg.windows: windows += 1
-                    if msg.mac: mac += 1
-                    if msg.linux: linux += 1
-                    self.counters[msg.id] = (windows, mac, linux)
-                # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
+                msg = decode_msg(raw_message)
+                if msg.type == MsgType.GAMES:
+                    for game in msg.games:
+                        client_counters = self.counters.get(msg.id, (0, 0, 0))
+                        windows, mac, linux = client_counters
+                        if game.windows:
+                            windows += 1
+                        if game.mac:
+                            mac += 1
+                        if game.linux:
+                            linux += 1
+                        self.counters[msg.id] = (windows, mac, linux)
                 if msg.type == MsgType.FIN:
                     # Crear el mensaje de resultado
                     counter = self.counters[msg.id]
@@ -64,6 +67,7 @@ class OsCounter:
                     self._middleware.connection.close()
                     # self.logger.custom("action: shutting_down | result: success")
                     return
+        
         except Exception as e:
             self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:

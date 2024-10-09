@@ -1,5 +1,5 @@
 import signal
-from messages.messages import MsgType, decode_msg
+from messages.messages import MsgType, decode_msg, Games
 from middleware.middleware import Middleware
 import logging
 
@@ -31,14 +31,19 @@ class ReleaseDateFilter:
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         try:
-            # self.logger.custom("action: listen_to_queue")
+            # # self.logger.custom("action: listen_to_queue")
             while True:
                 # # self.logger.custom('action: listening_queue | result: in_progress')
                 raw_message = self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE)
-                msg = decode_msg(raw_message[4:])
+                msg = decode_msg(raw_message)
                 # # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
+                batch= []
                 
-                if msg.type == MsgType.GAME and "201" in msg.release_date:
+                if msg.type == MsgType.GAMES:
+                    for game in msg.games:
+                        if "201" in game.release_date:
+                            batch.append(game)
+                    msg = Games(msg.id, batch)
                     self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
                     # # self.logger.custom(f"action: sending_data | result: success | data sent to {Q_2010_GAMES}")
                 
@@ -49,6 +54,7 @@ class ReleaseDateFilter:
                     self._middleware.connection.close()
                     # # self.logger.custom("action: shutting_down | result: success")
                     return
+        
         except Exception as e:
             self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:

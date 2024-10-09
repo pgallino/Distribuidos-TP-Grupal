@@ -1,5 +1,5 @@
 import signal
-from messages.messages import MsgType, Score, decode_msg
+from messages.messages import MsgType, Score, decode_msg, BATCH_SIZE, Reviews, Review
 from middleware.middleware import Middleware
 import logging
 
@@ -23,6 +23,9 @@ class ScoreFilter:
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
         self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_TRIMMER_FILTERS, K_REVIEW)
         self._middleware.declare_exchange(E_FROM_SCORE)
+        # Listas para acumular reseñas
+        self.positive_reviews = []
+        self.negative_reviews = []
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -38,14 +41,25 @@ class ScoreFilter:
             while True:
                 # self.logger.custom("action: listening_queue | result: in_progress")
                 raw_message = self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER)
-                msg = decode_msg(raw_message[4:])
+                msg = decode_msg(raw_message)
                 # self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
-                if msg.type == MsgType.REVIEW:
-                    # self.logger.custom("action: sending_data | result: in_progress")
-                    key = K_POSITIVE if msg.score == Score.POSITIVE else K_NEGATIVE
-                    self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=key)
-                    # self.logger.custom(f"action: sending_data | result: success | data sent to {key}")
+                if msg.type == MsgType.REVIEWS:
+                    for review in msg.reviews:  # Procesa cada `Review` en el mensaje `REVIEWS`
+                        if review.score == Score.POSITIVE:
+                            self.positive_reviews.append(review)
+                            if len(self.positive_reviews) >= BATCH_SIZE:
+                                self._send_reviews_batch(msg.id, self.positive_reviews, K_POSITIVE)
+                        else:
+                            self.negative_reviews.append(review)
+                            if len(self.negative_reviews) >= BATCH_SIZE:
+                                self._send_reviews_batch(msg.id, self.negative_reviews, K_NEGATIVE)
+
                 elif msg.type == MsgType.FIN:
+                    # Enviar cualquier batch restante de reseñas
+                    if self.positive_reviews:
+                        self._send_reviews_batch(msg.id, self.positive_reviews, K_POSITIVE)
+                    if self.negative_reviews:
+                        self._send_reviews_batch(msg.id, self.negative_reviews, K_NEGATIVE)
                     # Se reenvia el FIN al resto de nodos
                     # self.logger.custom("action: shutting_down | result: in_progress")
                     self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), key=K_POSITIVE)
@@ -53,7 +67,16 @@ class ScoreFilter:
                     self._middleware.connection.close()
                     # self.logger.custom("action: shutting_down | result: success")
                     return
+                
         except Exception as e:
             self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+
+    def _send_reviews_batch(self, id, reviews_batch, key):
+        """
+        Envía un batch de reseñas como un solo mensaje `Reviews`.
+        """
+        reviews_msg = Reviews(id, reviews=reviews_batch)  # Crear el mensaje `Reviews`
+        self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), key=key)
+        reviews_batch.clear()  # Limpiar el batch después de enviar
