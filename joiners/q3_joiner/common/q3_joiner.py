@@ -37,21 +37,23 @@ class Q3Joiner:
         # self.logger.custom("action: listen_to_queue")
         while True:
             raw_message = self._middleware.receive_from_queue(Q_GENRE_Q3_JOINER)
-            msg = decode_msg(raw_message[4:])
-            if msg.type == MsgType.GAME:
+            msg = decode_msg(raw_message)
+            if msg.type == MsgType.GAMES:
                 # Registrar el juego indie
-                self.games[msg.app_id] = msg
-                # # self.logger.custom(f"Registered game: {msg.name} (ID: {msg.app_id})")
+                for game in msg.games:
+                    self.games[game.app_id] = game
+                    # self.logger.custom(f"Registered game: {game.name} (ID: {game.app_id})")
             elif msg.type == MsgType.FIN:
                 break
         
         while True:
             raw_message = self._middleware.receive_from_queue(Q_SCORE_Q3_JOINER)
-            msg = decode_msg(raw_message[4:])
-            if msg.type == MsgType.REVIEW:
+            msg = decode_msg(raw_message)
+            if msg.type == MsgType.REVIEWS:
                 # Contar reseñas positivas
-                if msg.app_id in self.games:
-                    self.review_counts[msg.app_id] += 1
+                for review in msg.reviews:
+                    if review.app_id in self.games:
+                        self.review_counts[review.app_id] += 1
                     # # self.logger.custom(f"Incremented positive review count for app_id: {msg.app_id}")
             elif msg.type == MsgType.FIN:
                 # Seleccionar los 5 juegos indie con más reseñas positivas

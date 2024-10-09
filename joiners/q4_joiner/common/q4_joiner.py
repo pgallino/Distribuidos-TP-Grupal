@@ -9,6 +9,8 @@ Q_QUERY_RESULT_4 = "query_result_4"
 E_FROM_GENRE = 'from_genre'
 K_SHOOTER_GAMES = 'shooter'
 
+REVIEWS_NUMBER = 3
+
 class Q4Joiner:
     def __init__(self):
 
@@ -32,24 +34,26 @@ class Q4Joiner:
         # Escuchar juegos de género "shooter" y registrar detalles
         while True:
             raw_message = self._middleware.receive_from_queue(Q_GENRE_Q4_JOINER)
-            msg = decode_msg(raw_message[4:])
-            if msg.type == MsgType.GAME:
-                self.games[msg.app_id] = msg  # Almacena solo juegos shooter que representan "action"
+            msg = decode_msg(raw_message)
+            if msg.type == MsgType.GAMES:
+                for game in msg.games:
+                    self.games[game.app_id] = game
             elif msg.type == MsgType.FIN:
                 break
 
         # Escuchar reseñas en inglés y contar las negativas para los juegos de acción
         while True:
             raw_message = self._middleware.receive_from_queue(Q_ENGLISH_Q4_JOINER)
-            msg = decode_msg(raw_message[4:])
-            if msg.type == MsgType.REVIEW and msg.app_id in self.games:
-                # Incrementar el conteo de reseñas negativas en inglés
-                self.negative_review_counts[msg.app_id] += 1
+            msg = decode_msg(raw_message)
+            if msg.type == MsgType.REVIEWS:
+                for review in msg.reviews:  # Itera sobre cada `Review` en el mensaje `Reviews`
+                    if review.app_id in self.games:
+                        self.negative_review_counts[review.app_id] += 1
             elif msg.type == MsgType.FIN:
                 # Mensaje con juegos que tienen más de 5,000 reseñas negativas en inglés
                 result_text = "Q4: Action games with more than 5,000 negative reviews in English:\n"
                 for app_id, count in self.negative_review_counts.items():
-                    if count > 5000:
+                    if count > REVIEWS_NUMBER:
                         game_name = self.games[app_id].name
                         result_text += f"- {game_name}: {count} negative reviews\n"
 

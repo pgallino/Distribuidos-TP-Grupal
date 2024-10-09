@@ -1,18 +1,32 @@
 import socket
 import logging
-from messages.messages import Handshake, Fin, Data, Dataset
+from messages.messages import Handshake, Fin, Data, Dataset, BATCH_SIZE
 from utils.initilization import initialize_log
 import utils.logging_config # Esto ejecuta la configuración del logger
 
 def send_dataset(fname, sock, id, dataset, logger):
-    # chequear si existe el archivo
     with open(fname, mode='r') as file:
         logger.custom(f"action: send_handshake | result: success | dataset: {dataset}")
-        next(file) # para saltearse el header
+        
+        next(file)  # Saltarse el header
+        batch = []
+        
         for line in file:
-            data = Data(id, line.strip(), dataset)
+            batch.append(line.strip())  # Agrega la línea al batch
+            
+            # Cuando el batch alcanza el tamaño deseado, envíalo
+            if len(batch) >= BATCH_SIZE:
+                data = Data(id, batch, dataset)  # Usa el batch completo
+                sock.send(data.encode())  # Envía el batch codificado
+                # logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {BATCH_SIZE}")
+                batch = []  # Limpia el batch para el siguiente grupo
+        
+        # Enviar el último batch si contiene líneas restantes
+        if batch:
+            data = Data(id, batch, dataset)
             sock.send(data.encode())
-        logger.custom(f"action: send_data | result: success | dataset: {dataset}")
+            logger.custom(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {len(batch)}")
+
 
 def main():
 

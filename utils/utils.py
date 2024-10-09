@@ -33,16 +33,23 @@ def _recv_all(sock, length):
 
 def recv_msg(sock):
     """
-    Lee un mensaje completo del socket y devuelve la data.
+    Lee un mensaje completo del socket y devuelve la data, incluyendo
+    4 bytes de longitud al principio para compatibilidad con `decode_msg`.
     """
+    # Leer el encabezado de 4 bytes que indica la longitud del mensaje
     header = _recv_all(sock, BYTES_HEADER)
     if not header:
-        raise ValueError("Conexion cerrada o No se pudo leer el encabezado del mensaje.")
+        raise ValueError("Conexión cerrada o no se pudo leer el encabezado del mensaje.")
     
+    # Desempaquetar el encabezado para obtener la longitud total del mensaje
     total_length = struct.unpack('>I', header)[0]
+    
+    # Leer el resto del mensaje basado en la longitud especificada en el encabezado
     data = _recv_all(sock, total_length)
     
     if not data:
         raise ValueError("No se pudo leer los datos del mensaje.")
     
-    return data
+    # Crear `raw_msg` con los 4 bytes del encabezado seguidos de los datos
+    raw_msg = header + data
+    return raw_msg

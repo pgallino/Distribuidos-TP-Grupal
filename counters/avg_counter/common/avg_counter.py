@@ -28,14 +28,15 @@ class AvgCounter:
         while True:
             # self.logger.custom('action: listening_queue | result: in_progress')
             raw_message = self._middleware.receive_from_queue(Q_2010_GAMES)
-            msg = decode_msg(raw_message[4:])
+            msg = decode_msg(raw_message)
             # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
             
-            if msg.type == MsgType.GAME:
-                if len(self.top_10_games) < 10:
-                    heapq.heappush(self.top_10_games, (msg.avg_playtime, msg.app_id, msg))
-                elif msg.avg_playtime > self.top_10_games[0][AVG_PLAYTIME]:  # Comparación con el avg_playtime del top
-                    heapq.heapreplace(self.top_10_games, (msg.avg_playtime, msg.app_id, msg))
+            if msg.type == MsgType.GAMES:
+                for game in msg.games:
+                    if len(self.top_10_games) < 10:
+                        heapq.heappush(self.top_10_games, (game.avg_playtime, game.app_id, game))
+                    elif game.avg_playtime > self.top_10_games[0][AVG_PLAYTIME]:
+                        heapq.heapreplace(self.top_10_games, (game.avg_playtime, game.app_id, game))
             
             if msg.type == MsgType.FIN:
 

@@ -2,13 +2,15 @@ from enum import Enum
 import struct
 from typing import List
 
+BATCH_SIZE = 10000
+
 # Definición de los tipos de mensajes
 class MsgType(Enum):
     HANDSHAKE = 0
     DATA = 1
     FIN = 2
-    GAME = 3
-    REVIEW = 4
+    GAMES = 3
+    REVIEWS = 4
     RESULT = 5
     RESULTQ1 = 6
 
@@ -48,33 +50,84 @@ class QueryNumber(Enum):
 # IMPORTANTE
 # IMPORTANTE
 
+# ┌────────────────────────────┐
+# │       ESTRUCTURA DE        │
+# │          MENSAJES          │
+# └────────────────────────────┘
 
-# =========================================
+# ┌────────── Mensaje Base ──────────┐
+# │ 1 byte  : tipo        (MsgType)  │
+# │ 1 byte  : id          (id)       │
+# └──────────────────────────────────┘
 
-# Estructura de los Mensajes:
+# ┌──────────── HANDSHAKE ───────────┐
+# │ 1 byte  : tipo       (HANDSHAKE) │
+# │ 1 byte  : id         (id)        │
+# └──────────────────────────────────┘
 
-# Handshake:
-# Byte 1: Tipo de mensaje (1 byte).
-# Byte 2: ID del mensaje (1 byte).
+# ┌─────────────── DATA ──────────────┐
+# │ 1 byte  : tipo       (DATA)       │
+# │ 1 byte  : id         (id)         │
+# │ 1 byte  : dataset    (GAME/REVIEW)│
+# │ 4 bytes : longitud   (data_len)   │
+# │ N bytes : filas      (UTF-8)      │
+# └───────────────────────────────────┘
 
-# Fin:
-# Byte 1: Tipo de mensaje (1 byte).
-# Byte 2: ID del mensaje (1 byte).
+# ┌─────────────── FIN ──────────────┐
+# │ 1 byte  : tipo       (FIN)       │
+# │ 1 byte  : id         (id)        │
+# └──────────────────────────────────┘
 
-# Data:
-# Byte 1: Tipo de mensaje (1 byte).
-# Byte 2: ID del mensaje (1 byte).
-# Byte 3: Dataset origen (1 byte).
-# Byte 4-5: Largo de los datos (2 bytes).
-# Byte 6-N: Datos (cadena codificada).
+# ┌────────────── GAME ──────────────┐
+# │ 4 bytes : app_id                 │
+# │ 1 byte  : long. nombre           │
+# │ N bytes : nombre     (UTF-8)     │
+# │ 1 byte  : long. fecha            │
+# │ N bytes : fecha      (UTF-8)     │
+# │ 4 bytes : avg_playtime           │
+# │ 1 byte  : compatib. (win/lin/mac)│
+# │ 1 byte  : géneros                │
+# │ N bytes : lista de géneros       │
+# └──────────────────────────────────┘
 
-# =========================================
+# ┌────────────── GAMES ─────────────┐
+# │ 1 byte  : tipo       (GAMES)     │
+# │ 1 byte  : id         (id)        │
+# │ 2 bytes : juegos                 │
+# │ N bytes : lista      (Game)      │
+# └──────────────────────────────────┘
+
+# ┌───────────── REVIEW ─────────────┐
+# │ 4 bytes : app_id                 │
+# │ 2 bytes : long. texto            │
+# │ N bytes : texto      (UTF-8)     │
+# │ 1 byte  : score      (pos/neg)   │
+# └──────────────────────────────────┘
+
+# ┌──────────── REVIEWS ─────────────┐
+# │ 1 byte  : tipo       (REVIEWS)   │
+# │ 1 byte  : id         (id)        │
+# │ 4 bytes : reseñas                │
+# │ N bytes : lista      (Review)    │
+# └──────────────────────────────────┘
+
+# ┌───────────── RESULT ─────────────┐
+# │ 1 byte  : tipo       (RESULT)    │
+# │ 1 byte  : id         (id)        │
+# │ 1 byte  : query_num              │
+# │ 2 bytes : long. res  (result_len)│
+# │ N bytes : resultado  (UTF-8)     │
+# └──────────────────────────────────┘
+
 
 
 def decode_msg(data):
     """
     Decodifica un mensaje recibido y devuelve una instancia de la clase correspondiente.
     """
+    # Saltar los primeros 4 bytes de longitud
+    data = data[4:]
+
     type = MsgType(data[0])
 
     if type == MsgType.HANDSHAKE:
@@ -86,11 +139,11 @@ def decode_msg(data):
     elif type == MsgType.FIN:
         return Fin.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
     
-    elif type == MsgType.GAME:
-        return Game.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
+    elif type == MsgType.GAMES:
+        return Games.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
     
-    elif type == MsgType.REVIEW:
-        return Review.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
+    elif type == MsgType.REVIEWS:
+        return Reviews.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
 
     elif type == MsgType.RESULT:
         return Result.decode(data[1:])  # Saltamos el primer byte (tipo de mensaje)
@@ -116,6 +169,8 @@ class Message:
     def __getattribute__(self, name):
         return super().__getattribute__(name)
 
+# ===================================================================================================================== #
+
 class Handshake(Message):
     def __init__(self, id: int):
         super().__init__(id, MsgType.HANDSHAKE)
@@ -125,7 +180,7 @@ class Handshake(Message):
         # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
         body = struct.pack('>BB', int(MsgType.HANDSHAKE.value), self.id)
         
-        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
@@ -140,22 +195,23 @@ class Handshake(Message):
     def __str__(self):
         return f"Handshake(id={self.id})"
 
+# ===================================================================================================================== #
+
 class Data(Message):
-    def __init__(self, id: int, row: str, dataset: Dataset):
+    def __init__(self, id: int, rows: List[str], dataset: Dataset):
         super().__init__(id, MsgType.DATA)
-        self.row = row
+        self.rows = rows  # Ahora se espera una lista de filas en lugar de una sola fila
         self.dataset = dataset
     
     def encode(self) -> bytes:
-        # Codifica el mensaje Data
-        # Convertimos los datos a bytes
-        data_bytes = self.row.encode()
+        # Convertimos cada fila a bytes y las unimos con un delimitador (por ejemplo, '\n')
+        data_bytes = "\n".join(self.rows).encode()
         data_length = len(data_bytes)
         
-        # Empaquetamos el tipo de mensaje, el ID, el dataset y la longitud de los datos (2 bytes)
+        # Empaquetamos el tipo de mensaje, el ID, el dataset y la longitud de los datos (4 bytes)
         body = struct.pack('>BBBI', int(MsgType.DATA.value), self.id, self.dataset.value, data_length) + data_bytes
         
-        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
@@ -165,11 +221,17 @@ class Data(Message):
     def decode(data: bytes) -> 'Data':
         # Decodifica el mensaje Data
         id, dataset, data_length = struct.unpack('>BBI', data[:6])
-        data_str = data[6:6+data_length].decode()
-        return Data(id, data_str, Dataset(dataset))
+        
+        # Decodifica el bloque completo de datos como un solo string y luego lo separa en filas
+        rows_str = data[6:6+data_length].decode()
+        rows = rows_str.split("\n")
+        
+        return Data(id, rows, Dataset(dataset))
 
     def __str__(self):
-        return f"Data(id={self.id}, row={self.row}')"
+        return f"Data(id={self.id}, rows={self.rows}, dataset={self.dataset})"
+
+# ===================================================================================================================== #
 
 class Fin(Message):
     def __init__(self, id: int):
@@ -180,7 +242,7 @@ class Fin(Message):
         # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
         body = struct.pack('>BB', int(MsgType.FIN.value), self.id)
         
-        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
         total_length = len(body)
         
         # Empaquetamos el largo total seguido del cuerpo
@@ -194,111 +256,114 @@ class Fin(Message):
 
     def __str__(self):
         return f"Fin(id={self.id})"
-    
-class Game(Message):
 
-    def __init__(self, id: int, app_id: int, name: str, release_date: str, avg_playtime: int, windows: bool, linux: bool, mac: bool, genres: List[Genre]):
-        super().__init__(id, MsgType.GAME)
-        self.app_id = app_id
-        self.name = name
-        self.genres = genres
-        self.release_date = release_date
-        self.avg_playtime = avg_playtime
-        self.windows = windows
-        self.linux = linux
-        self.mac = mac
+# ===================================================================================================================== #
 
-    def encode(self) -> bytes:
-        # Codifica el mensaje Game
-
-        # Convertimos los datos a bytes
-        name_bytes = self.name.encode()
-        release_date_bytes = self.release_date.encode()
-
-        genres_bytes = [genre.value.to_bytes(1, "big") for genre in self.genres]
-
-        body = struct.pack(f'>BBIB{len(name_bytes)}sB{len(release_date_bytes)}sI???B',
-                           int(MsgType.GAME.value), 
-                           self.id, 
-                           self.app_id, 
-                           len(name_bytes), 
-                           name_bytes, 
-                           len(release_date_bytes), 
-                           release_date_bytes, 
-                           self.avg_playtime, 
-                           self.windows, 
-                           self.linux, 
-                           self.mac, 
-                           len(genres_bytes)
-                           ) + b''.join(genres_bytes)
-        
-        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
-        total_length = len(body)
-        
-        # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>I', total_length) + body
-    
-    @staticmethod
-    def decode(data: bytes) -> "Game":
-        # Decodifica el mensaje Game
-        init, end = 0, 6
-        # print(data[init:end])
-        id, app_id, name_length = struct.unpack('>BIB', data[:end])
-        init, end = end, end + name_length
-        # print(data[init:end])
-        name = data[init:end].decode()
-        init, end = end, end + 1
-        # print(data[init:end])
-        release_date_length, = struct.unpack('>B', data[init:end])
-        init, end = end, end + release_date_length
-        # print(data[init:end])
-        release_date = data[init:end].decode()
-        init, end = end, end + 8
-        # print(data[init:end])
-        avg_playtime, windows, linux, mac, genres_length = struct.unpack('>IBBBB', data[init:end])
-        init, end = end, end + genres_length
-        # print(data[init:end])
-        genres = [Genre(int(genre)) for genre in data[init:end]]
-        return Game(id, app_id, name, release_date, avg_playtime, windows, linux, mac, genres)
-    
-    def __str__(self):
-        return f"Game(id={self.id}, app_id={self.app_id}, name={self.name}, genre={self.genres}, release_date={self.release_date}, avg_playtime={self.avg_playtime}, windows={self.windows}, linux={self.linux}, mac={self.mac})"
-    
-class Review(Message):
-
-    def __init__(self, id: int, app_id: int, text: str, score: Score):
-        super().__init__(id, MsgType.REVIEW)
+class Review:
+    """
+    Representa una reseña individual con sus atributos.
+    """
+    def __init__(self, app_id: int, text: str, score: Score):
         self.app_id = app_id
         self.text = text
         self.score = score
 
     def encode(self) -> bytes:
-        # Codifica el mensaje Review
+        """
+        Codifica un objeto `Review` en bytes para ser utilizado en un mensaje.
+        """
+        text_bytes = self.text.encode('utf-8')
+        text_length = len(text_bytes)
 
-        # Convertimos los datos a bytes
-        text_bytes = self.text.encode()
+        # Codificación del objeto `Review`
+        body = struct.pack(
+            f'>IH{len(text_bytes)}sB',
+            self.app_id,
+            text_length,
+            text_bytes,
+            self.score.value
+        )
         
-        body = struct.pack(f'>BBII{len(text_bytes)}sB', int(MsgType.REVIEW.value), self.id, self.app_id, len(text_bytes), text_bytes, self.score.value)
-        
-        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
-        total_length = len(body)
-        
-        # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>I', total_length) + body
-    
+        return body
+
     @staticmethod
     def decode(data: bytes) -> "Review":
-        # Decodifica el mensaje Review
-        init, end = 0, 9
-        id, app_id, name_length = struct.unpack('>BII', data[:end])
-        init, end = end, end + name_length
-        text = data[init:end].decode()
-        init, end = end, end + 1
-        score, = struct.unpack('>B', data[init:end])
-        return Review(id, app_id, text, Score(score))
-    
+        """
+        Decodifica bytes en un objeto `Review`.
+        """
+        offset = 0
+        app_id, text_length = struct.unpack('>IH', data[offset:offset + 6])
+        offset += 6
+
+        text = data[offset:offset + text_length].decode('utf-8')
+        offset += text_length
+        
+        score_value = data[offset]
+        try:
+            score = Score(score_value)
+        except ValueError:
+            raise ValueError(f"Valor de score desconocido: {score_value}")
+        
+        return Review(app_id, text, score)
+
     def __str__(self):
-        return f"Review(id={self.id}, app_id={self.app_id}, score={self.score})"
+        return f"Review(app_id={self.app_id}, text={self.text}, score={self.score})"
+
+
+class Reviews(Message):
+    """
+    Clase de mensaje que contiene múltiples objetos `Review`.
+    """
+    def __init__(self, id: int, reviews: List[Review]):
+        super().__init__(id, MsgType.REVIEWS)
+        self.reviews = reviews
+
+    def encode(self) -> bytes:
+        """
+        Codifica una lista de objetos `Review` en bytes.
+        """
+        reviews_bytes = b''.join([review.encode() for review in self.reviews])
+        reviews_count = len(self.reviews)
+
+        # Empaquetar tipo de mensaje, id, número de reseñas, y los datos de reseñas
+        body = struct.pack('>BBI', int(MsgType.REVIEWS.value), self.id, reviews_count) + reviews_bytes
+        total_length = len(body)
+        return struct.pack('>I', total_length) + body
+
+    @staticmethod
+    def decode(data: bytes) -> "Reviews":
+        """
+        Decodifica bytes en un mensaje `Reviews` que contiene múltiples objetos `Review`.
+        """
+        offset = 0
+        id, reviews_count = struct.unpack('>BI', data[:5])
+        offset += 5
+
+        reviews = []
+        for _ in range(reviews_count):
+            # Decodifica cada `Review` y avanza el offset
+            app_id, text_length = struct.unpack('>IH', data[offset:offset + 6])
+            offset += 6
+
+            text = data[offset:offset + text_length].decode('utf-8')
+            offset += text_length
+            
+            score_value = data[offset]
+            try:
+                score = Score(score_value)
+            except ValueError:
+                raise ValueError(f"Valor de score desconocido: {score_value}")
+            
+            offset += 1
+            review = Review(app_id, text, score)
+            reviews.append(review)
+
+        return Reviews(id, reviews)
+
+    def __str__(self):
+        return f"Reviews(id={self.id}, reviews={[str(review) for review in self.reviews]})"
+
+# ===================================================================================================================== #
 
 class Result(Message):
 
@@ -320,7 +385,7 @@ class Result(Message):
                            result_length,             # 2 bytes para el len_string
                            result_bytes)              # N bytes para el result
 
-        # Calcular la longitud total del mensaje (2 bytes de longitud + cuerpo)
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
         total_length = len(body)
 
         # Empaquetamos el largo total seguido del cuerpo
@@ -336,6 +401,178 @@ class Result(Message):
     def __str__(self):
         return f"Result(id={self.id}, query_number={self.query_number}, result={self.result})"
 
+# ===================================================================================================================== #
+
+class Game:
+    """
+    Representa un juego individual con sus atributos.
+    """
+    def __init__(self, app_id: int, name: str, release_date: str, avg_playtime: int, windows: bool, linux: bool, mac: bool, genres: List[Genre]):
+        self.app_id = app_id
+        self.name = name
+        self.release_date = release_date
+        self.avg_playtime = avg_playtime
+        self.windows = windows
+        self.linux = linux
+        self.mac = mac
+        self.genres = genres
+
+    def encode_platforms(self) -> int:
+        platforms = 0
+        if self.windows:
+            platforms |= 0b001  # Activa el bit 0 para Windows
+        if self.linux:
+            platforms |= 0b010  # Activa el bit 1 para Linux
+        if self.mac:
+            platforms |= 0b100  # Activa el bit 2 para Mac
+        return platforms
+
+    def encode(self) -> bytes:
+        """
+        Codifica un objeto `Game` en bytes para ser utilizado en un mensaje.
+        """
+        name_bytes = self.name.encode('utf-8')
+        release_date_bytes = self.release_date.encode('utf-8')
+        genres_bytes = b''.join([struct.pack('B', genre.value) for genre in self.genres])
+
+        # Codificación del objeto `Game`
+        body = struct.pack(
+            f'>I B{len(name_bytes)}s B{len(release_date_bytes)}s I B B',
+            self.app_id,
+            len(name_bytes),
+            name_bytes,
+            len(release_date_bytes),
+            release_date_bytes,
+            self.avg_playtime,
+            self.encode_platforms(),  # Máscara de bits para la compatibilidad
+            len(self.genres)
+        ) + genres_bytes
+
+        return body
+
+    @staticmethod
+    def decode_platforms(platforms: int) -> tuple:
+        windows = bool(platforms & 0b001)  # Verifica el bit 0 para Windows
+        linux = bool(platforms & 0b010)    # Verifica el bit 1 para Linux
+        mac = bool(platforms & 0b100)      # Verifica el bit 2 para Mac
+        return windows, linux, mac
+
+    @staticmethod
+    def decode(data: bytes) -> "Game":
+        """
+        Decodifica bytes en un objeto `Game`.
+        """
+        offset = 0
+
+        # Desempaqueta los primeros valores
+        app_id, name_length = struct.unpack('>I B', data[offset:offset + 5])
+        offset += 5
+
+        # Nombre del juego
+        name = data[offset:offset + name_length].decode('utf-8')
+        offset += name_length
+
+        # Fecha de lanzamiento
+        release_date_length = struct.unpack('>B', data[offset:offset + 1])[0]
+        offset += 1
+        release_date = data[offset:offset + release_date_length].decode('utf-8')
+        offset += release_date_length
+
+        # Campos restantes
+        avg_playtime, platforms, genres_length = struct.unpack('>I B B', data[offset:offset + 6])
+        offset += 6
+
+        # Decodifica la compatibilidad de plataformas
+        windows, linux, mac = Game.decode_platforms(platforms)
+
+        # Lista de géneros
+        genres = [Genre(data[offset + i]) for i in range(genres_length)]
+
+        return Game(app_id, name, release_date, avg_playtime, windows, linux, mac, genres)
+
+    def __str__(self):
+        return f"Game(app_id={self.app_id}, name={self.name}, release_date={self.release_date}, avg_playtime={self.avg_playtime}, windows={self.windows}, linux={self.linux}, mac={self.mac}, genres={self.genres})"
+
+class Games(Message):
+    """
+    Clase de mensaje que contiene múltiples objetos `Game`.
+    """
+    def __init__(self, id: int, games: List[Game]):
+        super().__init__(id, MsgType.GAMES)
+        self.games = games
+
+    def encode(self) -> bytes:
+        """
+        Codifica una lista de objetos `Game` en bytes.
+        """
+        games_bytes = b''.join([game.encode() for game in self.games])
+        games_count = len(self.games)
+
+        # Empaquetar tipo de mensaje, id del cliente, número de juegos, y los datos de juegos
+        body = struct.pack('>BBH', int(MsgType.GAMES.value), self.id, games_count) + games_bytes
+        total_length = len(body)
+        return struct.pack('>I', total_length) + body
+
+    @staticmethod
+    def decode(data: bytes) -> "Games":
+        """
+        Decodifica bytes en un mensaje `Games` que contiene múltiples objetos `Game`.
+        """
+        offset = 0
+        id, games_count = struct.unpack('>BH', data[:3])
+        offset += 3
+
+        games = []
+        for _ in range(games_count):
+            # Decodifica cada juego y avanza el offset
+
+            # app_id y longitud del nombre
+            app_id, name_length = struct.unpack('>I B', data[offset:offset + 5])
+            offset += 5
+
+            # Verificación de longitud del nombre
+            if offset + name_length > len(data):
+                raise ValueError("Datos insuficientes para decodificar 'name'.")
+
+            # Nombre del juego
+            name = data[offset:offset + name_length].decode('utf-8')
+            offset += name_length
+
+            # Longitud de la fecha de lanzamiento y la fecha
+            release_date_length = struct.unpack('>B', data[offset:offset + 1])[0]
+            offset += 1
+
+            if offset + release_date_length > len(data):
+                raise ValueError("Datos insuficientes para decodificar 'release_date'.")
+
+            release_date = data[offset:offset + release_date_length].decode('utf-8')
+            offset += release_date_length
+
+            # Campos restantes
+            avg_playtime, platforms, genres_length = struct.unpack('>I B B', data[offset:offset + 6])
+            offset += 6
+
+            # Decodificar la máscara de bits de plataformas
+            windows, linux, mac = Game.decode_platforms(platforms)
+
+            # Validación de longitud de géneros
+            if offset + genres_length > len(data):
+                raise ValueError("Datos insuficientes para decodificar 'genres'.")
+
+            # Lista de géneros
+            genres = [Genre(data[offset + i]) for i in range(genres_length)]
+            offset += genres_length
+
+            # Crear el objeto Game y agregarlo a la lista
+            game = Game(app_id, name, release_date, avg_playtime, windows, linux, mac, genres)
+            games.append(game)
+
+        return Games(id, games)
+
+    def __str__(self):
+        return f"Games(id={self.id}, games={[str(game) for game in self.games]})"
+
+# ===================================================================================================================== #
 
 class ResultQ1(Message):
 

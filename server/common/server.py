@@ -43,6 +43,7 @@ class Server:
             try:
                 client_socket = self._accept_new_connection()
                 self.__handle_client_connection(client_socket)
+                break
             except OSError as error:
                 logging.error(f"Server error: {error}")
                 break
@@ -80,12 +81,12 @@ class Server:
         """Listen to multiple queues for result messages and print the results."""
         self.logger.custom("action: listen_to_queues | result: in_progress")
         
-        queues = [Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5]
+        queues = [Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_5, Q_QUERY_RESULT_4]
         
         for queue in queues:
             try:
                 raw_message = self._middleware.receive_from_queue(queue)
-                msg = decode_msg(raw_message[4:])
+                msg = decode_msg(raw_message)
                 
                 # Imprimir el mensaje de resultado recibido
                 if msg.type == MsgType.RESULT:
