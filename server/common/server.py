@@ -18,6 +18,7 @@ class Server:
     def __init__(self, port, listen_backlog):
 
         self.logger = logging.getLogger(__name__)
+        self.shutting_down = False
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
@@ -33,7 +34,9 @@ class Server:
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
+        self.shutting_down = True
         self._server_socket.close()
+        self._middleware.connection.close()
 
     def run(self):
         """Server loop to accept and handle new client connections."""
@@ -44,7 +47,8 @@ class Server:
                 client_socket = self._accept_new_connection()
                 self.__handle_client_connection(client_socket)
             except OSError as error:
-                logging.error(f"Server error: {error}")
+                if not self.shutting_down:
+                    logging.error(f"Server error: {error}")
                 break
 
     def _accept_new_connection(self):
@@ -68,12 +72,17 @@ class Server:
                     break
             self._listen_to_result_queues()
         except ValueError as e:
+            if self.shutting_down:
+                return
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
             self.logger.custom(f"Connection closed or invalid message received: {e}")
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
+        except Exception as e:
+            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
         finally:
-            client_sock.close()
             self.logger.custom(f"action: ending_connection | result: success")
 
     def _listen_to_result_queues(self):
@@ -82,8 +91,8 @@ class Server:
         
         queues = [Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5]
         
-        for queue in queues:
-            try:
+        try:
+            for queue in queues:
                 raw_message = self._middleware.receive_from_queue(queue)
                 msg = decode_msg(raw_message[4:])
                 
@@ -91,11 +100,15 @@ class Server:
                 if msg.type == MsgType.RESULT:
                     self.logger.custom(f"Received Result from {queue}: {msg.result}")
                 else:
-                    self.logger.custom(f"Received Message from {queue}: {msg}")
-                
-            except ValueError as e:
+                    self.logger.custom(f"Received Message from {queue}: {msg}")        
+        except ValueError as e:
+            if not self.shutting_down:
                 self.logger.custom(f"Error decoding message from {queue}: {e}")
-            except OSError as e:
+        except OSError as e:
+            if not self.shutting_down:
                 logging.error(f"Error receiving from {queue}: {e}")
-                return
+        except Exception as e:
+            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
 
