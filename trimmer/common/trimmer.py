@@ -1,4 +1,5 @@
 from messages.messages import Dataset, Genre, MsgType, Review, Score, decode_msg, Reviews, Q1Game, GenreGame, Q1Games, GenreGames
+import signal
 from middleware.middleware import Middleware
 import logging
 import csv
@@ -31,68 +32,81 @@ class Trimmer:
     def __init__(self):
 
         self.logger = logging.getLogger(__name__)
+        self.shutting_down = False
         
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
 
+    def _handle_sigterm(self, sig, frame):
+        """Handle SIGTERM signal so the server closes gracefully."""
+        self.logger.custom("Received SIGTERM, shutting down server.")
+        self.shutting_down = True
+        self._middleware.connection.close()
+
     def run(self):
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
         genre_games_batch = []
         q1_games_batch = []
         reviews_batch = []
-        # self.logger.custom("action: listen_to_queue")
-        while True:
-            # self.logger.custom("action: listening_queue | result: in_progress")
-            raw_message = self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER)
-            msg = decode_msg(raw_message)
-            
-            # Procesamos cada fila en el batch
-            if msg.type == MsgType.DATA:
-                if msg.dataset == Dataset.GAME:
+        try:
+            # self.logger.custom("action: listen_to_queue")
+            while True:
+                # self.logger.custom("action: listening_queue | result: in_progress")
+                raw_message = self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER)
+                msg = decode_msg(raw_message)
+                
+                # Procesamos cada fila en el batch
+                if msg.type == MsgType.DATA:
+                    if msg.dataset == Dataset.GAME:
 
-                    for row in msg.rows:
-                        values = next(csv.reader([row]))
-                        
-                        # Crear instancias de Q1Game y GenreGame
-                        q1_game, genre_game = self._get_game(values)
-                        if q1_game:
-                            q1_games_batch.append(q1_game)
-                        if genre_game:
-                            genre_games_batch.append(genre_game)
+                        for row in msg.rows:
+                            values = next(csv.reader([row]))
+                            
+                            # Crear instancias de Q1Game y GenreGame
+                            q1_game, genre_game = self._get_game(values)
+                            if q1_game:
+                                q1_games_batch.append(q1_game)
+                            if genre_game:
+                                genre_games_batch.append(genre_game)
 
-                    # Enviar lotes por separado para cada tipo de juego
-                    if q1_games_batch:
-                        q1_games_msg = Q1Games(msg.id, q1_games_batch)
-                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
-                        q1_games_batch = []
+                        # Enviar lotes por separado para cada tipo de juego
+                        if q1_games_batch:
+                            q1_games_msg = Q1Games(msg.id, q1_games_batch)
+                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
+                            q1_games_batch = []
 
-                    if genre_games_batch:
-                        genre_games_msg = GenreGames(msg.id, genre_games_batch)
-                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
-                        genre_games_batch = []
+                        if genre_games_batch:
+                            genre_games_msg = GenreGames(msg.id, genre_games_batch)
+                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
+                            genre_games_batch = []
 
-                elif msg.dataset == Dataset.REVIEW:
-                    for row in msg.rows:
-                        values = next(csv.reader([row]))
+                        elif msg.dataset == Dataset.REVIEW:
+                            for row in msg.rows:
+                                values = next(csv.reader([row]))
 
-                        # Acumula `Review` en el batch de reseñas
-                        review = self._get_review(values)
-                        reviews_batch.append(review)
-                    
-                    reviews_msg = Reviews(msg.id, reviews_batch)
-                    # self.logger.custom(f"reviews: {reviews_msg}")
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
-                    reviews_batch = []  # Limpiar el batch después de enviar
+                                # Acumula `Review` en el batch de reseñas
+                                review = self._get_review(values)
+                                reviews_batch.append(review)
+                            
+                            reviews_msg = Reviews(msg.id, reviews_batch)
+                            # self.logger.custom(f"reviews: {reviews_msg}")
+                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
+                            reviews_batch = []  # Limpiar el batch después de enviar
 
 
-            elif msg.type == MsgType.FIN:
-                # self.logger.custom("action: shutting_down | result: in_progress")
-                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
-                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
-                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                self._middleware.connection.close()
-                # self.logger.custom("action: shutting_down | result: success")
-                return
+                elif msg.type == MsgType.FIN:
+                    # self.logger.custom("action: shutting_down | result: in_progress")
+                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
+                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                    self._middleware.connection.close()
+                    # self.logger.custom("action: shutting_down | result: success")
+                    return
+
+        except Exception as e:
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
 
             
     def _get_game(self, values):

@@ -105,7 +105,8 @@ services:
     container_name: client
     image: client:latest # Asume que tienes una imagen para el cliente
     volumes:
-      - ./datasets:/datasets
+      - ./datasets/reduced_games_corregido.csv:/datasets/games.csv
+      - ./datasets/reduced_reviews.csv:/datasets/reviews.csv
     networks:
       - testing_net
     depends_on:

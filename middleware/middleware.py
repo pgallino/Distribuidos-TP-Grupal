@@ -56,7 +56,7 @@ class Middleware:
                     body=message
                 )
             except Exception as e:
-                logging.error(f"action: send_to_queue | result: fail | error: {e}")
+                self.logger.error(f"action: send_to_queue | result: fail | error: {e}")
         elif log in self.exchanges:
             try:
                 self.channel.basic_publish(
@@ -65,7 +65,7 @@ class Middleware:
                     body=message
                 )
             except Exception as e:
-                logging.error(f"action: send_to_queue | result: fail | error: {e}")
+                self.logger.error(f"action: send_to_queue | result: fail | error: {e}")
         else:
             raise ValueError(f"La cola '{log}' no está declarada.")
         

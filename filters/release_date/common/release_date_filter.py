@@ -1,4 +1,5 @@
-from messages.messages import MsgType, Q2Games, decode_msg, Games
+from messages.messages import MsgType, Q2Games, decode_msg
+import signal
 from middleware.middleware import Middleware
 import logging
 
@@ -12,6 +13,7 @@ class ReleaseDateFilter:
     def __init__(self):
 
         self.logger = logging.getLogger(__name__)
+        self.shutting_down = False
 
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)
@@ -19,7 +21,14 @@ class ReleaseDateFilter:
         self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES)
         self._middleware.declare_queue(Q_2010_GAMES)
 
+    def _handle_sigterm(self, sig, frame):
+        """Handle SIGTERM signal so the server closes gracefully."""
+        self.logger.custom("Received SIGTERM, shutting down server.")
+        self.shutting_down = True
+        self._middleware.connection.close()
+
     def run(self):
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
         
         # # self.logger.custom("action: listen_to_queue")
 

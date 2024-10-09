@@ -1,4 +1,5 @@
 from collections import defaultdict
+import signal
 from messages.messages import MsgType, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
@@ -15,6 +16,7 @@ class Q5Joiner:
     def __init__(self):
 
         self.logger = logging.getLogger(__name__)
+        self.shutting_down = False
 
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_GENRE_Q5_JOINER)
@@ -30,50 +32,61 @@ class Q5Joiner:
         self.games = {}  # Almacenará juegos por `app_id`
         self.negative_review_counts = defaultdict(int)  # Contador de reseñas negativas por `app_id`
 
+    def _handle_sigterm(self, sig, frame):
+        """Handle SIGTERM signal so the server closes gracefully."""
+        self.logger.custom("Received SIGTERM, shutting down server.")
+        self.shutting_down = True
+        self._middleware.connection.close()
 
     def run(self):
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        # self.logger.custom("action: listen_to_queue")
+        try:
+            # self.logger.custom("action: listen_to_queue")
+            # Procesar mensajes de jeugos
+            while True:
+                raw_message = self._middleware.receive_from_queue(Q_GENRE_Q5_JOINER)
+                msg = decode_msg(raw_message)
+                if msg.type == MsgType.GAMES:
+                    for game in msg.games:  # Itera sobre cada `Game` en el mensaje `Games`
+                        self.games[game.app_id] = game
+                elif msg.type == MsgType.FIN:
+                    break
 
-        # Procesar mensajes de jeugos
-        while True:
-            raw_message = self._middleware.receive_from_queue(Q_GENRE_Q5_JOINER)
-            msg = decode_msg(raw_message)
-            if msg.type == MsgType.GAMES:
-                for game in msg.games:  # Itera sobre cada `Game` en el mensaje `Games`
-                    self.games[game.app_id] = game
-            elif msg.type == MsgType.FIN:
-                break
+            # Procesar mensajes de reseñas
+            while True:
+                raw_message = self._middleware.receive_from_queue(Q_SCORE_Q5_JOINER)
+                msg = decode_msg(raw_message)
+                if msg.type == MsgType.REVIEWS:
+                    for review in msg.reviews:  # Itera sobre cada `Review` en el mensaje `Reviews`
+                        if review.app_id in self.games:
+                            self.negative_review_counts[review.app_id] += 1
+                elif msg.type == MsgType.FIN:
+                    # Calcular el umbral del percentil 90
+                    counts = list(self.negative_review_counts.values())
+                    threshold = 0 if not counts else sorted(counts)[int(0.9 * len(counts)) - 1]
 
-        # Procesar mensajes de reseñas
-        while True:
-            raw_message = self._middleware.receive_from_queue(Q_SCORE_Q5_JOINER)
-            msg = decode_msg(raw_message)
-            if msg.type == MsgType.REVIEWS:
-                for review in msg.reviews:  # Itera sobre cada `Review` en el mensaje `Reviews`
-                    if review.app_id in self.games:
-                        self.negative_review_counts[review.app_id] += 1
-            elif msg.type == MsgType.FIN:
-                # Calcular el umbral del percentil 90
-                counts = list(self.negative_review_counts.values())
-                threshold = 0 if not counts else sorted(counts)[int(0.9 * len(counts)) - 1]
+                    # Seleccionar juegos que superan el umbral del percentil 90
+                    top_games = [
+                        (self.games[app_id].name, count)
+                        for app_id, count in self.negative_review_counts.items()
+                        if count >= threshold
+                    ]
 
-                # Seleccionar juegos que superan el umbral del percentil 90
-                top_games = [
-                    (self.games[app_id].name, count)
-                    for app_id, count in self.negative_review_counts.items()
-                    if count >= threshold
-                ]
+                    # Crear el texto del resultado con los juegos seleccionados
+                    result_text = "Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
+                    for name, count in sorted(top_games, key=lambda x: x[1], reverse=True):
+                        result_text += f"- {name}: {count} negative reviews\n"
 
-                # Crear el texto del resultado con los juegos seleccionados
-                result_text = "Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
-                for name, count in sorted(top_games, key=lambda x: x[1], reverse=True):
-                    result_text += f"- {name}: {count} negative reviews\n"
+                    # Crear y enviar el mensaje Result con el resultado
+                    result_message = Result(id=msg.id, query_number=QueryNumber.Q5.value, result=result_text)
+                    self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
-                # Crear y enviar el mensaje Result con el resultado
-                result_message = Result(id=msg.id, query_number=QueryNumber.Q5.value, result=result_text)
-                self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
-
-                # Cierre de la conexión
-                self._middleware.connection.close()
-                return
+                    # Cierre de la conexión
+                    self._middleware.connection.close()
+                    return
+        
+        except Exception as e:
+            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
