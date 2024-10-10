@@ -1,5 +1,24 @@
 name: steamyanalytics
 services:
+
+  rabbitmq:
+    container_name: rabbitmq
+    image: rabbitmq:3.13-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASS: "guest"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - testing_net
+
   server:
     container_name: server
     image: server:latest
@@ -8,6 +27,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -17,6 +39,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -26,6 +51,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -35,6 +63,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -44,6 +75,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -53,6 +87,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -62,6 +99,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -71,6 +111,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -80,6 +123,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -89,6 +135,9 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
@@ -98,18 +147,24 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - LOGGING_LEVEL=DEBUG
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     networks:
       - testing_net
 
   client:
     container_name: client
-    image: client:latest # Asume que tienes una imagen para el cliente
+    image: client:latest
     volumes:
       - ./datasets:/datasets
     networks:
       - testing_net
     depends_on:
-      - server
+      rabbitmq:
+        condition: service_healthy
+      server:
+        condition: service_started
 
 networks:
   testing_net:
