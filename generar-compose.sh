@@ -1,64 +1,23 @@
 #!/bin/bash
 
-# Verificar que la cantidad de parámetros sea la adecuada
-if [ "$#" -ne 2 ]; then
-    echo "Por favor ejecute con los parámetros: $0 <nombre-del-archivo-de-salida> <cantidad-de-clientes>"
-    exit 1
-fi
+# Inicializa un array para las instancias
+declare -A INSTANCIAS
 
-echo "Nombre del archivo de salida: $1"
-echo "Cantidad de clientes: $2"
-
-output_file=$1
-client_count=$2
-
-cat <<EOF > $output_file
-name: steamyanalytics
-services:
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:latest
-    ports:
-      - "5672:5672" # Puerto para conexiones AMQP
-      - "15672:15672" # Puerto para la consola de administración (opcional)
-    networks:
-      - testing_net
-
-  server:
-    container_name: server
-    image: server:latest
-    volumes:
-      - ./server/config.ini:/config.ini
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    networks:
-      - testing_net
-    depends_on:
-      - rabbitmq
-EOF
-
-for i in $(seq 1 $client_count); do
-    cat <<EOF >> $output_file
-
-  client$i:
-    container_name: client$i
-    image: client:latest
-    networks:
-      - testing_net
-    depends_on:
-      - rabbitmq
-EOF
+# Procesa los parámetros
+for arg in "$@"; do
+    IFS='=' read -r nodo valor <<< "$arg"
+    INSTANCIAS["$nodo"]="$valor"
 done
 
-cat <<EOF >> $output_file
+# Verifica que todos los nodos requeridos estén presentes
+for nodo in trimmer genre score release_date english os_counter average_counter; do
+    if [[ -z "${INSTANCIAS[$nodo]}" ]]; then
+        echo "Error: Falta el parámetro para $nodo"
+        exit 1
+    fi
+done
 
-networks:
-  testing_net:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.25.125.0/24
-EOF
+# Ejecuta el script de Python con los parámetros
+python3 script-generar-compose.py "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}" "${INSTANCIAS[os_counter]}" "${INSTANCIAS[average_counter]}"
 
-echo "Archivo $output_file generado con $client_count clientes."
+#./generar.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1
