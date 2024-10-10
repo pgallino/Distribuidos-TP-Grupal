@@ -78,7 +78,8 @@ def generate_docker_compose(instances):
                 'image': f'{node}:latest',
                 'environment': [
                     'PYTHONUNBUFFERED=1',
-                    'LOGGING_LEVEL=DEBUG'
+                    'LOGGING_LEVEL=DEBUG',
+                    f'INSTANCE_ID={i}'
                 ] + [
                     f"{other_node.upper()}_INSTANCES={instances[other_node]}" for other_node in instances
                 ],
