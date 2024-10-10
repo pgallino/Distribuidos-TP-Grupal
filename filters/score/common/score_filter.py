@@ -48,10 +48,11 @@ class ScoreFilter:
                     negative_reviews = []
                     for review in msg.reviews:  # Procesa cada `Review` en el mensaje `REVIEWS`
                         if review.score == Score.POSITIVE:
-                            # Crear `TextReview` y `BasicReview` para reseñas positivas
+                            # Crear `BasicReview` para reseñas positivas
                             basic_review = BasicReview(review.app_id)
                             positive_reviews.append(basic_review)
                         else:
+                            # Crear `TextReview` y `BasicReview` para reseñas negativas
                             text_review = TextReview(review.app_id, review.text)
                             basic_review = BasicReview(review.app_id)
                             negative_textreviews.append(text_review)

@@ -3,6 +3,7 @@ import signal
 from messages.messages import MsgType, Q5Result, decode_msg, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
+import numpy as np
 
 Q_GENRE_Q5_JOINER = "genre-q5-joiner"
 Q_SCORE_Q5_JOINER = "score-q5-joiner"
@@ -66,9 +67,8 @@ class Q5Joiner:
 
                 elif msg.type == MsgType.FIN:
 
-                    # Calcular el umbral del percentil 90
-                    counts = list(self.negative_review_counts.values())
-                    threshold = 0 if not counts else sorted(counts)[int(0.9 * len(counts)) - 1]
+                    counts = np.array(list(self.negative_review_counts.values()))
+                    threshold = np.percentile(counts, 90)  # Calcula el percentil 90
 
                     # Seleccionar juegos que superan el umbral del percentil 90
                     top_games = [

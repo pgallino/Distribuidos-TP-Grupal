@@ -2,6 +2,7 @@ FROM python:3.9.7-slim
 
 # Instalar la librería pika directamente usando pip
 RUN pip install --no-cache-dir pika==1.2.0
+RUN pip install --no-cache-dir numpy
 
 # Copiamos los archivos necesarios
 COPY joiners/q5_joiner/main.py /
