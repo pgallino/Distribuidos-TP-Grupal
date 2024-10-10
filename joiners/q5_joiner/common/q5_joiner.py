@@ -72,13 +72,16 @@ class Q5Joiner:
 
                     # Seleccionar juegos que superan el umbral del percentil 90
                     top_games = [
-                        (self.games[app_id].name, count)
+                        (app_id, self.games[app_id].name, count)
                         for app_id, count in self.negative_review_counts.items()
                         if count >= threshold
                     ]
 
-                    # Crear el mensaje Q5Result
-                    result_message = Q5Result(id=msg.id, top_negative_reviews=top_games)
+                    # Ordenar por `app_id` y tomar los primeros 10 resultados
+                    top_games_sorted = sorted(top_games, key=lambda x: x[0])[:10]
+
+                    # Crear el mensaje Q5Result con los juegos ordenados y filtrados
+                    result_message = Q5Result(id=msg.id, top_negative_reviews=top_games_sorted)
                     
                     # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())

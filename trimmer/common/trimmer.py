@@ -5,6 +5,19 @@ import logging
 import csv
 import sys
 
+GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
+                    'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 
+                    'Supported languages', 'Full audio languages', 'Reviews', 'Header image', 
+                    'Website', 'Support url', 'Support email', 'Windows', 'Mac', 
+                    'Linux', 'Metacritic score', 'Metacritic url', 'User score', 
+                    'Positive', 'Negative', 'Score rank', 'Achievements', 
+                    'Recommendations', 'Notes', 'Average playtime forever', 
+                    'Average playtime two weeks', 'Median playtime forever', 
+                    'Median playtime two weeks', 'Developers', 'Publishers', 
+                    'Categories', 'Genres', 'Tags', 'Screenshots', 'Movies']
+
+REVIEW_FIELD_NAMES = ['app_id','app_name','review_text','review_score','review_votes']
+
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
 E_TRIMMER_FILTERS = 'trimmer-filters'
 K_Q1GAME = 'q1game'
@@ -49,6 +62,8 @@ class Trimmer:
         genre_games_batch = []
         q1_games_batch = []
         reviews_batch = []
+        droped_game_rows = 0
+        droped_reviews_rows = 0
         try:
             # self.logger.custom("action: listen_to_queue")
             while True:
@@ -59,16 +74,17 @@ class Trimmer:
                 # Procesamos cada fila en el batch
                 if msg.type == MsgType.DATA:
                     if msg.dataset == Dataset.GAME:
-
-                        for row in msg.rows:
-                            values = next(csv.reader([row]))
-                            
+                        
+                        reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
+                        for values in reader:
                             # Crear instancias de Q1Game y GenreGame
                             q1_game, genre_game = self._get_game(values)
                             if q1_game:
                                 q1_games_batch.append(q1_game)
                             if genre_game:
                                 genre_games_batch.append(genre_game)
+                            if not (q1_game and genre_game):
+                                droped_game_rows += 1
 
                         # Enviar lotes por separado para cada tipo de juego
                         if q1_games_batch:
@@ -82,17 +98,21 @@ class Trimmer:
                             genre_games_batch = []
 
                     elif msg.dataset == Dataset.REVIEW:
-                        for row in msg.rows:
-                            values = next(csv.reader([row]))
-
+                        reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
+                        
+                        for values in reader:
                             # Acumula `Review` en el batch de reseñas
                             review = self._get_review(values)
-                            reviews_batch.append(review)
+                            if review:
+                                reviews_batch.append(review)
+                            else:    
+                                droped_reviews_rows += 1
                         
-                        reviews_msg = Reviews(msg.id, reviews_batch)
-                        # self.logger.custom(f"reviews: {reviews_msg}")
-                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
-                        reviews_batch = []  # Limpiar el batch después de enviar
+                        if reviews_batch:
+                            reviews_msg = Reviews(msg.id, reviews_batch)
+                            # self.logger.custom(f"reviews: {reviews_msg}")
+                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
+                            reviews_batch = []  # Limpiar el batch después de enviar
 
 
                 elif msg.type == MsgType.FIN:
@@ -101,7 +121,7 @@ class Trimmer:
                     self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
                     self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
                     self._middleware.connection.close()
-                    # self.logger.custom("action: shutting_down | result: success")
+                    self.logger.custom(f"action: shutting_down | result: success | games_droped: {droped_game_rows}, reviews_droped: {droped_reviews_rows}")
                     return
 
         except Exception as e:
@@ -111,16 +131,29 @@ class Trimmer:
             
     def _get_game(self, values):
         """
-        Crea una instancia de Q1Game y/o GenreGame a partir de los datos.
+        Crea una instancia de Q1Game y/o GenreGame a partir de los datos, descartando aquellas filas con valores vacíos.
         """
-        app_id = int(values[0])
-        name = values[1]
-        release_date = values[2]
-        avg_playtime = int(values[29])
-        windows = values[17] == "True"
-        mac = values[18] == "True"
-        linux = values[19] == "True"
-        genres = get_genres(values[37])
+        # Claves necesarias
+        required_keys = ['AppID', 'Name', 'Windows', 'Mac', 'Linux', 'Genres', 'Release date', 'Average playtime forever', 'Positive', 'Negative']
+        
+        # Verificar si alguno de los valores críticos está ausente o es una cadena vacía
+        for key in required_keys:
+            if key not in values or values[key].strip() == "":
+                # print(f"Valor faltante o vacío para la clave: {key}")
+                return None, None
+
+        try:
+            app_id = int(values['AppID'])
+            name = values['Name']
+            release_date = values['Release date']
+            avg_playtime = int(values['Average playtime forever'])
+            windows = values['Windows'] == "True"
+            mac = values['Mac'] == "True"
+            linux = values['Linux'] == "True"
+            genres = get_genres(values['Genres'])
+        except (ValueError, KeyError) as e:
+            print(f"Error al procesar los valores en _get_game: {e}")
+            return None, None
 
         # Crear Q1Game con compatibilidad de plataformas
         q1_game = Q1Game(app_id, windows, linux, mac) if any([windows, linux, mac]) else None
@@ -129,8 +162,26 @@ class Trimmer:
         genre_game = GenreGame(app_id, name, release_date, avg_playtime, genres) if genres else None
 
         return q1_game, genre_game
-    
+
+
     def _get_review(self, values):
-        app_id, text, score = values[0], values[2], values[3]
-        return Review(int(app_id), text, Score.from_string(score))
-         
+        required_keys = ['app_id', 'review_text', 'review_score']
+        for key in required_keys:
+            if key not in values or values[key].strip() == "":
+                # app_id = int(values["app_id"])
+                # score = Score.from_string(values['review_score'])
+                # if (app_id == 105600 or app_id == 252950 or app_id == 391540) and (score == Score.POSITIVE):
+                    # print(f"Valor faltante o vacío para la clave en _get_review: {key}. Review de juego {app_id} con valor: {values['review_text']}")
+                return None
+
+        try:
+            app_id = int(values['app_id'])
+            text = values['review_text']
+            score = Score.from_string(values['review_score'])
+        except (ValueError, KeyError) as e:
+            print(f"Error al procesar la reseña en _get_review: {e}")
+            return None
+
+        return Review(app_id, text, score)
+
+            

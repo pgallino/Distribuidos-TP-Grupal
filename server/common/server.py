@@ -131,7 +131,7 @@ class Server:
                         )
                     
                     elif msg.result_type == QueryNumber.Q5:
-                        top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for name, count in msg.top_negative_reviews)
+                        top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.top_negative_reviews)
                         self.logger.custom(
                             f"Received Result from {queue}: Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
                             f"{top_negative_str}\n"

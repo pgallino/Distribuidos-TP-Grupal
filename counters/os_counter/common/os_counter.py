@@ -2,6 +2,7 @@ import signal
 from messages.messages import Q1Result, decode_msg, MsgType, Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
+import traceback
 
 Q_TRIMMER_OS_COUNTER = "trimmer-os_counter"
 Q_QUERY_RESULT_1 = "query_result_1"
@@ -74,3 +75,4 @@ class OsCounter:
             self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                traceback.print_exc() 
