@@ -28,6 +28,9 @@ def generate_docker_compose(instances):
     # Definición del servicio RabbitMQ
     services['rabbitmq'] = {
         'container_name': 'rabbitmq',
+        'logging': {
+            'driver': 'none'
+        },
         'image': 'rabbitmq:3.13-management',
         'ports': [
             "5672:5672",

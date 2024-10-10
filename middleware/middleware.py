@@ -10,6 +10,7 @@ class Middleware:
         self.logger = logging.getLogger(__name__)
 
         self.connection = self._connect_to_rabbitmq()
+        
         self.channel = self.connection.channel()
         
         # self.logger.custom(f"action: init_middleware | result: success | host: {host}")
@@ -68,27 +69,15 @@ class Middleware:
                 self.logger.error(f"action: send_to_queue | result: fail | error: {e}")
         else:
             raise ValueError(f"La cola '{log}' no está declarada.")
-        
-
-    def receive_from_queue(self, queue_name, block=True):
-        """
-        Recibe un mensaje de la cola especificada y lo devuelve.
-        Si no hay mensaje y 'block' es True, esperará hasta que llegue un mensaje.
-        """
+    
+    def receive_from_queue(self, queue_name, callback, auto_ack=True):
         if queue_name not in self.queues:
             raise ValueError(f"La cola '{queue_name}' no está declarada.")
-        
-        while True:
-            # Obtén un solo mensaje de la cola
-            method_frame, header_frame, body = self.channel.basic_get(queue=queue_name, auto_ack=True)
-            
-            if method_frame:
-                return body
-            else:
-                if not block:
-                    # self.logger.custom(f"action: receive_from_queue | result: no_message | queue_name: {queue_name}")
-                    return None
-                time.sleep(5)  # Espera activa de 1 segundo antes de revisar de nuevo
+
+        # Configura el consumidor en el canal con auto_ack
+        self.channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=auto_ack)
+
+        self.channel.start_consuming()
 
     def close(self):
         """

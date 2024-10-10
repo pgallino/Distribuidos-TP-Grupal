@@ -20,4 +20,4 @@ done
 # Ejecuta el script de Python con los parámetros
 python3 script-generar-compose.py "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}" "${INSTANCIAS[os_counter]}" "${INSTANCIAS[average_counter]}"
 
-#./generar.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1
+#./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1

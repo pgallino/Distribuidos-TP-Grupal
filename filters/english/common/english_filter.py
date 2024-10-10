@@ -39,35 +39,34 @@ class EnglishFilter:
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        try:
-            # self.logger.custom("action: listen_to_queue")
-            while True:
-                en_reviews = []
-                raw_message = self._middleware.receive_from_queue(Q_SCORE_ENGLISH)
-                msg = decode_msg(raw_message)
-                # self.logger.custom(f"action: listening_queue | result: success | msg: {msg}")
-                if msg.type == MsgType.REVIEWS:
-                    # Filtrar reseñas en inglés
-                    for review in msg.reviews:
-                        if self.is_english(review.text):
-                            basic_review = BasicReview(review.app_id)
-                            en_reviews.append(basic_review)
-                    
-                    if en_reviews:
-                        # Crear un mensaje `Reviews` con las reseñas en inglés y enviarlo
-                        english_reviews_msg = BasicReviews(id=msg.id, reviews=en_reviews)
-                        self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
-                        en_reviews = []
+        def process_message(ch, method, properties, raw_message):
+            """Callback para procesar el mensaje de la cola."""
+            msg = decode_msg(raw_message)
+            en_reviews = []
 
-                elif msg.type == MsgType.FIN:
-                    # Se reenvia el FIN al resto de nodos
-                    # self.logger.custom("action: shutting_down | result: in_progress")
-                    self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, msg.encode())
-                    self._middleware.connection.close()
-                    # self.logger.custom("action: shutting_down | result: success")
-                    return
-        
+            if msg.type == MsgType.REVIEWS:
+                # Filtrar reseñas en inglés
+                for review in msg.reviews:
+                    if self.is_english(review.text):
+                        basic_review = BasicReview(review.app_id)
+                        en_reviews.append(basic_review)
+                
+                # Enviar el batch de reseñas en inglés si contiene elementos
+                if en_reviews:
+                    english_reviews_msg = BasicReviews(id=msg.id, reviews=en_reviews)
+                    self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
+
+            elif msg.type == MsgType.FIN:
+                # Reenvía el mensaje FIN y cierra la conexión
+                self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, msg.encode())
+                self.shutting_down = True
+                self._middleware.connection.close()
+
+        try:
+            # Ejecuta el consumo de mensajes con el callback `process_message`
+            self._middleware.receive_from_queue(Q_SCORE_ENGLISH, process_message)
+
         except Exception as e:
-            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+

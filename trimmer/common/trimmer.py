@@ -59,74 +59,71 @@ class Trimmer:
 
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
-        genre_games_batch = []
-        q1_games_batch = []
-        reviews_batch = []
-        droped_game_rows = 0
-        droped_reviews_rows = 0
+
+        def process_message(ch, method, properties, raw_message):
+
+            genre_games_batch = []
+            q1_games_batch = []
+            reviews_batch = []
+            droped_game_rows = 0
+            droped_reviews_rows = 0
+            """Callback para procesar el mensaje de la cola."""
+            msg = decode_msg(raw_message)
+            
+            if msg.type == MsgType.DATA:
+                if msg.dataset == Dataset.GAME:
+                    reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
+                    for values in reader:
+                        q1_game, genre_game = self._get_game(values)
+                        if q1_game:
+                            q1_games_batch.append(q1_game)
+                        if genre_game:
+                            genre_games_batch.append(genre_game)
+                        if not (q1_game and genre_game):
+                            droped_game_rows += 1
+
+                    # Enviar lotes por separado para cada tipo de juego
+                    if q1_games_batch:
+                        q1_games_msg = Q1Games(msg.id, q1_games_batch)
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
+                        q1_games_batch.clear()  # Limpia el batch después de enviar
+
+                    if genre_games_batch:
+                        genre_games_msg = GenreGames(msg.id, genre_games_batch)
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
+                        genre_games_batch.clear()
+
+                elif msg.dataset == Dataset.REVIEW:
+                    reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
+                    for values in reader:
+                        review = self._get_review(values)
+                        if review:
+                            reviews_batch.append(review)
+                        else:
+                            droped_reviews_rows += 1
+                    
+                    if reviews_batch:
+                        reviews_msg = Reviews(msg.id, reviews_batch)
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
+                        reviews_batch.clear()
+
+            elif msg.type == MsgType.FIN:
+                # Finaliza y envía los mensajes FIN a cada cola correspondiente
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
+                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                self.logger.custom(f"action: shutting_down | result: success | games_droped: {droped_game_rows}, reviews_droped: {droped_reviews_rows}")
+                self.shutting_down = True  # Marca que estamos en proceso de cierre
+                self._middleware.connection.close()
+
         try:
-            # self.logger.custom("action: listen_to_queue")
-            while True:
-                # self.logger.custom("action: listening_queue | result: in_progress")
-                raw_message = self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER)
-                msg = decode_msg(raw_message)
-                
-                # Procesamos cada fila en el batch
-                if msg.type == MsgType.DATA:
-                    if msg.dataset == Dataset.GAME:
-                        
-                        reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
-                        for values in reader:
-                            # Crear instancias de Q1Game y GenreGame
-                            q1_game, genre_game = self._get_game(values)
-                            if q1_game:
-                                q1_games_batch.append(q1_game)
-                            if genre_game:
-                                genre_games_batch.append(genre_game)
-                            if not (q1_game and genre_game):
-                                droped_game_rows += 1
-
-                        # Enviar lotes por separado para cada tipo de juego
-                        if q1_games_batch:
-                            q1_games_msg = Q1Games(msg.id, q1_games_batch)
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
-                            q1_games_batch = []
-
-                        if genre_games_batch:
-                            genre_games_msg = GenreGames(msg.id, genre_games_batch)
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
-                            genre_games_batch = []
-
-                    elif msg.dataset == Dataset.REVIEW:
-                        reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
-                        
-                        for values in reader:
-                            # Acumula `Review` en el batch de reseñas
-                            review = self._get_review(values)
-                            if review:
-                                reviews_batch.append(review)
-                            else:    
-                                droped_reviews_rows += 1
-                        
-                        if reviews_batch:
-                            reviews_msg = Reviews(msg.id, reviews_batch)
-                            # self.logger.custom(f"reviews: {reviews_msg}")
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
-                            reviews_batch = []  # Limpiar el batch después de enviar
-
-
-                elif msg.type == MsgType.FIN:
-                    # self.logger.custom("action: shutting_down | result: in_progress")
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                    self._middleware.connection.close()
-                    self.logger.custom(f"action: shutting_down | result: success | games_droped: {droped_game_rows}, reviews_droped: {droped_reviews_rows}")
-                    return
-
+            # Ejecuta el consumo de mensajes con el callback `process_message`
+            self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, process_message)
+            
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+
 
             
     def _get_game(self, values):
@@ -167,7 +164,7 @@ class Trimmer:
     def _get_review(self, values):
         required_keys = ['app_id', 'review_text', 'review_score']
         for key in required_keys:
-            if key not in values or values[key].strip() == "":
+            if key not in values or values[key] == "":
                 # app_id = int(values["app_id"])
                 # score = Score.from_string(values['review_score'])
                 # if (app_id == 105600 or app_id == 252950 or app_id == 391540) and (score == Score.POSITIVE):

@@ -1,4 +1,5 @@
 import signal
+import traceback
 from messages.messages import MsgType, decode_msg, Q2Result, QueryNumber
 from middleware.middleware import Middleware
 import logging
@@ -32,41 +33,35 @@ class AvgCounter:
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
+        def process_message(ch, method, properties, raw_message):
+            """Callback para procesar el mensaje de la cola."""
+            msg = decode_msg(raw_message)
+
+            if msg.type == MsgType.GAMES:
+                for game in msg.games:
+                    if len(self.top_10_games) < 10:
+                        heapq.heappush(self.top_10_games, (game.avg_playtime, game.app_id, game))
+                    elif game.avg_playtime > self.top_10_games[0][0]:  # 0 es el índice de avg_playtime
+                        heapq.heapreplace(self.top_10_games, (game.avg_playtime, game.app_id, game))
+
+            elif msg.type == MsgType.FIN:
+                # Ordenar y obtener el top 10 de juegos por average playtime
+                result = sorted(self.top_10_games, key=lambda x: x[0], reverse=True)
+                top_games = [(game.name, avg_playtime) for avg_playtime, app_id, game in result]
+
+                # Crear y enviar el mensaje de resultado
+                result_message = Q2Result(id=msg.id, top_games=top_games)
+                self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
+                
+                # Marcar el cierre en proceso y cerrar la conexión
+                self.shutting_down = True
+                self._middleware.connection.close()
+
         try:
-            # self.logger.custom("action: listen_to_queue")
-            while True:
-                # self.logger.custom('action: listening_queue | result: in_progress')
-                raw_message = self._middleware.receive_from_queue(Q_2010_GAMES)
-                msg = decode_msg(raw_message)
-                # self.logger.custom(f'action: listening_queue | result: success | msg: {msg}')
-                
-                if msg.type == MsgType.GAMES:
-                    for game in msg.games:
-                        if len(self.top_10_games) < 10:
-                            heapq.heappush(self.top_10_games, (game.avg_playtime, game.app_id, game))
-                        elif game.avg_playtime > self.top_10_games[0][AVG_PLAYTIME]:
-                            heapq.heapreplace(self.top_10_games, (game.avg_playtime, game.app_id, game))
-                
-                if msg.type == MsgType.FIN:
-                    # Obtener el top 10 de juegos de la década del 2010 con mayor average playtime
-                    result = sorted(self.top_10_games, key=lambda x: x[AVG_PLAYTIME], reverse=True)
+            # Ejecuta el consumo de mensajes con el callback `process_message`
+            self._middleware.receive_from_queue(Q_2010_GAMES, process_message)
 
-                    top_games = [(game.name, avg_playtime) for avg_playtime, app_id, game in result[:10]]
-
-
-                    # Crear el mensaje Q2Result
-                    result_message = Q2Result(id=msg.id, top_games=top_games)
-
-                    # Enviar el mensaje codificado a la cola de resultados
-                    self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
-
-                    # Cierre de la conexión
-                    # self.logger.custom("action: shutting_down | result: in_progress")
-                    self._middleware.connection.close()
-                    # self.logger.custom("action: shutting_down | result: success")
-                    return
-        
         except Exception as e:
-            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                traceback.print_exc()

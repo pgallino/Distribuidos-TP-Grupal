@@ -2,7 +2,7 @@ from enum import Enum
 import struct
 from typing import List
 
-BATCH_SIZE = 10000
+BATCH_SIZE = 1000
 
 # Definición de los tipos de mensajes
 class MsgType(Enum):

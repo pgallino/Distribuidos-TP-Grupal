@@ -34,45 +34,46 @@ class OsCounter:
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        try:
-            # self.logger.custom("action: listen_to_queue")
-            while True:
-                # self.logger.custom('action: listening_queue | result: in_progress')
-                raw_message = self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER)
-                msg = decode_msg(raw_message)
-                if msg.type == MsgType.GAMES:
-                    for game in msg.games:
-                        client_counters = self.counters.get(msg.id, (0, 0, 0))
-                        windows, mac, linux = client_counters
-                        if game.windows:
-                            windows += 1
-                        if game.mac:
-                            mac += 1
-                        if game.linux:
-                            linux += 1
-                        self.counters[msg.id] = (windows, mac, linux)
-                if msg.type == MsgType.FIN:
+        def process_message(ch, method, properties, raw_message):
+            """Callback para procesar el mensaje de la cola."""
+            msg = decode_msg(raw_message)
+
+            if msg.type == MsgType.GAMES:
+                # Actualizar los contadores para cada sistema operativo
+                client_counters = self.counters.get(msg.id, (0, 0, 0))
+                windows, mac, linux = client_counters
+
+                for game in msg.games:
+                    if game.windows:
+                        windows += 1
+                    if game.mac:
+                        mac += 1
+                    if game.linux:
+                        linux += 1
+
+                # Guardar los contadores actualizados
+                self.counters[msg.id] = (windows, mac, linux)
+
+            elif msg.type == MsgType.FIN:
+                # Obtener el contador final para el id del mensaje
+                if msg.id in self.counters:
+                    windows_count, mac_count, linux_count = self.counters[msg.id]
+
                     # Crear el mensaje de resultado
-                    counter = self.counters[msg.id]
-
-                    # Extraer los conteos para cada sistema operativo
-                    windows_count = counter[0]
-                    mac_count = counter[1]
-                    linux_count = counter[2]
-
-                    # Crear el mensaje Q1Result
                     result_message = Q1Result(id=msg.id, windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
 
                     # Enviar el mensaje codificado a la cola de resultados
                     self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
+                
+                # Cierra la conexión y marca el cierre en proceso
+                self.shutting_down = True
+                self._middleware.connection.close()
 
-                    # self.logger.custom(f"action: shutting_down | result: in_progress")
-                    self._middleware.connection.close()
-                    # self.logger.custom("action: shutting_down | result: success")
-                    return
-        
+        try:
+            # Ejecuta el consumo de mensajes con el callback `process_message`
+            self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER, process_message)
+
         except Exception as e:
-            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                traceback.print_exc() 
+                traceback.print_exc()
