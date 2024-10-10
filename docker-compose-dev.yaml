@@ -1,174 +1,240 @@
-name: steamyanalytics
+networks:
+  testing_net:
+    ipam:
+      config:
+      - subnet: 172.25.125.0/24
+      driver: default
 services:
-
-  rabbitmq:
-    container_name: rabbitmq
-    image: rabbitmq:3.13-management
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: "guest"
-      RABBITMQ_DEFAULT_PASS: "guest"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - testing_net
-
-  server:
-    container_name: server
-    image: server:latest
-    volumes:
-      - ./server/config.ini:/config.ini
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
+  avg_counter_1:
+    container_name: avg_counter_1
     depends_on:
       rabbitmq:
         condition: service_healthy
-    networks:
-      - testing_net
-
-  trimmer:
-    container_name: trimmer
-    image: trimmer:latest
     environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  genre:
-    container_name: genre
-    image: genre:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  score:
-    container_name: score
-    image: score:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  release_date:
-    container_name: release_date
-    image: release_date:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  english:
-    container_name: english
-    image: english:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  os_counter:
-    container_name: os_counter
-    image: os_counter:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  avg_counter:
-    container_name: avg_counter
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: avg_counter:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
     networks:
-      - testing_net
-
-  q3_joiner:
-    container_name: q3_joiner
-    image: q3_joiner:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  q4_joiner:
-    container_name: q4_joiner
-    image: q4_joiner:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
-  q5_joiner:
-    container_name: q5_joiner
-    image: q5_joiner:latest
-    environment:
-      - PYTHONUNBUFFERED=1
-      - LOGGING_LEVEL=DEBUG
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - testing_net
-
+    - testing_net
   client:
     container_name: client
-    image: client:latest
-    volumes:
-      - ./datasets:/datasets
-    networks:
-      - testing_net
     depends_on:
       rabbitmq:
         condition: service_healthy
       server:
         condition: service_started
-
-networks:
-  testing_net:
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.25.125.0/24
+    image: client:latest
+    networks:
+    - testing_net
+    volumes:
+    - ./datasets:/datasets
+  english_1:
+    container_name: english_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: english:latest
+    networks:
+    - testing_net
+  genre_1:
+    container_name: genre_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: genre:latest
+    networks:
+    - testing_net
+  os_counter_1:
+    container_name: os_counter_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: os_counter:latest
+    networks:
+    - testing_net
+  q3_joiner:
+    container_name: q3_joiner
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: q3_joiner:latest
+    networks:
+    - testing_net
+  q4_joiner:
+    container_name: q4_joiner
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: q4_joiner:latest
+    networks:
+    - testing_net
+  q5_joiner:
+    container_name: q5_joiner
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: q5_joiner:latest
+    networks:
+    - testing_net
+  rabbitmq:
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: guest
+    healthcheck:
+      interval: 10s
+      retries: 5
+      start_period: 30s
+      test:
+      - CMD
+      - rabbitmq-diagnostics
+      - status
+      timeout: 5s
+    image: rabbitmq:3.13-management
+    networks:
+    - testing_net
+    ports:
+    - 5672:5672
+    - 15672:15672
+  release_date_1:
+    container_name: release_date_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: release_date:latest
+    networks:
+    - testing_net
+  score_1:
+    container_name: score_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: score:latest
+    networks:
+    - testing_net
+  server:
+    container_name: server
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: server:latest
+    networks:
+    - testing_net
+    volumes:
+    - ./server/config.ini:/config.ini
+  trimmer_1:
+    container_name: trimmer_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: trimmer:latest
+    networks:
+    - testing_net
+version: '3.8'
