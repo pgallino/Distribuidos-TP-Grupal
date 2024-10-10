@@ -62,9 +62,11 @@ class EnglishFilter:
                 self.shutting_down = True
                 self._middleware.connection.close()
 
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_SCORE_ENGLISH, process_message)
+            self._middleware.receive_from_queue(Q_SCORE_ENGLISH, process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:

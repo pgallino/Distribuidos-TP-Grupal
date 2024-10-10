@@ -10,8 +10,10 @@ class Middleware:
         self.logger = logging.getLogger(__name__)
 
         self.connection = self._connect_to_rabbitmq()
-        
+
         self.channel = self.connection.channel()
+        
+        self.channel.basic_qos(prefetch_count=10)
         
         # self.logger.custom(f"action: init_middleware | result: success | host: {host}")
         self.queues = set()
