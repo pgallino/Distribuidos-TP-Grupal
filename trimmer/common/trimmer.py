@@ -1,11 +1,9 @@
 from messages.messages import Dataset, Genre, MsgType, decode_msg
 from messages.games_msg import Q1Game, Q1Games, GenreGame, GenreGames
 from messages.reviews_msg import Review, Score, Reviews
+from node.node import Node  # Importa la clase base Nodo
 
-import signal
 from typing import List, Tuple
-from middleware.middleware import Middleware
-import logging
 import csv
 import sys
 
@@ -31,169 +29,24 @@ def get_genres(genres_string: str):
     values = genres_string.split(',')
     return [genre for value in values if (genre := Genre.from_string(value)) != Genre.OTHER]
 
-class Trimmer:
+class Trimmer(Node):
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
+        super().__init__(id, n_nodes, n_next_nodes)
 
-        self.id = id
-        self.n_nodes = n_nodes
-        self.n_next_nodes = n_next_nodes
-        self.logger = logging.getLogger(__name__)
-        self.shutting_down = False
-        
-        self._middleware = Middleware()
+        # Configura las colas y los intercambios específicos para Trimmer
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
-
-        if self.n_nodes > 1:
-            self.coordination_queue = Q_COORD_TRIMMER + f"{self.id}"
-            self._middleware.declare_queue(self.coordination_queue)
-            self._middleware.declare_exchange(E_COORD_TRIMMER)
-            for i in range(1, self.n_nodes + 1): # arranco en el id 1 y sigo hasta el numero de nodos
-                if i != self.id:
-                    routing_key = f"coordination_{i}"
-                    self._middleware.bind_queue(self.coordination_queue, E_COORD_TRIMMER, routing_key)
-            self.fins_counter = 1
-
-    def _shutdown(self):
-        if self.shutting_down:
-            return
-        self.shutting_down = True
-        self._server_socket.close()
-        self._middleware.channel.stop_consuming()
-        self._middleware.channel.close()
-        self._middleware.connection.close()
-
-    def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
-        self._shutdown()
-
-    def process_fin(self, ch, method, properties, raw_message):
-        # self.logger.custom(f"Entre al process fin por {self.n_nodes}")
-        msg = decode_msg(raw_message)
-        if msg.type == MsgType.FIN:
-            self.fins_counter += 1
-            if self.fins_counter == self.n_nodes:
-                if self.id == 1:
-                    # Reenvía el mensaje FIN y cierra la conexión
-                    # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
-                    for node, n_nodes in self.n_next_nodes:
-                        for _ in range(n_nodes):
-                            if node == 'GENRE':
-                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
-                            if node == 'SCORE':
-                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                            if node == 'OS_COUNTER':
-                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
-                    # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                self._shutdown()
-                return
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        
+        self._setup_coordination_queue(Q_COORD_TRIMMER, E_COORD_TRIMMER)
 
     def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
-
-        # self.logger.custom("ENTRE A RUN")
-
-        def process_message(ch, method, properties, raw_message):
-
-            # self.logger.custom("ENTRE A PROCESS_MESSAGE")
-            """Callback para procesar el mensaje de la cola."""
-            genre_games_batch = []
-            q1_games_batch = []
-            reviews_batch = []
-            droped_game_rows = 0
-            droped_reviews_rows = 0
-
-            msg = decode_msg(raw_message)
-            
-            if msg.type == MsgType.DATA:
-
-                # self.logger.custom("EL MENSAJE ERA UN DATA")
-                
-                if msg.dataset == Dataset.GAME:
-
-                    # self.logger.custom("EL MENSAJE ERA UN GAME")
-
-                    reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
-                    for values in reader:
-                        q1_game, genre_game = self._get_game(values)
-                        if q1_game:
-                            q1_games_batch.append(q1_game)
-                        if genre_game:
-                            genre_games_batch.append(genre_game)
-                        if not (q1_game and genre_game):
-                            droped_game_rows += 1
-
-                    # Enviar lotes por separado para cada tipo de juego
-                    if q1_games_batch:
-                        q1_games_msg = Q1Games(msg.id, q1_games_batch)
-                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
-                        q1_games_batch.clear()  # Limpia el batch después de enviar
-
-                    if genre_games_batch:
-                        genre_games_msg = GenreGames(msg.id, genre_games_batch)
-                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
-                        genre_games_batch.clear()
-                    
-                    # self.logger.custom("ENVIE TODOS LOS GAMES DEL MENSAJE")
-
-                elif msg.dataset == Dataset.REVIEW:
-
-                    # self.logger.custom("EL MENSAJE ERA UNA REVIEW")
-
-                    reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
-                    for values in reader:
-                        review = self._get_review(values)
-                        if review:
-                            reviews_batch.append(review)
-                        else:
-                            droped_reviews_rows += 1
-                    
-                    if reviews_batch:
-                        reviews_msg = Reviews(msg.id, reviews_batch)
-                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
-                        reviews_batch.clear()
-                    
-                    # self.logger.custom("ENVIE TODAS LAS REVIEWS")
-
-            elif msg.type == MsgType.FIN:
-
-                # self.logger.custom("EL MENSAJE ERA UN FIN")
-                
-                # Reenvía el mensaje FIN a otros nodos y cierra la conexión
-                self._middleware.channel.stop_consuming()
-
-                # self.logger.custom("DEJE DE CONSUMIR CON STOP_CONSUMING BABY")
-                
-                if self.n_nodes > 1:
-                    # self.logger.custom(f"COMO TENGO MÁS DE UN NODO {self.n_nodes} ENVIO COORDINATION")
-                    self._middleware.send_to_queue(E_COORD_TRIMMER, msg.encode(), key=f"coordination_{self.id}")
-                    # self.logger.custom("SALI DE ENVIAR EL COORDINATION")
-                else:
-                    # self.logger.custom(f"Solo soy UN nodo {self.id}, Propago el Fin normalmente")
-                    for node, n_nodes in self.n_next_nodes:
-                        for _ in range(n_nodes):
-                            if node == 'GENRE':
-                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
-                            if node == 'SCORE':
-                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                            if node == 'OS_COUNTER':
-                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
-
-                        # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
-
-            ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, process_message, auto_ack=False)
-            # self.logger.custom("SALI DE PROCESS_MESSAGE")
+            self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
+
             if self.n_nodes > 1:
-                # self.logger.custom(f"COMO TENGO MÁS DE UN NODO {self.n_nodes} ESCUCHO COORDINATION")
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
-                # self.logger.custom("SALI DE PROCESS_FIN")
+                self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
             else:
                 self.shutting_down = True
                 self._middleware.connection.close()
@@ -203,8 +56,97 @@ class Trimmer:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
                 self._shutdown()
 
+    def _process_fin(self, ch, method, properties, raw_message):
+        msg = decode_msg(raw_message)
+        if msg.type == MsgType.FIN:
+            self.fins_counter += 1
+            if self.fins_counter == self.n_nodes:
+                if self.id == 1:
+                    for node, n_nodes in self.n_next_nodes:
+                        for _ in range(n_nodes):
+                            if node == 'GENRE':
+                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                            if node == 'SCORE':
+                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                                self.logger.custom(f"envie FIN a SCORE \n")
+                            if node == 'OS_COUNTER':
+                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                self._shutdown()
+                return
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
-            
+    def _process_message(self, ch, method, properties, raw_message):
+
+        """CAllback para procesar mensajes de la cola"""
+
+        msg = decode_msg(raw_message)
+        
+        if msg.type == MsgType.DATA:
+            self._process_data_message(msg)
+
+        elif msg.type == MsgType.FIN:
+            self._process_fin_message(msg)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    def _process_data_message(self, msg):
+        """Procesa mensajes de tipo DATA, filtrando juegos y reseñas."""
+        genre_games_batch, q1_games_batch, reviews_batch = [], [], []
+        
+        if msg.dataset == Dataset.GAME:
+            self._process_game_data(msg, genre_games_batch, q1_games_batch)
+        elif msg.dataset == Dataset.REVIEW:
+            self._process_review_data(msg, reviews_batch)
+
+    def _process_game_data(self, msg, genre_games_batch, q1_games_batch):
+        """Procesa datos GAME y envía a las colas correspondientes."""
+        reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
+        for values in reader:
+            q1_game, genre_game = self._get_game(values)
+            if q1_game:
+                q1_games_batch.append(q1_game)
+            if genre_game:
+                genre_games_batch.append(genre_game)
+
+        # Enviar lotes por separado para cada tipo de juego
+        if q1_games_batch:
+            q1_games_msg = Q1Games(msg.id, q1_games_batch)
+            self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
+        if genre_games_batch:
+            genre_games_msg = GenreGames(msg.id, genre_games_batch)
+            self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
+
+    def _process_review_data(self, msg, reviews_batch):
+        """Procesa datos del dataset REVIEW y envía a la cola correspondiente."""
+        reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
+        for values in reader:
+            review = self._get_review(values)
+            if review:
+                reviews_batch.append(review)
+        
+        if reviews_batch:
+            reviews_msg = Reviews(msg.id, reviews_batch)
+            self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
+
+    def _process_fin_message(self, msg):
+        """Procesa mensajes de tipo FIN, coordinando con otros nodos si es necesario."""
+
+        # deja de consumir de la cola original para no obtener más FIN si hay
+        self._middleware.channel.stop_consuming()
+
+        if self.n_nodes > 1:
+            self._middleware.send_to_queue(E_COORD_TRIMMER, msg.encode(), key=f"coordination_{self.id}")
+        else:
+            for node, n_nodes in self.n_next_nodes:
+                for _ in range(n_nodes):
+                    if node == 'GENRE':
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                    elif node == 'SCORE':
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                    elif node == 'OS_COUNTER':
+                        self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
+
     def _get_game(self, values):
         """
         Crea una instancia de Q1Game y/o GenreGame a partir de los datos, descartando aquellas filas con valores vacíos.

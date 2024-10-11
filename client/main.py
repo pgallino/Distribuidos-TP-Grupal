@@ -22,6 +22,8 @@ def initialize_config():
     try:
         config_params["ip"] = os.getenv('SERVER_IP', config["DEFAULT"]["SERVER_IP"])
         config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
+        config_params["games"] = os.getenv('GAMES_DATASET', config["DEFAULT"]["GAMES_DATASET"])
+        config_params["reviews"] = os.getenv('REVIEWS_DATASET', config["DEFAULT"]["REVIEWS_DATASET"])
         config_params["batch"] = int(os.getenv('MAX_BATCH_SIZE', config["DEFAULT"]["MAX_BATCH_SIZE"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
@@ -36,9 +38,11 @@ def main():
     ip = config_params["ip"]
     port = config_params["port"]
     batch_size = config_params["batch"]
+    games = config_params["games"]
+    reviews = config_params["reviews"]
 
     # client = Client(int(os.environ['INSTANCE_ID']), (ip, port), batch_size)
-    client = Client(0, (ip, port), batch_size)
+    client = Client(0, (ip, port), batch_size, games, reviews)
     client.run()
 
 

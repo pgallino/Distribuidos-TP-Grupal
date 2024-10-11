@@ -159,7 +159,7 @@ class Q4Result(Result):
             offset += name_length
             count = struct.unpack('>I', data[offset:offset + 4])[0]
             offset += 4
-            negative_reviews.append((name, count))
+            negative_reviews.append((app_id, name, count))
         
         return Q4Result(id, negative_reviews)
 

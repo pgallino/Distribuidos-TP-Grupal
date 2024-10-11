@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 # Copiamos los archivos necesarios
 COPY joiners/q4_joiner/main.py /
 COPY joiners/q4_joiner/common /common
+COPY joiners/q4_joiner/config.ini /
 
 # Copiar la carpeta completa middleware
 COPY middleware /middleware

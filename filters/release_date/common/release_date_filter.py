@@ -1,98 +1,75 @@
 from messages.messages import MsgType, decode_msg
 from messages.games_msg import Q2Games
-import signal
-from middleware.middleware import Middleware
-import logging
-
+from node.node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_2010_GAMES, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
-class ReleaseDateFilter:
-
+class ReleaseDateFilter(Node):
     def __init__(self, id: int, n_nodes: int):
-
-        self.id = id
-        self.n_nodes = n_nodes
-
-        self.logger = logging.getLogger(__name__)
-        self.shutting_down = False
-
-        self._middleware = Middleware()
+        # Inicializa la clase base Node
+        super().__init__(id, n_nodes, n_next_nodes=[])
+        
+        # Configura las colas y los intercambios específicos para ReleaseDateFilter
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)
         self._middleware.declare_exchange(E_FROM_GENRE)
         self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES)
         self._middleware.declare_queue(Q_2010_GAMES)
 
-        if self.n_nodes > 1:
-            self.coordination_queue = Q_COORD_RELEASE_DATE + f"{self.id}"
-            self._middleware.declare_queue(self.coordination_queue)
-            self._middleware.declare_exchange(E_COORD_RELEASE_DATE)
-            for i in range(1, self.n_nodes + 1):
-                if i != self.id:
-                    routing_key = f"coordination_{i}"
-                    self._middleware.bind_queue(self.coordination_queue, E_COORD_RELEASE_DATE, routing_key)
-            self.fins_counter = 1
+        # Configura la cola de coordinación
+        self._setup_coordination_queue(Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE)
 
-    def _shutdown(self):
-        if self.shutting_down:
-            return
-        self.shutting_down = True
-        self._server_socket.close()
-        self._middleware.channel.stop_consuming()
-        self._middleware.channel.close()
-        self._middleware.connection.close()
+    def run(self):
+        """Inicia la recepción de mensajes de la cola."""
+        try:
+            self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, self._process_message, auto_ack=False)
+            if self.n_nodes > 1:
+                self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
+            else:
+                self.shutting_down = True
+                self._middleware.connection.close()
 
-    def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
-        self._shutdown()
+        except Exception as e:
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self._shutdown()
 
-    def process_fin(self, ch, method, properties, raw_message):
+    def _process_fin(self, ch, method, properties, raw_message):
+        """Procesa mensajes de tipo FIN y coordina con otros nodos."""
         msg = decode_msg(raw_message)
         if msg.type == MsgType.FIN:
             self.fins_counter += 1
             if self.fins_counter == self.n_nodes:
                 if self.id == 1:
-                # Reenvía el mensaje FIN y cierra la conexión
+                    # Envía mensaje FIN a la cola Q_2010_GAMES
                     self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self._shutdown()
                 return
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
+    def _process_message(self, ch, method, properties, raw_message):
+        """Callback para procesar mensajes de la cola Q_GENRE_RELEASE_DATE."""
+        msg = decode_msg(raw_message)
+        
+        if msg.type == MsgType.GAMES:
+            self._process_games_message(msg)
+        elif msg.type == MsgType.FIN:
+            self._process_fin_message(msg)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
-        def process_message(ch, method, properties, raw_message):
-            """Callback para procesar el mensaje de la cola."""
-            msg = decode_msg(raw_message)
-            batch = []
+    def _process_games_message(self, msg):
+        """Filtra y envía juegos lanzados en 2010 o después."""
+        batch = [game for game in msg.games if "201" in game.release_date]
+        if batch:
+            games_msg = Q2Games(msg.id, batch)
+            self._middleware.send_to_queue(Q_2010_GAMES, games_msg.encode())
 
-            if msg.type == MsgType.GAMES:
-                for game in msg.games:
-                    if "201" in game.release_date:
-                        batch.append(game)
+    def _process_fin_message(self, msg):
+        """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
+        self._middleware.channel.stop_consuming()
+        
+        if self.n_nodes > 1:
+            self._middleware.send_to_queue(E_COORD_RELEASE_DATE, msg.encode(), key=f"coordination_{self.id}")
+        else:
+            self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
 
-                # Crear y enviar el mensaje `Q2Games` si hay juegos en el batch
-                if batch:
-                    games_msg = Q2Games(msg.id, batch)
-                    self._middleware.send_to_queue(Q_2010_GAMES, games_msg.encode())
-                    
-            elif msg.type == MsgType.FIN:
-                # Reenvía el mensaje FIN y cierra la conexión
-                self._middleware.channel.stop_consuming()
-
-                if self.n_nodes > 1:
-                    self._middleware.send_to_queue(E_COORD_RELEASE_DATE, msg.encode(), key=f"coordination_{self.id}")
-                else:
-                    self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
-
-        try:
-            # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, process_message)
-            if self.n_nodes > 1:
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
-
-        except Exception as e:
-            if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                self._shutdown()

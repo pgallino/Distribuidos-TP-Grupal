@@ -1,134 +1,30 @@
-import signal
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.reviews_msg import BasicReview, BasicReviews, Score, TextReview, TextReviews
-from middleware.middleware import Middleware
-import logging
-
+from node.node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_TRIMMER_FILTERS, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
 
-class ScoreFilter:
 
+class ScoreFilter(Node):
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
-
-        self.id = id
-        self.n_nodes = n_nodes
-        self.n_next_nodes = n_next_nodes
-        self.logger = logging.getLogger(__name__)
-        self.shutting_down = False
-
-        self._middleware = Middleware()
+        # Inicializa la clase base Node
+        super().__init__(id, n_nodes, n_next_nodes)
+        
+        # Configura las colas y los intercambios específicos para ScoreFilter
         self._middleware.declare_queue(Q_TRIMMER_SCORE_FILTER)
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
         self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_TRIMMER_FILTERS, K_REVIEW)
         self._middleware.declare_exchange(E_FROM_SCORE)
 
-        if self.n_nodes > 1:
-            self.coordination_queue = Q_COORD_SCORE + f"{self.id}"
-            self._middleware.declare_queue(self.coordination_queue)
-            self._middleware.declare_exchange(E_COORD_SCORE)
-            for i in range(1, self.n_nodes + 1): # arranco en el id 1 y sigo hasta el numero de nodos
-                if i != self.id:
-                    self._middleware.bind_queue(self.coordination_queue, E_COORD_SCORE, f"coordination_{i}")
-            self.fins_counter = 1
-
-    def _shutdown(self):
-        if self.shutting_down:
-            return
-        self.shutting_down = True
-        self._server_socket.close()
-        self._middleware.channel.stop_consuming()
-        self._middleware.channel.close()
-        self._middleware.connection.close()
-
-    def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
-        self._shutdown()
-
-    def process_fin(self, ch, method, properties, raw_message):
-        msg = decode_msg(raw_message)
-        # self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
-        if msg.type == MsgType.FIN:
-            # self.logger.custom(f"Nodo {self.id} era un FIN")
-            self.fins_counter += 1
-            if self.fins_counter == self.n_nodes:
-                if self.id == 1:
-                    # Reenvía el mensaje FIN y cierra la conexión
-                    # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
-                    for node, n_nodes in self.n_next_nodes:
-                        for _ in range(n_nodes):
-                            if node == 'JOINER_Q3':
-                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                            if node == 'ENGLISH':
-                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
-                            if node == 'JOINER_Q5':
-                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
-                        # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                self.shutting_down = True
-                self._middleware.connection.close()
-                return
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        # Configura la cola de coordinación
+        self._setup_coordination_queue(Q_COORD_SCORE, E_COORD_SCORE)
 
     def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
-
-        def process_message(ch, method, properties, raw_message):
-            """Callback para procesar el mensaje de la cola."""
-            msg = decode_msg(raw_message)
-
-            if msg.type == MsgType.REVIEWS:
-                negative_textreviews = []
-                positive_reviews = []
-                negative_reviews = []
-
-                for review in msg.reviews:
-                    if review.score == Score.POSITIVE:
-                        basic_review = BasicReview(review.app_id)
-                        positive_reviews.append(basic_review)
-                    else:
-                        text_review = TextReview(review.app_id, review.text)
-                        basic_review = BasicReview(review.app_id)
-                        negative_textreviews.append(text_review)
-                        negative_reviews.append(basic_review)
-
-                if positive_reviews:
-                    reviews_msg = BasicReviews(msg.id, positive_reviews)
-                    self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_POSITIVE)
-
-                if negative_textreviews:
-                    reviews_msg = TextReviews(msg.id, negative_textreviews)
-                    self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE_TEXT)
-
-                if negative_reviews:
-                    reviews_msg = BasicReviews(msg.id, negative_reviews)
-                    self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)
-
-            elif msg.type == MsgType.FIN:
-                # Reenvía el mensaje FIN a otros nodos y cierra la conexión
-                self._middleware.channel.stop_consuming()
-                if self.n_nodes > 1:
-                    self._middleware.send_to_queue(E_COORD_SCORE, msg.encode(), key=f"coordination_{self.id}")
-                else:
-
-                    for node, n_nodes in self.n_next_nodes:
-                        for _ in range(n_nodes):
-                            if node == 'JOINER_Q3':
-                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                            if node == 'ENGLISH':
-                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
-                            if node == 'JOINER_Q5':
-                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
-
-
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-
+        """Inicia la recepción de mensajes de la cola."""
         try:
-            # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, process_message, auto_ack=False)
+            self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+                self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
             else:
                 self.shutting_down = True
                 self._middleware.connection.close()
@@ -136,3 +32,75 @@ class ScoreFilter:
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self._shutdown()
+
+    def _process_fin(self, ch, method, properties, raw_message):
+        """Procesa mensajes de tipo FIN y coordina con otros nodos."""
+        msg = decode_msg(raw_message)
+        if msg.type == MsgType.FIN:
+            self.fins_counter += 1
+            if self.fins_counter == self.n_nodes:
+                if self.id == 1:
+                    for node, n_nodes in self.n_next_nodes:
+                        for _ in range(n_nodes):
+                            if node == 'JOINER_Q3':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
+                            elif node == 'ENGLISH':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
+                            elif node == 'JOINER_Q5':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                self._shutdown()
+                return
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    def _process_message(self, ch, method, properties, raw_message):
+        """Callback para procesar mensajes de la cola."""
+        msg = decode_msg(raw_message)
+        
+        if msg.type == MsgType.REVIEWS:
+            self._process_reviews_message(msg)
+        elif msg.type == MsgType.FIN:
+            self._process_fin_message(msg)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
+
+    def _process_reviews_message(self, msg):
+        """Procesa mensajes de tipo REVIEWS y distribuye según el score."""
+        negative_textreviews, positive_reviews, negative_reviews = [], [], []
+
+        for review in msg.reviews:
+            if review.score == Score.POSITIVE:
+                positive_reviews.append(BasicReview(review.app_id))
+            else:
+                negative_textreviews.append(TextReview(review.app_id, review.text))
+                negative_reviews.append(BasicReview(review.app_id))
+
+        if positive_reviews:
+            reviews_msg = BasicReviews(msg.id, positive_reviews)
+            self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_POSITIVE)
+
+        if negative_textreviews:
+            reviews_msg = TextReviews(msg.id, negative_textreviews)
+            self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE_TEXT)
+
+        if negative_reviews:
+            reviews_msg = BasicReviews(msg.id, negative_reviews)
+            self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)
+
+    def _process_fin_message(self, msg):
+        """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
+        self._middleware.channel.stop_consuming()
+        
+        if self.n_nodes > 1:
+            key=f"coordination_{self.id}"
+            self._middleware.send_to_queue(E_COORD_SCORE, msg.encode(), key=key)
+        else:
+            for node, n_nodes in self.n_next_nodes:
+                for _ in range(n_nodes):
+                    if node == 'JOINER_Q3':
+                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
+                    elif node == 'ENGLISH':
+                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
+                    elif node == 'JOINER_Q5':
+                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)

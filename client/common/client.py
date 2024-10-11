@@ -10,13 +10,15 @@ from utils.utils import recv_msg
 
 class Client:
 
-    def __init__(self, id: int, server_addr: tuple[str, id], max_batch_size):
+    def __init__(self, id: int, server_addr: tuple[str, id], max_batch_size, games, reviews):
         self.id = id
         self.server_addr = server_addr
         self.max_batch_size = max_batch_size * 1024
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.games = games
+        self.reviews = reviews
     
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -28,8 +30,8 @@ class Client:
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
-            self.send_dataset("/datasets/games.csv", self.client_socket, Dataset(Dataset.GAME))
-            self.send_dataset("/datasets/reviews.csv", self.client_socket, Dataset(Dataset.REVIEW))
+            self.send_dataset(self.games, self.client_socket, Dataset(Dataset.GAME))
+            self.send_dataset(self.reviews, self.client_socket, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
             fin_msg = Fin(self.id)  # Creamos el mensaje Fin con ID 1
@@ -62,7 +64,7 @@ class Client:
                     # Envía el batch actual y reinicia
                     data = Data(self.id, batch, dataset)  # Usa el batch completo
                     sock.sendall(data.encode())  # Envía el batch codificado
-                    self.logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
+                    # self.logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
                     # Reinicia el batch y el contador de tamaño
                     batch = []

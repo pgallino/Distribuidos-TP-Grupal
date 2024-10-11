@@ -7,12 +7,11 @@ import logging
 
 from utils.constants import E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 
-REVIEWS_NUMBER = 5000
-
 class Q4Joiner:
-    def __init__(self):
+    def __init__(self, n_reviews):
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
+        self.n_reviews = n_reviews
         
         self._middleware = Middleware()
         self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
@@ -54,7 +53,7 @@ class Q4Joiner:
                 [
                     (app_id, self.games[app_id].name, count)
                     for app_id, count in self.negative_review_counts.items()
-                    if count > REVIEWS_NUMBER
+                    if count > self.n_reviews
                 ],
                 key=lambda x: x[0],  # Ordenar por app_id
                 reverse=True  # Orden descendente
