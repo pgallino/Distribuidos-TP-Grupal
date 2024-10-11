@@ -6,7 +6,7 @@ import logging
 import langid
 import time
 
-from utils.constants import E_COORD_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_SCORE_ENGLISH
+from utils.constants import E_COORD_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH, Q_SCORE_ENGLISH
 
 class EnglishFilter:
 
@@ -18,11 +18,8 @@ class EnglishFilter:
         self.shutting_down = False
         
         self._middleware = Middleware()
+        self._middleware.declare_queue(Q_Q4_JOINER_ENGLISH)
         self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
-        self._middleware.declare_queue(Q_SCORE_ENGLISH)
-        self._middleware.declare_exchange(E_FROM_SCORE)
-        self._middleware.bind_queue(Q_SCORE_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT)
-
         
         if self.n_nodes > 1:
             self.coordination_queue = Q_COORD_ENGLISH + f"{self.id}"
@@ -111,7 +108,7 @@ class EnglishFilter:
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_SCORE_ENGLISH, process_message, auto_ack=False)
+            self._middleware.receive_from_queue(Q_Q4_JOINER_ENGLISH, process_message, auto_ack=False)
             if self.n_nodes > 1:
                 self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
             else:

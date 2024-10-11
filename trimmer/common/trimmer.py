@@ -149,7 +149,7 @@ class Trimmer:
                         if review:
                             reviews_batch.append(review)
                         else:
-                            droped_reviews_rows += 1
+                            droped_reviews_rows += 1 # para ver que cuantas dropea, es para debuguear
                     
                     if reviews_batch:
                         reviews_msg = Reviews(msg.id, reviews_batch)
