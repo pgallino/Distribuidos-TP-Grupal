@@ -5,11 +5,7 @@ from messages.results_msg import Q4Result
 from middleware.middleware import Middleware
 import logging
 
-Q_ENGLISH_Q4_JOINER = 'english-q4_joiner'
-Q_GENRE_Q4_JOINER = 'genre-joiner_q4'
-Q_QUERY_RESULT_4 = "query_result_4"
-E_FROM_GENRE = 'from_genre'
-K_SHOOTER_GAMES = 'shooter'
+from utils.constants import E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 
 REVIEWS_NUMBER = 5000
 
@@ -54,11 +50,16 @@ class Q4Joiner:
                     self.negative_review_counts[review.app_id] += 1
         elif msg.type == MsgType.FIN:
             # Filtrar juegos de acción con más de 5,000 reseñas negativas en inglés
-            negative_reviews = [
-                (self.games[app_id].name, count)
-                for app_id, count in self.negative_review_counts.items()
-                if count > REVIEWS_NUMBER
-            ]
+            negative_reviews = sorted(
+                [
+                    (app_id, self.games[app_id].name, count)
+                    for app_id, count in self.negative_review_counts.items()
+                    if count > REVIEWS_NUMBER
+                ],
+                key=lambda x: x[0],  # Ordenar por app_id
+                reverse=True  # Orden descendente
+            )[:25]  # Tomar los 25 primeros
+
 
             # Crear y enviar el mensaje Q4Result
             result_message = Q4Result(id=msg.id, negative_reviews=negative_reviews)

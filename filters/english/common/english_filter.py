@@ -6,12 +6,7 @@ import logging
 import langid
 import time
 
-Q_SCORE_ENGLISH = "score_filter-english_filter"
-E_FROM_SCORE = 'from_score'
-E_COORD_ENGLISH = 'from-coord-english'
-K_NEGATIVE_TEXT = 'negative_text'
-Q_ENGLISH_Q4_JOINER = 'english-q4_joiner'
-Q_COORD_ENGLISH = 'coord-english'
+from utils.constants import E_COORD_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_SCORE_ENGLISH
 
 class EnglishFilter:
 

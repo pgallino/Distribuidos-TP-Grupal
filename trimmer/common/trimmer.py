@@ -9,6 +9,8 @@ import logging
 import csv
 import sys
 
+from utils.constants import E_COORD_TRIMMER, E_TRIMMER_FILTERS, K_GENREGAME, K_Q1GAME, K_REVIEW, Q_COORD_TRIMMER, Q_GATEWAY_TRIMMER
+
 GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
                     'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 
                     'Supported languages', 'Full audio languages', 'Reviews', 'Header image', 
@@ -22,26 +24,8 @@ GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak C
 
 REVIEW_FIELD_NAMES = ['app_id','app_name','review_text','review_score','review_votes']
 
-Q_GATEWAY_TRIMMER = 'gateway-trimmer'
-E_TRIMMER_FILTERS = 'trimmer-filters'
-E_COORD_TRIMMER = 'from-coord-trimmer'
-K_Q1GAME = 'q1game'
-K_GENREGAME = 'genregame'
-K_REVIEW = 'review'
-Q_COORD_TRIMMER = 'coord-trimmer'
-
 # Aumenta el límite del tamaño de campo
 csv.field_size_limit(sys.maxsize)  # Esto establece el límite en el tamaño máximo permitido por el sistema
-
-
-#### ESTANDAR NOMBRE COLAS ####
-# Q_ORIGEN_DESTINO = "origen-destino"
-
-#### ESTANDAR NOMBRE EXCHANGES ####
-# E_FROM_ORIGEN = "from_origen"
-
-#### ESTANDAR NOMBRE CLAVES ####
-# K_GAME = "game"
 
 def get_genres(genres_string: str):
     values = genres_string.split(',')

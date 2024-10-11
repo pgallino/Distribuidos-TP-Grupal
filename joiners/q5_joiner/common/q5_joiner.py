@@ -5,14 +5,7 @@ from messages.results_msg import Q5Result
 from middleware.middleware import Middleware
 import logging
 import numpy as np
-
-Q_GENRE_Q5_JOINER = "genre-q5-joiner"
-Q_SCORE_Q5_JOINER = "score-q5-joiner"
-Q_QUERY_RESULT_5 = "query_result_5"
-E_FROM_GENRE = "from_genre"
-E_FROM_SCORE = "from_score"
-K_SHOOTER_GAMES = "shooter"
-K_NEGATIVE = 'negative'
+from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
 class Q5Joiner:
     def __init__(self):

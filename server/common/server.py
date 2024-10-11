@@ -5,14 +5,8 @@ from middleware.middleware import Middleware
 import socket
 import logging
 import signal
+from utils.constants import Q_GATEWAY_TRIMMER, Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
 from utils.utils import recv_msg
-
-Q_GATEWAY_TRIMMER = 'gateway-trimmer'
-Q_QUERY_RESULT_1 = "query_result_1"
-Q_QUERY_RESULT_2 = "query_result_2"
-Q_QUERY_RESULT_3 = "query_result_3"
-Q_QUERY_RESULT_4 = "query_result_4"
-Q_QUERY_RESULT_5 = "query_result_5"
 
 class Server:
 
@@ -153,7 +147,7 @@ class Server:
                     )
                     self.client_sock.sendall(msg.encode())
                 elif msg.result_type == QueryNumber.Q4:
-                    negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for name, count in msg.negative_reviews)
+                    negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.negative_reviews)
                     self.logger.custom(
                         f"Received Result from {queue_name}: Q4: Action games with more than 5,000 negative reviews in English:\n"
                         f"{negative_reviews_str}\n"

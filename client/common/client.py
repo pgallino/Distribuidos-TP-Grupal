@@ -31,7 +31,7 @@ class Client:
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
             self.send_dataset("/datasets/games-reducido.csv", self.client_socket, Dataset(Dataset.GAME))
-            self.send_dataset("/datasets/reviews-reducido.csv", self.client_socket, Dataset(Dataset.REVIEW))
+            self.send_dataset("/datasets/reviews-reducido-mitad.csv", self.client_socket, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
             fin_msg = Fin(self.id)  # Creamos el mensaje Fin con ID 1
@@ -162,7 +162,7 @@ class Client:
 
     def process_q4_result(self, msg):
         """Processes and prints Q4 result."""
-        negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for name, count in msg.negative_reviews)
+        negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.negative_reviews)
         output = (
             f"Q4: Action games with more than 5,000 negative reviews in English:\n"
             f"{negative_reviews_str}\n"

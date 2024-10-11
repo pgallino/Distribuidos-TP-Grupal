@@ -127,7 +127,7 @@ class Q3Result(Result):
 
 
 class Q4Result(Result):
-    def __init__(self, id: int, negative_reviews: list[tuple[str, int]]):
+    def __init__(self, id: int, negative_reviews: list[tuple[int, str, int]]):
         super().__init__(id)
         self.result_type = QueryNumber.Q4
         self.negative_reviews = negative_reviews
@@ -135,10 +135,10 @@ class Q4Result(Result):
     def encode(self) -> bytes:
         # Empaqueta el tipo de mensaje, result_type, id y la lista de juegos con sus reseñas negativas
         body = struct.pack('>BBB', MsgType.RESULT.value, self.result_type.value, self.id)
-        for name, count in self.negative_reviews:
+        for app_id, name, count in self.negative_reviews:
             name_encoded = name.encode()
             name_length = len(name_encoded)
-            body += struct.pack(f'>H{name_length}sI', name_length, name_encoded, count)
+            body += struct.pack(f'>IH{name_length}sI', app_id, name_length, name_encoded, count)
         
         total_length = len(body)
         return struct.pack('>I', total_length) + body
@@ -151,6 +151,8 @@ class Q4Result(Result):
         negative_reviews = []
         
         while offset < len(data):
+            app_id = struct.unpack('>I', data[offset:offset + 4])[0]
+            offset += 4
             name_length = struct.unpack('>H', data[offset:offset + 2])[0]
             offset += 2
             name = data[offset:offset + name_length].decode()

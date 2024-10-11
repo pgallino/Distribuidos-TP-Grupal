@@ -5,10 +5,7 @@ from middleware.middleware import Middleware
 import logging
 import traceback
 
-Q_TRIMMER_OS_COUNTER = "trimmer-os_counter"
-Q_QUERY_RESULT_1 = "query_result_1"
-E_TRIMMER_FILTERS = 'trimmer-filters'
-K_Q1GAME = 'q1game'
+from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
 
 class OsCounter:
 

@@ -5,16 +5,7 @@ from messages.reviews_msg import BasicReview, BasicReviews, Score, TextReview, T
 from middleware.middleware import Middleware
 import logging
 
-Q_TRIMMER_SCORE_FILTER = "trimmer-score_filter"
-E_TRIMMER_FILTERS = 'trimmer-filters'
-K_REVIEW = 'review'
-Q_SCORE_ENGLISH = "score_filter-english_filter"
-E_FROM_SCORE = 'from_score'
-E_COORD_SCORE = 'from-coord-score'
-K_NEGATIVE = 'negative'
-K_NEGATIVE_TEXT = 'negative_text'
-K_POSITIVE = 'positive'
-Q_COORD_SCORE = 'coord-score'
+from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_TRIMMER_FILTERS, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
 
 class ScoreFilter:
 

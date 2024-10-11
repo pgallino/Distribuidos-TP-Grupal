@@ -5,13 +5,7 @@ from messages.results_msg import Q3Result
 from middleware.middleware import Middleware
 import logging
 
-Q_GENRE_Q3_JOINER = "genre-q3-joiner"
-Q_SCORE_Q3_JOINER = "score-q3-joiner"
-Q_QUERY_RESULT_3 = "query_result_3"
-E_FROM_GENRE = "from_genre"
-E_FROM_SCORE = "from_score"
-K_INDIE_BASICGAMES = "indiebasic"
-K_POSITIVE = 'positive'
+from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 
 class Q3Joiner:
     def __init__(self):

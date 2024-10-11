@@ -6,8 +6,7 @@ from middleware.middleware import Middleware
 import logging
 import heapq
 
-Q_2010_GAMES = '2010_games'
-Q_QUERY_RESULT_2 = "query_result_2"
+from utils.constants import Q_2010_GAMES, Q_QUERY_RESULT_2
 
 AVG_PLAYTIME = 0
 

@@ -4,12 +4,7 @@ import signal
 from middleware.middleware import Middleware
 import logging
 
-Q_GENRE_RELEASE_DATE = "genre-release_date"
-E_FROM_GENRE = 'from_genre'
-E_COORD_RELEASE_DATE = 'from-coord-release_date'
-K_INDIE_Q2GAMES = 'indieq2'
-Q_2010_GAMES = '2010_games'
-Q_COORD_RELEASE_DATE = 'coord-release_date'
+from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_2010_GAMES, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
 class ReleaseDateFilter:
 

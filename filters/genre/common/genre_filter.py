@@ -5,15 +5,7 @@ from typing import List, Tuple
 from middleware.middleware import Middleware
 import logging
 
-Q_TRIMMER_GENRE_FILTER = "trimmer-genre_filter"
-E_FROM_TRIMMER = 'trimmer-filters'
-K_GENREGAME = 'genregame'
-E_FROM_GENRE = 'from_genre'
-E_COORD_GENRE = 'from-coord-genre'
-K_INDIE_Q2GAMES = 'indieq2'
-K_INDIE_BASICGAMES = 'indiebasic'
-K_SHOOTER_GAMES = 'shooter'
-Q_COORD_GENRE = 'coord-genre'
+from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
 
 class GenreFilter:
 
