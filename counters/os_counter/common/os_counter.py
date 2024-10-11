@@ -29,6 +29,7 @@ class OsCounter:
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
         self.shutting_down = True
+        self._middleware.channel.stop_consuming()
         self._middleware.connection.close()
 
     def run(self):

@@ -40,11 +40,19 @@ class ScoreFilter:
                     self._middleware.bind_queue(self.coordination_queue, E_COORD_SCORE, f"coordination_{i}")
             self.fins_counter = 1
 
+    def _shutdown(self):
+        if self.shutting_down:
+            return
+        self.shutting_down = True
+        self._server_socket.close()
+        self._middleware.channel.stop_consuming()
+        self._middleware.channel.close()
+        self._middleware.connection.close()
+
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
-        self.shutting_down = True
-        self._middleware.connection.close()
+        self._shutdown()
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
@@ -52,18 +60,19 @@ class ScoreFilter:
         if msg.type == MsgType.FIN:
             self.logger.custom(f"Nodo {self.id} era un FIN")
             self.fins_counter += 1
-            if self.id == 1 and self.fins_counter == self.n_nodes:
-                # Reenvía el mensaje FIN y cierra la conexión
-                self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
-                for node, n_nodes in self.n_next_nodes:
-                    for _ in range(n_nodes):
-                        if node == 'JOINER_Q3':
-                            self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                        if node == 'ENGLISH':
-                            self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
-                        if node == 'JOINER_Q5':
-                            self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
-                    self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+            if self.fins_counter == self.n_nodes:
+                if self.id == 1:
+                    # Reenvía el mensaje FIN y cierra la conexión
+                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    for node, n_nodes in self.n_next_nodes:
+                        for _ in range(n_nodes):
+                            if node == 'JOINER_Q3':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
+                            if node == 'ENGLISH':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
+                            if node == 'JOINER_Q5':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
+                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.shutting_down = True
                 self._middleware.connection.close()

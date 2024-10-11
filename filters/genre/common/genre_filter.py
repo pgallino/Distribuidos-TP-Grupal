@@ -39,11 +39,19 @@ class GenreFilter:
                     self._middleware.bind_queue(self.coordination_queue, E_COORD_GENRE, f"coordination_{i}")
             self.fins_counter = 1
 
+    def _shutdown(self):
+        if self.shutting_down:
+            return
+        self.shutting_down = True
+        self._server_socket.close()
+        self._middleware.channel.stop_consuming()
+        self._middleware.channel.close()
+        self._middleware.connection.close()
+
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
-        self.shutting_down = True
-        self._middleware.connection.close()
+        self._shutdown()
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
@@ -51,21 +59,21 @@ class GenreFilter:
         if msg.type == MsgType.FIN:
             self.logger.custom(f"Nodo {self.id} era un FIN")
             self.fins_counter += 1
-            if self.id == 1 and self.fins_counter == self.n_nodes:
-                # Reenvía el mensaje FIN y cierra la conexión
-                self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
-                for node, n_nodes in self.n_next_nodes:
-                    for _ in range(n_nodes):
-                        if node == 'RELEASE_DATE':
-                            self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
-                        if node == 'JOINER_Q3':
-                            self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
-                        if node == 'SHOOTER':
-                            self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
-                    self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+            if self.fins_counter == self.n_nodes:
+                if self.id == 1:
+                    # Reenvía el mensaje FIN y cierra la conexión
+                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    for node, n_nodes in self.n_next_nodes:
+                        for _ in range(n_nodes):
+                            if node == 'RELEASE_DATE':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
+                            if node == 'JOINER_Q3':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
+                            if node == 'SHOOTER':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                self.shutting_down = True
-                self._middleware.connection.close()
+                self._shutdown()
                 return
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -137,8 +145,7 @@ class GenreFilter:
             if self.n_nodes > 1:
                 self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
             else:
-                self.shutting_down = True
-                self._middleware.connection.close()
+                self._shutdown()
             
         except Exception as e:
             if not self.shutting_down:

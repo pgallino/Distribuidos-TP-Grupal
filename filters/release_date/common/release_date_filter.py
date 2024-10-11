@@ -36,22 +36,30 @@ class ReleaseDateFilter:
                     self._middleware.bind_queue(self.coordination_queue, E_COORD_RELEASE_DATE, routing_key)
             self.fins_counter = 1
 
+    def _shutdown(self):
+        if self.shutting_down:
+            return
+        self.shutting_down = True
+        self._server_socket.close()
+        self._middleware.channel.stop_consuming()
+        self._middleware.channel.close()
+        self._middleware.connection.close()
+
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
-        self.shutting_down = True
-        self._middleware.connection.close()
+        self._shutdown()
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
         if msg.type == MsgType.FIN:
             self.fins_counter += 1
-            if self.id == 1 and self.fins_counter == self.n_nodes:
+            if self.fins_counter == self.n_nodes:
+                if self.id == 1:
                 # Reenvía el mensaje FIN y cierra la conexión
-                self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
+                    self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                self.shutting_down = True
-                self._middleware.connection.close()
+                self._shutdown()
                 return
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -92,3 +100,4 @@ class ReleaseDateFilter:
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self._shutdown()

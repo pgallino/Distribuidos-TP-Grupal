@@ -67,8 +67,8 @@ class Client:
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
-            self.send_dataset("/datasets/reduced_games.csv", self.client_socket, Dataset(Dataset.GAME))
-            self.send_dataset("/datasets/reduced_reviews.csv", self.client_socket, Dataset(Dataset.REVIEW))
+            self.send_dataset("/datasets/games-reducido.csv", self.client_socket, Dataset(Dataset.GAME))
+            self.send_dataset("/datasets/reviews-reducido.csv", self.client_socket, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
             fin_msg = Fin(self.id)  # Creamos el mensaje Fin con ID 1

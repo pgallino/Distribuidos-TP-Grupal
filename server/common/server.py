@@ -39,8 +39,12 @@ class Server:
         self._shutdown()
     
     def _shutdown(self):
+        if self.shutting_down:
+            return
         self.shutting_down = True
         self._server_socket.close()
+        self._middleware.channel.stop_consuming()
+        self._middleware.channel.close()
         self._middleware.connection.close()
 
     def run(self):
@@ -55,6 +59,7 @@ class Server:
             except OSError as error:
                 if not self.shutting_down:
                     logging.error(f"Server error: {error}")
+                    self._shutdown()
                 break
 
     def _accept_new_connection(self):
@@ -87,13 +92,16 @@ class Server:
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
             if not self.shutting_down:
                 self.logger.custom(f"Connection closed or invalid message received: {e}")
-            return
+                self._shutdown()
+                return
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         except Exception as e:
             self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self._shutdown()
+                return
         finally:
             self.logger.custom(f"action: ending_connection | result: success")
 
@@ -167,8 +175,10 @@ class Server:
         except ValueError as e:
             if not self.shutting_down:
                 self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
+                self._shutdown()
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"Failed to process message from {method.routing_key}: {e}")
+                self._shutdown()
 
 

@@ -5,6 +5,7 @@ from middleware.middleware import Middleware
 import logging
 import csv
 import sys
+import time
 
 GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
                     'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 
@@ -50,7 +51,6 @@ class Trimmer:
         self.id = id
         self.n_nodes = n_nodes
         self.n_next_nodes = n_next_nodes
-        print(f"{id} -- {n_nodes} -- {n_next_nodes}")
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
         
@@ -69,12 +69,17 @@ class Trimmer:
             self.fins_counter = 1
 
     def _shutdown(self):
+        if self.shutting_down:
+            return
         self.shutting_down = True
+        self._server_socket.close()
+        self._middleware.channel.stop_consuming()
+        self._middleware.channel.close()
         self._middleware.connection.close()
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
-        # self.logger.custom("Received SIGTERM, shutting down server.")
+        self.logger.custom("Received SIGTERM, shutting down server.")
         self._shutdown()
 
     def process_fin(self, ch, method, properties, raw_message):
@@ -82,21 +87,21 @@ class Trimmer:
         msg = decode_msg(raw_message)
         if msg.type == MsgType.FIN:
             self.fins_counter += 1
-            if self.id == 1 and self.fins_counter == self.n_nodes:
-                # Reenvía el mensaje FIN y cierra la conexión
-                # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
-                for node, n_nodes in self.n_next_nodes:
-                    for _ in range(n_nodes):
-                        if node == 'GENRE':
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
-                        if node == 'SCORE':
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                        if node == 'OS_COUNTER':
-                            self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
+            if self.fins_counter == self.n_nodes:
+                if self.id == 1:
+                    # Reenvía el mensaje FIN y cierra la conexión
+                    # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    for node, n_nodes in self.n_next_nodes:
+                        for _ in range(n_nodes):
+                            if node == 'GENRE':
+                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                            if node == 'SCORE':
+                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                            if node == 'OS_COUNTER':
+                                self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
                     # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                self.shutting_down = True
-                self._middleware.connection.close()
+                self._shutdown()
                 return
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -210,6 +215,7 @@ class Trimmer:
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self._shutdown()
 
 
             
