@@ -84,7 +84,6 @@ class ReleaseDateFilter:
                 if self.n_nodes > 1:
                     self._middleware.send_to_queue(E_COORD_RELEASE_DATE, msg.encode(), key=f"coordination_{self.id}")
                 else:
-                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
                     self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
 
         try:

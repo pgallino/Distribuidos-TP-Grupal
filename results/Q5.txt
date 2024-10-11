@@ -1,11 +1,11 @@
 Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):
-- Left 4 Dead: 111 negative reviews
-- Portal 2: 212 negative reviews
-- EVE Online: 249 negative reviews
-- Mirror's Edge™: 379 negative reviews
-- F.E.A.R. 3: 330 negative reviews
-- Hydrophobia: Prophecy: 197 negative reviews
-- Guardians of Middle-earth: 192 negative reviews
-- Awesomenauts - the 2D moba: 599 negative reviews
-- Dishonored: 250 negative reviews
-- Sanctum 2: 197 negative reviews
+- Counter-Strike: 388 negative reviews
+- Counter-Strike: Source: 894 negative reviews
+- Half-Life: Source: 333 negative reviews
+- Half-Life 2: Lost Coast: 373 negative reviews
+- Team Fortress 2: 1483 negative reviews
+- Left 4 Dead 2: 3797 negative reviews
+- Dota 2: 10610 negative reviews
+- Portal 2: 476 negative reviews
+- Killing Floor: 847 negative reviews
+- The Ship: Murder Party: 386 negative reviews

@@ -111,7 +111,7 @@ class ScoreFilter:
                 if self.n_nodes > 1:
                     self._middleware.send_to_queue(E_COORD_SCORE, msg.encode(), key=f"coordination_{self.id}")
                 else:
-                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+
                     for node, n_nodes in self.n_next_nodes:
                         for _ in range(n_nodes):
                             if node == 'JOINER_Q3':
@@ -120,7 +120,7 @@ class ScoreFilter:
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
                             if node == 'JOINER_Q5':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
-                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 

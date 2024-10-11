@@ -7,15 +7,13 @@ from messages.messages import Data, Dataset, Fin, Handshake, MsgType, decode_msg
 from messages.results_msg import QueryNumber
 from utils.utils import recv_msg
 
-BATCH_SIZE_BYTES = 8192  # 8 KB
-
-
 
 class Client:
 
-    def __init__(self, id: int, server_addr: tuple[str, id]):
+    def __init__(self, id: int, server_addr: tuple[str, id], max_batch_size):
         self.id = id
         self.server_addr = server_addr
+        self.max_batch_size = max_batch_size * 1024
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -30,8 +28,8 @@ class Client:
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
-            self.send_dataset("/datasets/games-reducido.csv", self.client_socket, Dataset(Dataset.GAME))
-            self.send_dataset("/datasets/reviews-reducido-mitad.csv", self.client_socket, Dataset(Dataset.REVIEW))
+            self.send_dataset("/datasets/games.csv", self.client_socket, Dataset(Dataset.GAME))
+            self.send_dataset("/datasets/reviews.csv", self.client_socket, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
             fin_msg = Fin(self.id)  # Creamos el mensaje Fin con ID 1
@@ -48,28 +46,31 @@ class Client:
             self.client_socket.close()
 
     def send_dataset(self, fname, sock, dataset):
-        # chequear si existe el archivo
+        # Chequear si existe el archivo
         with open(fname, mode='r') as file:
             self.logger.custom(f"action: send_handshake | result: success | dataset: {dataset}")
-            next(file) # para saltearse el header
+            next(file)  # Para saltearse el header
             batch = []
             current_batch_size = 0  # Tamaño actual del batch en bytes
 
             for line in file:
                 line = line.strip()
                 line_size = len(line.encode('utf-8'))  # Tamaño de la línea en bytes
-                batch.append(line)
-                current_batch_size += line_size  # Suma el tamaño de la línea al batch
-                
-                # Cuando el batch alcanza o supera los 8 KB, envíalo
-                if current_batch_size >= BATCH_SIZE_BYTES:
+
+                # Verifica si agregar esta línea excedería el tamaño del batch
+                if current_batch_size + line_size > self.max_batch_size:
+                    # Envía el batch actual y reinicia
                     data = Data(self.id, batch, dataset)  # Usa el batch completo
                     sock.sendall(data.encode())  # Envía el batch codificado
-                    # self.logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
+                    self.logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
                     # Reinicia el batch y el contador de tamaño
                     batch = []
                     current_batch_size = 0
+
+                # Agrega la línea actual al batch y actualiza el tamaño
+                batch.append(line)
+                current_batch_size += line_size
 
             # Enviar el último batch si contiene líneas restantes
             if batch:

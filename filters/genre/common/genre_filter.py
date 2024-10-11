@@ -112,16 +112,12 @@ class GenreFilter:
 
             elif msg.type == MsgType.FIN:
 
-                # self.logger.custom("ENTRE AL FIN\n")
                 self._middleware.channel.stop_consuming()
-                # self.logger.custom("DEJE DE CONSUMIR FINS DE LA COLA ORIGINAL\n")
                 # Reenvía el mensaje FIN a otros nodos y finaliza
                 if self.n_nodes > 1:
                     key = f"coordination_{self.id}"
-                    # self.logger.custom(f"envie fin con la {key}")
                     self._middleware.send_to_queue(E_COORD_GENRE, msg.encode(), key=key)
                 else:
-                    self.logger.custom(f"Soy un solo nodito {self.id}, mando los FINs")
                     for node, n_nodes in self.n_next_nodes:
                         for _ in range(n_nodes):
                             if node == 'RELEASE_DATE':
@@ -130,7 +126,6 @@ class GenreFilter:
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
                             if node == 'SHOOTER':
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
-                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
