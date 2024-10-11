@@ -15,10 +15,12 @@ Q_QUERY_RESULT_5 = "query_result_5"
 
 class Server:
 
-    def __init__(self, port, listen_backlog):
+    def __init__(self, port, listen_backlog, n_next_nodes: int):
 
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
+        self.n_next_nodes = n_next_nodes
+        self.logger.custom(f"NODOs SIGUIENTE: {self.n_next_nodes}")
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
@@ -30,10 +32,14 @@ class Server:
         self._middleware.declare_queue(Q_QUERY_RESULT_3)
         self._middleware.declare_queue(Q_QUERY_RESULT_4)
         self._middleware.declare_queue(Q_QUERY_RESULT_5)
+        self.client_sock = None
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
+        self._shutdown()
+    
+    def _shutdown(self):
         self.shutting_down = True
         self._server_socket.close()
         self._middleware.connection.close()
@@ -62,6 +68,7 @@ class Server:
     def __handle_client_connection(self, client_sock):
         """Handle communication with a connected client."""
         try:
+            self.client_sock = client_sock
             while True:
                 raw_msg = recv_msg(client_sock)
                 msg = decode_msg(raw_msg)  # Ahora devuelve directamente un objeto Handshake, Data o Fin
@@ -69,15 +76,22 @@ class Server:
                 # self.logger.custom(f"action: receive_message | result: success | {msg}")
 
                 # Enviamos el mensaje ya codificado directamente a la cola
-                self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                if msg.type == MsgType.FIN:
-                    break
+                if msg.type == MsgType.DATA:
+                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
+                elif msg.type == MsgType.FIN:
+                    if self.n_next_nodes > 1:
+                        for _ in range(self.n_next_nodes):
+                            self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
+                            self.logger.custom(f"envie al trimmer FIN")
+                    else:
+                        self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
+                break
             self._listen_to_result_queues()
         except ValueError as e:
-            if self.shutting_down:
-                return
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
-            self.logger.custom(f"Connection closed or invalid message received: {e}")
+            if not self.shutting_down:
+                self.logger.custom(f"Connection closed or invalid message received: {e}")
+            return
         except OSError as e:
             logging.error(f"action: receive_message | result: fail | error: {e}")
         except Exception as e:
@@ -118,12 +132,14 @@ class Server:
                         f"Mac: {msg.mac_count}\n"
                         f"Linux: {msg.linux_count}\n"
                     )
+                    self.client_sock.sendall(msg.encode())
                 elif msg.result_type == QueryNumber.Q2:
                     top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.top_games)
                     self.logger.custom(
                         f"Received Result from {queue_name}: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
                         f"{top_games_str}\n"
                     )
+                    self.client_sock.sendall(msg.encode())
                 elif msg.result_type == QueryNumber.Q3:
                     indie_games_str = "\n".join(f"{rank}. {name}: {reviews} positive reviews" 
                                                 for rank, (name, reviews) in enumerate(msg.top_indie_games, start=1))
@@ -131,18 +147,21 @@ class Server:
                         f"Received Result from {queue_name}: Q3: Top 5 Indie Games with Most Positive Reviews:\n"
                         f"{indie_games_str}\n"
                     )
+                    self.client_sock.sendall(msg.encode())
                 elif msg.result_type == QueryNumber.Q4:
                     negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for name, count in msg.negative_reviews)
                     self.logger.custom(
                         f"Received Result from {queue_name}: Q4: Action games with more than 5,000 negative reviews in English:\n"
                         f"{negative_reviews_str}\n"
                     )
+                    self.client_sock.sendall(msg.encode())
                 elif msg.result_type == QueryNumber.Q5:
                     top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.top_negative_reviews)
                     self.logger.custom(
                         f"Received Result from {queue_name}: Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
                         f"{top_negative_str}\n"
                     )
+                    self.client_sock.sendall(msg.encode())
                 else:
                     self.logger.custom(f"Received Unknown Result Type from {queue_name}: {msg}")
                 self._middleware.channel.stop_consuming()

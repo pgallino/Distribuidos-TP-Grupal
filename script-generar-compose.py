@@ -115,7 +115,7 @@ def generate_docker_compose(instances):
     services['client'] = {
         'container_name': 'client',
         'image': 'client:latest',
-        'volumes': ['./datasets:/datasets'],
+        'volumes': ['./datasets:/datasets', './results:/results'],
         'networks': ['testing_net'],
         'depends_on': {
             'rabbitmq': {

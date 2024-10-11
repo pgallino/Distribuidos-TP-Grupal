@@ -3,7 +3,6 @@ from messages.messages import BasicReview, BasicReviews, MsgType, decode_msg, Re
 from middleware.middleware import Middleware
 import logging
 import langid
-# import random
 
 Q_SCORE_ENGLISH = "score_filter-english_filter"
 E_FROM_SCORE = 'from_score'
@@ -27,16 +26,16 @@ class EnglishFilter:
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_SCORE_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT)
 
-        self.coordination_queue = Q_COORD_ENGLISH + f"{self.id}"
-        self._middleware.declare_queue(self.coordination_queue)
-        self._middleware.declare_exchange(E_COORD_ENGLISH)
-        # PONER POR SI ES UNO
-        for i in range(1, self.n_nodes + 1):
-            if i != self.id:
-                routing_key = f"coordination_{i}"
-                self._middleware.bind_queue(self.coordination_queue, E_COORD_ENGLISH, routing_key)
-                self.logger.custom(f"Nodo {self.id} vinculó {self.coordination_queue} con clave {routing_key}")
-        self.fins_counter = 1
+        
+        if self.n_nodes > 1:
+            self.coordination_queue = Q_COORD_ENGLISH + f"{self.id}"
+            self._middleware.declare_queue(self.coordination_queue)
+            self._middleware.declare_exchange(E_COORD_ENGLISH)
+            for i in range(1, self.n_nodes + 1):
+                if i != self.id:
+                    routing_key = f"coordination_{i}"
+                    self._middleware.bind_queue(self.coordination_queue, E_COORD_ENGLISH, routing_key)
+            self.fins_counter = 1
 
 
         # cuando me llega el fin, dejo de escuchar la cola original
@@ -57,18 +56,14 @@ class EnglishFilter:
         lang, _ = langid.classify(text)
         # self.logger.custom(f"is english: {lang}")
         return lang == 'en'  # Retorna True si el idioma detectado es inglés
-        # return random.choice([True, False])
 
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
-        self.logger.custom("ME LLEGO MENSAJE EN COLA COORDINATORRRR AYYY")
         if msg.type == MsgType.FIN:
             self.fins_counter += 1
-            self.logger.custom(f"El mensaje que me llego es un FIN, aumento counter a {self.fins_counter}")
             if self.id == 1 and self.fins_counter == self.n_nodes:
                 # Reenvía el mensaje FIN y cierra la conexión
-                self.logger.custom(f"Soy el nodo lider {self.id}, mando 1 FINs")
                 self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, msg.encode())
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.shutting_down = True
@@ -78,12 +73,12 @@ class EnglishFilter:
 
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
-        self.logger.custom("SOY ENGLISH Y ARRANQUÉ")
 
         def process_message(ch, method, properties, raw_message):
             """Callback para procesar el mensaje de la cola."""
-            msg = decode_msg(raw_message)
             en_reviews = []
+
+            msg = decode_msg(raw_message)
 
             if msg.type == MsgType.REVIEWS:
                 # Filtrar reseñas en inglés
@@ -98,27 +93,27 @@ class EnglishFilter:
                     self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
 
             elif msg.type == MsgType.FIN:
-
-                self.logger.custom("ENTRE A MSGTYPE FIN")
-
-                # DESPUES DE ESTO ME PONGO A CONSUMIR DE LA COORDIANTOR
-                #######################################################
-                #######################################################
-                #######################################################
                 
                 # Reenvía el mensaje FIN y cierra la conexión
                 self._middleware.channel.stop_consuming()
-                self._middleware.send_to_queue(E_COORD_ENGLISH, msg.encode(), key=f"coordination_{self.id}")
+
+                if self.n_nodes > 1:
+                    self._middleware.send_to_queue(E_COORD_ENGLISH, msg.encode(), key=f"coordination_{self.id}")
+                else:
+                    self.logger.custom(f"Solo soy UN nodo {self.id}, Propago el Fin normalmente")
+                    self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, msg.encode())
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_SCORE_ENGLISH, process_message, auto_ack=False)
-
-            self.logger.custom("ENTRE A PROCESAR FIN AHORA")
-            self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
-
+            if self.n_nodes > 1:
+                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+            else:
+                self.shutting_down = True
+                self._middleware.connection.close()
+                
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")

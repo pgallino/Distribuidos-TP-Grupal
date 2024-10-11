@@ -1,5 +1,6 @@
 from messages.messages import Genre, MsgType, Q2Game, Q2Games, decode_msg, BasicGame, BasicGames
 import signal
+from typing import List, Tuple
 from middleware.middleware import Middleware
 import logging
 
@@ -7,14 +8,19 @@ Q_TRIMMER_GENRE_FILTER = "trimmer-genre_filter"
 E_FROM_TRIMMER = 'trimmer-filters'
 K_GENREGAME = 'genregame'
 E_FROM_GENRE = 'from_genre'
+E_COORD_GENRE = 'from-coord-score'
 K_INDIE_Q2GAMES = 'indieq2'
 K_INDIE_BASICGAMES = 'indiebasic'
 K_SHOOTER_GAMES = 'shooter'
+Q_COORD_GENRE = 'coord-genre'
 
 class GenreFilter:
 
-    def __init__(self):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
 
+        self.id = id
+        self.n_nodes = n_nodes
+        self.n_next_nodes = n_next_nodes
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
 
@@ -24,11 +30,42 @@ class GenreFilter:
         self._middleware.bind_queue(Q_TRIMMER_GENRE_FILTER, E_FROM_TRIMMER, K_GENREGAME)
         self._middleware.declare_exchange(E_FROM_GENRE)
 
+        if self.n_nodes > 1:
+            self.coordination_queue = Q_COORD_GENRE + f"{self.id}"
+            self._middleware.declare_queue(self.coordination_queue)
+            self._middleware.declare_exchange(E_COORD_GENRE)
+            for i in range(1, self.n_nodes + 1): # arranco en el id 1 y sigo hasta el numero de nodos
+                if i != self.id:
+                    self._middleware.bind_queue(self.coordination_queue, E_COORD_GENRE, f"coordination_{i}")
+            self.fins_counter = 1
+
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
         self.shutting_down = True
         self._middleware.connection.close()
+
+    def process_fin(self, ch, method, properties, raw_message):
+        msg = decode_msg(raw_message)
+        if msg.type == MsgType.FIN:
+            self.fins_counter += 1
+            if self.id == 1 and self.fins_counter == self.n_nodes:
+                # Reenvía el mensaje FIN y cierra la conexión
+                self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                for node, n_nodes in self.n_next_nodes:
+                    for _ in range(n_nodes):
+                        if node == 'RELEASE_DATE':
+                            self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
+                        if node == 'JOINER_Q3':
+                            self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
+                        if node == 'SHOOTER':
+                            self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                    self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                self.shutting_down = True
+                self._middleware.connection.close()
+                return
+        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -71,16 +108,30 @@ class GenreFilter:
                     self._middleware.send_to_queue(E_FROM_GENRE, shooter_msg.encode(), key=K_SHOOTER_GAMES)
 
             elif msg.type == MsgType.FIN:
+                self._middleware.channel.stop_consuming()
                 # Reenvía el mensaje FIN a otros nodos y finaliza
-                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
-                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
-                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
-                self._middleware.connection.close()
-                self.shutting_down = True
+                if self.n_nodes > 1:
+                    self._middleware.send_to_queue(E_COORD_GENRE, msg.encode(), key=f"coordination_{self.id}")
+                else:
+                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    for node, n_nodes in self.n_next_nodes:
+                        for _ in range(n_nodes):
+                            if node == 'RELEASE_DATE':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
+                            if node == 'JOINER_Q3':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
+                            if node == 'SHOOTER':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_TRIMMER_GENRE_FILTER, process_message)
+            if self.n_nodes > 1:
+                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+            else:
+                self.shutting_down = True
+                self._middleware.connection.close()
             
         except Exception as e:
             if not self.shutting_down:

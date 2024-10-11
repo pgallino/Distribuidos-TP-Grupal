@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from common.server import Server
 import logging
+import os
 from utils.initilization import initialize_log, initialize_config
 import utils.logging_config # Esto ejecuta la configuración del logger
 
@@ -21,7 +22,7 @@ def main():
     logger.info(f"action: start | result: success")
     
     # Initialize server and start server loop
-    server = Server(port, listen_backlog)
+    server = Server(port, listen_backlog, int(os.environ['TRIMMER_INSTANCES']))
     server.run()
 
 

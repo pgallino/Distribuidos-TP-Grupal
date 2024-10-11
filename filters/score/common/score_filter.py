@@ -32,11 +32,12 @@ class ScoreFilter:
         self._middleware.declare_exchange(E_FROM_SCORE)
 
         if self.n_nodes > 1:
-            self._middleware.declare_queue(Q_COORD_SCORE)
-            self._middleware.declare_exchange(E_COORD_SCORE, type="fanout")
+            self.coordination_queue = Q_COORD_SCORE + f"{self.id}"
+            self._middleware.declare_queue(self.coordination_queue)
+            self._middleware.declare_exchange(E_COORD_SCORE)
             for i in range(1, self.n_nodes + 1): # arranco en el id 1 y sigo hasta el numero de nodos
                 if i != self.id:
-                    self._middleware.bind_queue(Q_COORD_SCORE, E_COORD_SCORE, f"coordination_{i}")
+                    self._middleware.bind_queue(self.coordination_queue, E_COORD_SCORE, f"coordination_{i}")
             self.fins_counter = 1
 
     def _handle_sigterm(self, sig, frame):
@@ -64,7 +65,7 @@ class ScoreFilter:
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.shutting_down = True
                 self._middleware.connection.close()
-            return
+                return
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def run(self):
@@ -105,7 +106,7 @@ class ScoreFilter:
                 # Reenvía el mensaje FIN a otros nodos y cierra la conexión
                 self._middleware.channel.stop_consuming()
                 if self.n_nodes > 1:
-                    self._middleware.send_to_queue(Q_COORD_SCORE, msg.encode(), key=f"coordination_{self.id}")
+                    self._middleware.send_to_queue(E_COORD_SCORE, msg.encode(), key=f"coordination_{self.id}")
                 else:
                     self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
                     for node, n_nodes in self.n_next_nodes:
@@ -124,7 +125,7 @@ class ScoreFilter:
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, process_message, auto_ack=False)
             if self.n_nodes > 1:
-                self._middleware.receive_from_queue(Q_COORD_SCORE, self.process_fin, auto_ack=False)
+                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
             else:
                 self.shutting_down = True
                 self._middleware.connection.close()

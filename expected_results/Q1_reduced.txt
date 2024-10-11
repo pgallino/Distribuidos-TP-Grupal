@@ -1,0 +1,4 @@
+Q1: OS Count Summary:
+Windows: 4632
+Linux: 603
+Mac: 914
