@@ -74,17 +74,17 @@ class Trimmer:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
+        # self.logger.custom("Received SIGTERM, shutting down server.")
         self._shutdown()
 
     def process_fin(self, ch, method, properties, raw_message):
-        self.logger.custom(f"Entre al process fin por {self.n_nodes}")
+        # self.logger.custom(f"Entre al process fin por {self.n_nodes}")
         msg = decode_msg(raw_message)
         if msg.type == MsgType.FIN:
             self.fins_counter += 1
             if self.id == 1 and self.fins_counter == self.n_nodes:
                 # Reenvía el mensaje FIN y cierra la conexión
-                self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
                 for node, n_nodes in self.n_next_nodes:
                     for _ in range(n_nodes):
                         if node == 'GENRE':
@@ -93,7 +93,7 @@ class Trimmer:
                             self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
                         if node == 'OS_COUNTER':
                             self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
-                    self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+                    # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.shutting_down = True
                 self._middleware.connection.close()
@@ -103,11 +103,11 @@ class Trimmer:
     def run(self):
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        self.logger.custom("ENTRE A RUN")
+        # self.logger.custom("ENTRE A RUN")
 
         def process_message(ch, method, properties, raw_message):
 
-            self.logger.custom("ENTRE A PROCESS_MESSAGE")
+            # self.logger.custom("ENTRE A PROCESS_MESSAGE")
             """Callback para procesar el mensaje de la cola."""
             genre_games_batch = []
             q1_games_batch = []
@@ -119,11 +119,11 @@ class Trimmer:
             
             if msg.type == MsgType.DATA:
 
-                self.logger.custom("EL MENSAJE ERA UN DATA")
+                # self.logger.custom("EL MENSAJE ERA UN DATA")
                 
                 if msg.dataset == Dataset.GAME:
 
-                    self.logger.custom("EL MENSAJE ERA UN GAME")
+                    # self.logger.custom("EL MENSAJE ERA UN GAME")
 
                     reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
                     for values in reader:
@@ -146,11 +146,11 @@ class Trimmer:
                         self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
                         genre_games_batch.clear()
                     
-                    self.logger.custom("ENVIE TODOS LOS GAMES DEL MENSAJE")
+                    # self.logger.custom("ENVIE TODOS LOS GAMES DEL MENSAJE")
 
                 elif msg.dataset == Dataset.REVIEW:
 
-                    self.logger.custom("EL MENSAJE ERA UNA REVIEW")
+                    # self.logger.custom("EL MENSAJE ERA UNA REVIEW")
 
                     reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
                     for values in reader:
@@ -165,23 +165,23 @@ class Trimmer:
                         self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
                         reviews_batch.clear()
                     
-                    self.logger.custom("ENVIE TODAS LAS REVIEWS")
+                    # self.logger.custom("ENVIE TODAS LAS REVIEWS")
 
             elif msg.type == MsgType.FIN:
 
-                self.logger.custom("EL MENSAJE ERA UN FIN")
+                # self.logger.custom("EL MENSAJE ERA UN FIN")
                 
                 # Reenvía el mensaje FIN a otros nodos y cierra la conexión
                 self._middleware.channel.stop_consuming()
 
-                self.logger.custom("DEJE DE CONSUMIR CON STOP_CONSUMING BABY")
+                # self.logger.custom("DEJE DE CONSUMIR CON STOP_CONSUMING BABY")
                 
                 if self.n_nodes > 1:
-                    self.logger.custom(f"COMO TENGO MÁS DE UN NODO {self.n_nodes} ENVIO COORDINATION")
+                    # self.logger.custom(f"COMO TENGO MÁS DE UN NODO {self.n_nodes} ENVIO COORDINATION")
                     self._middleware.send_to_queue(E_COORD_TRIMMER, msg.encode(), key=f"coordination_{self.id}")
-                    self.logger.custom("SALI DE ENVIAR EL COORDINATION")
+                    # self.logger.custom("SALI DE ENVIAR EL COORDINATION")
                 else:
-                    self.logger.custom(f"Solo soy UN nodo {self.id}, Propago el Fin normalmente")
+                    # self.logger.custom(f"Solo soy UN nodo {self.id}, Propago el Fin normalmente")
                     for node, n_nodes in self.n_next_nodes:
                         for _ in range(n_nodes):
                             if node == 'GENRE':
@@ -191,18 +191,18 @@ class Trimmer:
                             if node == 'OS_COUNTER':
                                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
 
-                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+                        # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, process_message, auto_ack=False)
-            self.logger.custom("SALI DE PROCESS_MESSAGE")
+            # self.logger.custom("SALI DE PROCESS_MESSAGE")
             if self.n_nodes > 1:
-                self.logger.custom(f"COMO TENGO MÁS DE UN NODO {self.n_nodes} ESCUCHO COORDINATION")
+                # self.logger.custom(f"COMO TENGO MÁS DE UN NODO {self.n_nodes} ESCUCHO COORDINATION")
                 self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
-                self.logger.custom("SALI DE PROCESS_FIN")
+                # self.logger.custom("SALI DE PROCESS_FIN")
             else:
                 self.shutting_down = True
                 self._middleware.connection.close()

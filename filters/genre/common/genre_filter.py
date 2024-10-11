@@ -8,7 +8,7 @@ Q_TRIMMER_GENRE_FILTER = "trimmer-genre_filter"
 E_FROM_TRIMMER = 'trimmer-filters'
 K_GENREGAME = 'genregame'
 E_FROM_GENRE = 'from_genre'
-E_COORD_GENRE = 'from-coord-score'
+E_COORD_GENRE = 'from-coord-genre'
 K_INDIE_Q2GAMES = 'indieq2'
 K_INDIE_BASICGAMES = 'indiebasic'
 K_SHOOTER_GAMES = 'shooter'
@@ -47,7 +47,9 @@ class GenreFilter:
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
+        self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
         if msg.type == MsgType.FIN:
+            self.logger.custom(f"Nodo {self.id} era un FIN")
             self.fins_counter += 1
             if self.id == 1 and self.fins_counter == self.n_nodes:
                 # Reenvía el mensaje FIN y cierra la conexión
@@ -108,12 +110,17 @@ class GenreFilter:
                     self._middleware.send_to_queue(E_FROM_GENRE, shooter_msg.encode(), key=K_SHOOTER_GAMES)
 
             elif msg.type == MsgType.FIN:
+
+                self.logger.custom("ENTRE AL FIN\n")
                 self._middleware.channel.stop_consuming()
+                self.logger.custom("DEJE DE CONSUMIR FINS DE LA COLA ORIGINAL\n")
                 # Reenvía el mensaje FIN a otros nodos y finaliza
                 if self.n_nodes > 1:
-                    self._middleware.send_to_queue(E_COORD_GENRE, msg.encode(), key=f"coordination_{self.id}")
+                    key = f"coordination_{self.id}"
+                    self.logger.custom(f"envie fin con la {key}")
+                    self._middleware.send_to_queue(E_COORD_GENRE, msg.encode(), key=key)
                 else:
-                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    self.logger.custom(f"Soy un solo nodito {self.id}, mando los FINs")
                     for node, n_nodes in self.n_next_nodes:
                         for _ in range(n_nodes):
                             if node == 'RELEASE_DATE':

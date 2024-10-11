@@ -48,7 +48,9 @@ class ScoreFilter:
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
+        self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
         if msg.type == MsgType.FIN:
+            self.logger.custom(f"Nodo {self.id} era un FIN")
             self.fins_counter += 1
             if self.id == 1 and self.fins_counter == self.n_nodes:
                 # Reenvía el mensaje FIN y cierra la conexión

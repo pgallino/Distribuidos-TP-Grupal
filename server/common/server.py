@@ -20,7 +20,6 @@ class Server:
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
         self.n_next_nodes = n_next_nodes
-        self.logger.custom(f"NODOs SIGUIENTE: {self.n_next_nodes}")
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
@@ -79,13 +78,10 @@ class Server:
                 if msg.type == MsgType.DATA:
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
                 elif msg.type == MsgType.FIN:
-                    if self.n_next_nodes > 1:
-                        for _ in range(self.n_next_nodes):
-                            self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                            self.logger.custom(f"envie al trimmer FIN")
-                    else:
+                    for _ in range(self.n_next_nodes):
                         self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                break
+                        self.logger.custom(f"envie al trimmer FIN")
+                    break
             self._listen_to_result_queues()
         except ValueError as e:
             # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
