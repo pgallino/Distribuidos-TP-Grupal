@@ -1,10 +1,11 @@
-from messages.messages import QueryNumber, decode_msg, decode_msg, Result, MsgType
+from messages.messages import decode_msg, MsgType
+from messages.results_msg import QueryNumber
 from middleware.middleware import Middleware
 
 import socket
 import logging
 import signal
-from utils.utils import safe_read, recv_msg
+from utils.utils import recv_msg
 
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
 Q_QUERY_RESULT_1 = "query_result_1"
@@ -85,7 +86,6 @@ class Server:
                 elif msg.type == MsgType.FIN:
                     for _ in range(self.n_next_nodes):
                         self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                        self.logger.custom(f"envie al trimmer FIN")
                     break
             self._listen_to_result_queues()
         except ValueError as e:

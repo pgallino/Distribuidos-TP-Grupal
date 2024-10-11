@@ -1,6 +1,7 @@
 from collections import defaultdict
 import signal
-from messages.messages import MsgType, Q3Result, decode_msg
+from messages.messages import MsgType, decode_msg
+from messages.results_msg import Q3Result
 from middleware.middleware import Middleware
 import logging
 

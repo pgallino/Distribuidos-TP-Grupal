@@ -1,4 +1,5 @@
-from messages.messages import MsgType, Q2Games, decode_msg
+from messages.messages import MsgType, decode_msg
+from messages.games_msg import Q2Games
 import signal
 from middleware.middleware import Middleware
 import logging

@@ -1,6 +1,7 @@
 from collections import defaultdict
 import signal
-from messages.messages import MsgType, Q5Result, decode_msg, Result, QueryNumber
+from messages.messages import MsgType, decode_msg
+from messages.results_msg import Q5Result
 from middleware.middleware import Middleware
 import logging
 import numpy as np

@@ -1,6 +1,7 @@
 from collections import defaultdict
 import signal
-from messages.messages import MsgType, Q4Result, decode_msg
+from messages.messages import MsgType, decode_msg
+from messages.results_msg import Q4Result
 from middleware.middleware import Middleware
 import logging
 
@@ -10,7 +11,7 @@ Q_QUERY_RESULT_4 = "query_result_4"
 E_FROM_GENRE = 'from_genre'
 K_SHOOTER_GAMES = 'shooter'
 
-REVIEWS_NUMBER = 1200
+REVIEWS_NUMBER = 5000
 
 class Q4Joiner:
     def __init__(self):

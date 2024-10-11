@@ -1,5 +1,6 @@
 import signal
-from messages.messages import BasicReview, BasicReviews, MsgType, decode_msg, Reviews
+from messages.messages import MsgType, decode_msg
+from messages.reviews_msg import BasicReview, BasicReviews
 from middleware.middleware import Middleware
 import logging
 import langid

@@ -1,4 +1,5 @@
 from common.client import Client
+import utils.logging_config # Esto ejecuta la configuración del logger
 
 def main():
 

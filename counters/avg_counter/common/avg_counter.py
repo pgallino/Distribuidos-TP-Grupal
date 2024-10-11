@@ -1,6 +1,7 @@
 import signal
 import traceback
-from messages.messages import MsgType, decode_msg, Q2Result, QueryNumber
+from messages.messages import MsgType, decode_msg
+from messages.results_msg import Q2Result
 from middleware.middleware import Middleware
 import logging
 import heapq

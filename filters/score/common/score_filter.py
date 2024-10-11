@@ -1,6 +1,7 @@
 import signal
 from typing import List, Tuple
-from messages.messages import BasicReview, BasicReviews, MsgType, Score, TextReview, TextReviews, decode_msg, BATCH_SIZE, Reviews, Review
+from messages.messages import MsgType, decode_msg
+from messages.reviews_msg import BasicReview, BasicReviews, Score, TextReview, TextReviews
 from middleware.middleware import Middleware
 import logging
 
@@ -56,14 +57,14 @@ class ScoreFilter:
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
-        self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
+        # self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
         if msg.type == MsgType.FIN:
-            self.logger.custom(f"Nodo {self.id} era un FIN")
+            # self.logger.custom(f"Nodo {self.id} era un FIN")
             self.fins_counter += 1
             if self.fins_counter == self.n_nodes:
                 if self.id == 1:
                     # Reenvía el mensaje FIN y cierra la conexión
-                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
                     for node, n_nodes in self.n_next_nodes:
                         for _ in range(n_nodes):
                             if node == 'JOINER_Q3':
@@ -72,7 +73,7 @@ class ScoreFilter:
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
                             if node == 'JOINER_Q5':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
-                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+                        # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self.shutting_down = True
                 self._middleware.connection.close()

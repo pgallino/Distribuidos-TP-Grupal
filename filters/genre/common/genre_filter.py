@@ -1,4 +1,5 @@
-from messages.messages import Genre, MsgType, Q2Game, Q2Games, decode_msg, BasicGame, BasicGames
+from messages.messages import Genre, MsgType, decode_msg
+from messages.games_msg import Q2Game, Q2Games, BasicGame, BasicGames
 import signal
 from typing import List, Tuple
 from middleware.middleware import Middleware
@@ -50,19 +51,19 @@ class GenreFilter:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
+        # self.logger.custom("Received SIGTERM, shutting down server.")
         self._shutdown()
 
     def process_fin(self, ch, method, properties, raw_message):
         msg = decode_msg(raw_message)
-        self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
+        # self.logger.custom(f"Nodo {self.id} le llego el mensaje {msg} por la cola {self.coordination_queue}")
         if msg.type == MsgType.FIN:
             self.logger.custom(f"Nodo {self.id} era un FIN")
             self.fins_counter += 1
             if self.fins_counter == self.n_nodes:
                 if self.id == 1:
                     # Reenvía el mensaje FIN y cierra la conexión
-                    self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
+                    # self.logger.custom(f"Soy el nodo lider {self.id}, mando los FINs")
                     for node, n_nodes in self.n_next_nodes:
                         for _ in range(n_nodes):
                             if node == 'RELEASE_DATE':
@@ -71,7 +72,7 @@ class GenreFilter:
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
                             if node == 'SHOOTER':
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
-                        self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
+                        # self.logger.custom(f"Le mande {n_nodes} FINs a {node}")
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self._shutdown()
                 return
@@ -119,13 +120,13 @@ class GenreFilter:
 
             elif msg.type == MsgType.FIN:
 
-                self.logger.custom("ENTRE AL FIN\n")
+                # self.logger.custom("ENTRE AL FIN\n")
                 self._middleware.channel.stop_consuming()
-                self.logger.custom("DEJE DE CONSUMIR FINS DE LA COLA ORIGINAL\n")
+                # self.logger.custom("DEJE DE CONSUMIR FINS DE LA COLA ORIGINAL\n")
                 # Reenvía el mensaje FIN a otros nodos y finaliza
                 if self.n_nodes > 1:
                     key = f"coordination_{self.id}"
-                    self.logger.custom(f"envie fin con la {key}")
+                    # self.logger.custom(f"envie fin con la {key}")
                     self._middleware.send_to_queue(E_COORD_GENRE, msg.encode(), key=key)
                 else:
                     self.logger.custom(f"Soy un solo nodito {self.id}, mando los FINs")

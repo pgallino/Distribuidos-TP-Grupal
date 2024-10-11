@@ -1,11 +1,13 @@
-from messages.messages import Dataset, Genre, MsgType, Review, Score, decode_msg, Reviews, Q1Game, GenreGame, Q1Games, GenreGames
+from messages.messages import Dataset, Genre, MsgType, decode_msg
+from messages.games_msg import Q1Game, Q1Games, GenreGame, GenreGames
+from messages.reviews_msg import Review, Score, Reviews
+
 import signal
 from typing import List, Tuple
 from middleware.middleware import Middleware
 import logging
 import csv
 import sys
-import time
 
 GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
                     'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 
