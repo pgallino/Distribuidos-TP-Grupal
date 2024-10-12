@@ -101,7 +101,7 @@ class Q4Joiner(Node):
                     if count > self.n_reviews
                 ],
                 key=lambda x: x[0],  # Ordenar por app_id
-                reverse=True  # Orden descendente
+                reverse=False  # Orden descendente
             )[:25]  # Tomar los 25 primeros
 
 
