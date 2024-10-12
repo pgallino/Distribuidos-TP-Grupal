@@ -34,5 +34,5 @@ make docker-compose-logs
 Para cambiar la cantidad de instancias de cada nodo que se levantarán en el sistema distribuido se puede usar el siguiente script que modifica el archivo de Docker Compose:
 
 ```bash
-./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1
+./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5
 ```

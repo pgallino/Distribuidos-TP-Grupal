@@ -104,67 +104,22 @@ class Server:
         self.logger.custom("action: listen_to_queues | result: in_progress")
 
         queues = [
-            (Q_QUERY_RESULT_1, self._process_result_callback),
-            (Q_QUERY_RESULT_2, self._process_result_callback),
-            (Q_QUERY_RESULT_3, self._process_result_callback),
-            (Q_QUERY_RESULT_5, self._process_result_callback),
-            (Q_QUERY_RESULT_4, self._process_result_callback)
+            Q_QUERY_RESULT_1,
+            Q_QUERY_RESULT_2,
+            Q_QUERY_RESULT_3,
+            Q_QUERY_RESULT_4,
+            Q_QUERY_RESULT_5
         ]
 
-        for queue_name, callback in queues:
-            self._middleware.receive_from_queue(queue_name, callback)
+        for queue_name in queues:
+            self._middleware.receive_from_queue(queue_name, self._process_result_callback)
 
 
     def _process_result_callback(self, ch, method, properties, body):
         """Callback to process messages from result queues."""
         try:
-            msg = decode_msg(body)
-            queue_name = method.routing_key  # Gets the queue name from the method
-
-            if msg.type == MsgType.RESULT:
-                # Process each result type and log accordingly
-                if msg.result_type == QueryNumber.Q1:
-                    self.logger.custom(
-                        f"Received Result from {queue_name}: OS Count Summary:\n"
-                        f"Windows: {msg.windows_count}\n"
-                        f"Mac: {msg.mac_count}\n"
-                        f"Linux: {msg.linux_count}\n"
-                    )
-                    self.client_sock.sendall(msg.encode())
-                elif msg.result_type == QueryNumber.Q2:
-                    top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.top_games)
-                    self.logger.custom(
-                        f"Received Result from {queue_name}: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
-                        f"{top_games_str}\n"
-                    )
-                    self.client_sock.sendall(msg.encode())
-                elif msg.result_type == QueryNumber.Q3:
-                    indie_games_str = "\n".join(f"{rank}. {name}: {reviews} positive reviews" 
-                                                for rank, (name, reviews) in enumerate(msg.top_indie_games, start=1))
-                    self.logger.custom(
-                        f"Received Result from {queue_name}: Q3: Top 5 Indie Games with Most Positive Reviews:\n"
-                        f"{indie_games_str}\n"
-                    )
-                    self.client_sock.sendall(msg.encode())
-                elif msg.result_type == QueryNumber.Q4:
-                    negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.negative_reviews)
-                    self.logger.custom(
-                        f"Received Result from {queue_name}: Q4: Action games with more than 5,000 negative reviews in English:\n"
-                        f"{negative_reviews_str}\n"
-                    )
-                    self.client_sock.sendall(msg.encode())
-                elif msg.result_type == QueryNumber.Q5:
-                    top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.top_negative_reviews)
-                    self.logger.custom(
-                        f"Received Result from {queue_name}: Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
-                        f"{top_negative_str}\n"
-                    )
-                    self.client_sock.sendall(msg.encode())
-                else:
-                    self.logger.custom(f"Received Unknown Result Type from {queue_name}: {msg}")
-                self._middleware.channel.stop_consuming()
-            else:
-                self.logger.custom(f"Received Non-Result Message from {queue_name}: {msg}")
+            self.client_sock.sendall(body)
+            self._middleware.channel.stop_consuming()
 
         except ValueError as e:
             if not self.shutting_down:

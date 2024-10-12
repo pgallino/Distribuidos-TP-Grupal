@@ -1,17 +1,15 @@
 from collections import defaultdict
 import signal
+from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q5Result
-from middleware.middleware import Middleware
-import logging
+from node.node import Node
 import numpy as np
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
-class Q5Joiner:
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.shutting_down = False
-        self._middleware = Middleware()
+class Q5Joiner(Node):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
+        super().__init__(id, n_nodes, n_next_nodes)
 
         # Configurar colas y enlaces
         self._middleware.declare_queue(Q_GENRE_Q5_JOINER)
@@ -75,7 +73,6 @@ class Q5Joiner:
             self._middleware.connection.close()
 
     def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         try:
             # Consumir mensajes de ambas colas con sus respectivos callbacks

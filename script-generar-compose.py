@@ -12,9 +12,7 @@ def parse_args():
             'genre': int(args[1]),
             'score': int(args[2]),
             'release_date': int(args[3]),
-            'english': int(args[4]),
-            'os_counter': int(args[5]),
-            'avg_counter': int(args[6])
+            'english': int(args[4])
         }
         return instances
     except (IndexError, ValueError):
@@ -92,7 +90,7 @@ def generate_docker_compose(instances):
             }
 
     # Definición de nodos no escalables (q3_joiner, q4_joiner, q5_joiner)
-    non_scalable_nodes = ['q3_joiner', 'q4_joiner', 'q5_joiner']
+    non_scalable_nodes = ['q3_joiner', 'q4_joiner', 'q5_joiner', 'os_counter', 'avg_counter']
     for node in non_scalable_nodes:
         services[node] = {
             'container_name': node,

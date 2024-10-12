@@ -1,17 +1,16 @@
 from collections import defaultdict
 import signal
+from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q3Result
-from middleware.middleware import Middleware
+from node.node import Node
 import logging
 
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 
-class Q3Joiner:
-    def __init__(self):
-        self.logger = logging.getLogger(__name__)
-        self.shutting_down = False
-        self._middleware = Middleware()
+class Q3Joiner(Node):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
+        super().__init__(id, n_nodes, n_next_nodes)
 
         # Declarar colas y binders
         self._middleware.declare_queue(Q_GENRE_Q3_JOINER)
@@ -27,13 +26,6 @@ class Q3Joiner:
         # Estructuras para almacenar datos
         self.games = {}  # Almacenará juegos por `app_id`
         self.review_counts = defaultdict(int)  # Contará reseñas positivas por `app_id`
-
-    def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
-        self.shutting_down = True
-        self._middleware.channel.stop_consuming()
-        self._middleware.connection.close()
 
     def process_game_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_GENRE_Q3_JOINER`."""
@@ -66,7 +58,7 @@ class Q3Joiner:
             self._middleware.connection.close()
 
     def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
+
         try:
             # Consumir mensajes de ambas colas con sus respectivos callbacks
             self._middleware.receive_from_queue(Q_GENRE_Q3_JOINER, self.process_game_message)

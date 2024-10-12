@@ -90,6 +90,8 @@ class Client:
 
     def recv_results(self):
         """Receive and process results from the server."""
+
+        self.logger.custom(f"action: recv_results | result: in progress...")
         received_results = 0
         try:
             while received_results < 5:
@@ -134,11 +136,11 @@ class Client:
         """Processes and prints Q1 result."""
         output = (
             f"Q1: OS Count Summary:\n"
-            f"Windows: {msg.windows_count}\n"
-            f"Linux: {msg.linux_count}\n"
-            f"Mac: {msg.mac_count}\n"
+            f"- Windows: {msg.windows_count}\n"
+            f"- Linux: {msg.linux_count}\n"
+            f"- Mac: {msg.mac_count}\n"
         )
-        print(output)
+        self.logger.custom(output)
         self.save_to_file("Q1.txt", output)
 
     def process_q2_result(self, msg):
@@ -148,7 +150,7 @@ class Client:
             f"Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
             f"{top_games_str}\n"
         )
-        print(output)
+        self.logger.custom(output)
         self.save_to_file("Q2.txt", output)
 
     def process_q3_result(self, msg):
@@ -160,7 +162,7 @@ class Client:
             f"Q3: Top 5 Indie Games with Most Positive Reviews:\n"
             f"{indie_games_str}\n"
         )
-        print(output)
+        self.logger.custom(output)
         self.save_to_file("Q3.txt", output)
 
     def process_q4_result(self, msg):
@@ -170,7 +172,7 @@ class Client:
             f"Q4: Action games with more than 5,000 negative reviews in English:\n"
             f"{negative_reviews_str}\n"
         )
-        print(output)
+        self.logger.custom(output)
         self.save_to_file("Q4.txt", output)
 
     def process_q5_result(self, msg):
@@ -180,5 +182,5 @@ class Client:
             f"Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
             f"{top_negative_str}\n"
         )
-        print(output)
+        self.logger.custom(output)
         self.save_to_file("Q5.txt", output)

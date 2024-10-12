@@ -10,7 +10,7 @@ for arg in "$@"; do
 done
 
 # Verifica que todos los nodos requeridos estén presentes
-for nodo in trimmer genre score release_date english os_counter average_counter; do
+for nodo in trimmer genre score release_date english; do
     if [[ -z "${INSTANCIAS[$nodo]}" ]]; then
         echo "Error: Falta el parámetro para $nodo"
         exit 1
@@ -18,6 +18,6 @@ for nodo in trimmer genre score release_date english os_counter average_counter;
 done
 
 # Ejecuta el script de Python con los parámetros
-python3 script-generar-compose.py "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}" "${INSTANCIAS[os_counter]}" "${INSTANCIAS[average_counter]}"
+python3 script-generar-compose.py "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}"
 
 #./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1

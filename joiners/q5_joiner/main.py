@@ -9,7 +9,7 @@ def main():
     logger.info(f"action: start | result: success")
 
     # Crear una instancia de ReleaseDateFilter
-    q5_joiner = Q5Joiner()
+    q5_joiner = Q5Joiner(1,1,[])
 
     # Iniciar el filtro, escuchando mensajes en la cola
     q5_joiner.run()

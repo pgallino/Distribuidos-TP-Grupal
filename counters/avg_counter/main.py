@@ -5,7 +5,7 @@ import utils.logging_config # Esto ejecuta la configuración del logger
 def main():
 
     # Crear una instancia de ReleaseDateFilter
-    avg_counter = AvgCounter()
+    avg_counter = AvgCounter(1, 1, [])
 
     # Iniciar el filtro, escuchando mensajes en la cola
     avg_counter.run()
