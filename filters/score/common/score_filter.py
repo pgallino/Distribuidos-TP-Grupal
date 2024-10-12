@@ -45,7 +45,7 @@ class ScoreFilter(Node):
                         for _ in range(n_nodes):
                             if node == 'JOINER_Q3':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                            elif node == 'ENGLISH':
+                            elif node == 'JOINER_Q4':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
                             elif node == 'JOINER_Q5':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
@@ -100,7 +100,7 @@ class ScoreFilter(Node):
                 for _ in range(n_nodes):
                     if node == 'JOINER_Q3':
                         self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                    elif node == 'ENGLISH':
+                    elif node == 'JOINER_Q4':
                         self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
                     elif node == 'JOINER_Q5':
                         self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)

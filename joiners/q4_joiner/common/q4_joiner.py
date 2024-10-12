@@ -1,35 +1,37 @@
 from collections import defaultdict
 import signal
+from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q4Result
+from messages.reviews_msg import TextReview, TextReviews
 from middleware.middleware import Middleware
+from node.node import Node
 import logging
 
-from utils.constants import E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 
-class Q4Joiner:
-    def __init__(self, n_reviews):
-        self.logger = logging.getLogger(__name__)
-        self.shutting_down = False
+class Q4Joiner(Node):
+
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], batch_size: int, n_reviews: int):
+        super().__init__(id, n_nodes, n_next_nodes)
+
+        self.batch_size = batch_size * 1024
         self.n_reviews = n_reviews
         
-        self._middleware = Middleware()
-        self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
         self._middleware.declare_queue(Q_GENRE_Q4_JOINER)
+        self._middleware.declare_queue(Q_SCORE_Q4_JOINER)
+        self._middleware.declare_queue(Q_Q4_JOINER_ENGLISH)
+        self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
         self._middleware.declare_queue(Q_QUERY_RESULT_4)
         self._middleware.declare_exchange(E_FROM_GENRE)
+        self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_GENRE, K_SHOOTER_GAMES)
+        self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_SCORE, K_NEGATIVE_TEXT)
 
         # Estructuras de almacenamiento
         self.negative_review_counts = defaultdict(int)  # Contará reseñas negativas en inglés
         self.games = {}  # Detalles de juegos de acción/shooter
-
-    def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
-        self.shutting_down = True
-        self._middleware.channel.stop_consuming()
-        self._middleware.connection.close()
+        self.negative_reviews = {} # Guarda las reviews negativas de los juegos
 
     def process_game_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_GENRE_Q4_JOINER`."""
@@ -44,7 +46,50 @@ class Q4Joiner:
         """Procesa mensajes de la cola `Q_ENGLISH_Q4_JOINER`."""
         msg = decode_msg(raw_message)
         if msg.type == MsgType.REVIEWS:
-            for review in msg.reviews:
+            for review in msg.reviews: # para un TextReview en TextReviews
+                if review.app_id in self.games:
+                    # Debe funcionar appendiendo el elemento directamente en el get tambien
+                    curr_negative_reviews = self.negative_reviews.get(review.app_id, [])
+                    curr_negative_reviews.append(review.text)
+                    self.negative_reviews[review.app_id] = curr_negative_reviews
+        elif msg.type == MsgType.FIN:
+
+            # deja de consumir
+            self._middleware.channel.stop_consuming()
+
+            # Revisa que juego tiene mas de 5000 resenia negativas
+            for app_id, reviews in self.negative_reviews.items():
+                if len(reviews) > self.n_reviews:
+                    # manda las reviews del juego al filtro de ingles
+                    reviews_batch = []
+                    curr_reviews_batch_size = 0
+                    for review in reviews:
+                        text_review = TextReview(app_id, review)
+                        text_review_size = len(text_review.encode())
+                        if text_review_size + curr_reviews_batch_size > self.batch_size:
+                            text_reviews = TextReviews(msg.id, reviews_batch)
+                            self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+                            curr_reviews_batch_size = 0
+                            reviews_batch = []
+                        curr_reviews_batch_size += text_review_size
+                        reviews_batch.append(text_review)
+
+                    # si me quedaron afuera    
+                    if reviews_batch:
+                        text_reviews = TextReviews(msg.id, reviews_batch)
+                        self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+            
+            self.negative_reviews.clear() #limpio el diccionario
+
+            # Manda el fin a los english filters
+            for _, n_nodes in self.n_next_nodes:
+                for _ in range(n_nodes):
+                    self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
+                            
+    def process_negative_review_message(self, ch, method, properties, raw_message):
+        msg = decode_msg(raw_message)
+        if msg.type == MsgType.REVIEWS:
+            for review in msg.reviews: # para un TextReview en TextReviews
                 if review.app_id in self.games:
                     self.negative_review_counts[review.app_id] += 1
         elif msg.type == MsgType.FIN:
@@ -65,16 +110,14 @@ class Q4Joiner:
             self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
             
             # Marcar el cierre en proceso y cerrar la conexión
-            self.shutting_down = True
-            self._middleware.connection.close()
+            self._shutdown()
 
     def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         try:
-            # Consumir mensajes de ambas colas con sus respectivos callbacks
             self._middleware.receive_from_queue(Q_GENRE_Q4_JOINER, self.process_game_message)
-            self._middleware.receive_from_queue(Q_ENGLISH_Q4_JOINER, self.process_review_message)
+            self._middleware.receive_from_queue(Q_SCORE_Q4_JOINER, self.process_review_message)
+            self._middleware.receive_from_queue(Q_ENGLISH_Q4_JOINER, self.process_negative_review_message)
 
         except Exception as e:
             if not self.shutting_down:

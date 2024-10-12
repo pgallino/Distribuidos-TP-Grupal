@@ -68,7 +68,7 @@ class Trimmer(Node):
                                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
                             if node == 'SCORE':
                                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
-                                self.logger.custom(f"envie FIN a SCORE \n")
+                                # self.logger.custom(f"envie FIN a SCORE \n")
                             if node == 'OS_COUNTER':
                                 self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
                 ch.basic_ack(delivery_tag=method.delivery_tag)

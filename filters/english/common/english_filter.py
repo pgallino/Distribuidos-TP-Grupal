@@ -2,7 +2,7 @@ from typing import List
 from messages.messages import MsgType, decode_msg
 from messages.reviews_msg import BasicReview, BasicReviews
 from node.node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_SCORE_ENGLISH
+from utils.constants import E_COORD_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH, Q_SCORE_ENGLISH
 import langid
 
 
@@ -13,9 +13,7 @@ class EnglishFilter(Node):
 
         # Configura las colas y los intercambios específicos para EnglishFilter
         self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
-        self._middleware.declare_queue(Q_SCORE_ENGLISH)
-        self._middleware.declare_exchange(E_FROM_SCORE)
-        self._middleware.bind_queue(Q_SCORE_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT)
+        self._middleware.declare_queue(Q_Q4_JOINER_ENGLISH)
 
         # Configura la cola de coordinación
         self._setup_coordination_queue(Q_COORD_ENGLISH, E_COORD_ENGLISH)
@@ -23,7 +21,7 @@ class EnglishFilter(Node):
     def run(self):
         """Inicia la recepción de mensajes de la cola."""
         try:
-            self._middleware.receive_from_queue(Q_SCORE_ENGLISH, self._process_message, auto_ack=False)
+            self._middleware.receive_from_queue(Q_Q4_JOINER_ENGLISH, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
                 self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
             else:

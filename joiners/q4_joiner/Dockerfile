@@ -12,6 +12,7 @@ COPY joiners/q4_joiner/config.ini /
 COPY middleware /middleware
 COPY messages /messages
 COPY utils /utils
+COPY node /node
 
 # Configura el ENTRYPOINT para ejecutar main.py al iniciar
 ENTRYPOINT ["python3", "/main.py"]

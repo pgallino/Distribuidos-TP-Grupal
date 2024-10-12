@@ -24,6 +24,7 @@ def initialize_config():
     config_params = {}
     try:
         config_params["n_reviews"] = int(os.getenv('N_REVIEWS', config["DEFAULT"]["N_REVIEWS"]))
+        config_params["batch"] = int(os.getenv('MAX_BATCH_SIZE', config["DEFAULT"]["MAX_BATCH_SIZE"]))
     except KeyError as e:
         raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
     except ValueError as e:
@@ -35,8 +36,9 @@ def main():
     
     config_params = initialize_config()
     n_reviews = config_params["n_reviews"]
+    batch = config_params["batch"]
     # Crear una instancia de Q4Joiner
-    joiner = Q4Joiner(n_reviews)
+    joiner = Q4Joiner(1, 1, [('ENGLISH', int(os.environ['ENGLISH_INSTANCES']))], batch, n_reviews)
 
     # Iniciar el filtro, escuchando mensajes en la cola
     joiner.run()

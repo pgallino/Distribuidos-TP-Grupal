@@ -33,6 +33,8 @@ Q_COORD_ENGLISH = 'coord-english'
 Q_TRIMMER_OS_COUNTER = "trimmer-os_counter"
 Q_2010_GAMES = '2010_games'
 Q_COORD_RELEASE_DATE = 'coord-release_date'
+Q_SCORE_Q4_JOINER = 'score-q4_joiner'
+Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'

@@ -1,6 +1,6 @@
 Q3: Top 5 Indie Games with Most Positive Reviews:
-1. Undertale: 42284 positive reviews
-2. FTL: Faster Than Light: 21302 positive reviews
-3. Insurgency: 20666 positive reviews
-4. Path of Exile: 17058 positive reviews
-5. Super Meat Boy: 7926 positive reviews
+1. Terraria: 82227 positive reviews
+2. Rust: 61032 positive reviews
+3. Rocket League®: 51084 positive reviews
+4. Undertale: 49812 positive reviews
+5. Starbound: 36134 positive reviews
