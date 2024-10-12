@@ -2,7 +2,7 @@ from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.reviews_msg import BasicReview, BasicReviews, Score, TextReview, TextReviews
 from node.node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_TRIMMER_FILTERS, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
+from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_TRIMMER_FILTERS, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER, K_APPID_COUNT_SCORE
 
 
 class ScoreFilter(Node):
@@ -45,10 +45,12 @@ class ScoreFilter(Node):
                         for _ in range(n_nodes):
                             if node == 'JOINER_Q3':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                            elif node == 'JOINER_Q4':
+                            elif node == 'ENGLISH':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
                             elif node == 'JOINER_Q5':
                                 self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
+                            elif node == 'APPID_COUNTER':
+                                self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_APPID_COUNT_SCORE)
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self._shutdown()
                 return
@@ -87,6 +89,7 @@ class ScoreFilter(Node):
         if negative_reviews:
             reviews_msg = BasicReviews(msg.id, negative_reviews)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)
+            self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_APPID_COUNT_SCORE)
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
@@ -100,7 +103,11 @@ class ScoreFilter(Node):
                 for _ in range(n_nodes):
                     if node == 'JOINER_Q3':
                         self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                    elif node == 'JOINER_Q4':
+                    elif node == 'ENGLISH':
+                        # self.logger.custom("ENVIE FIN A ENGLISH")
                         self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
                     elif node == 'JOINER_Q5':
                         self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
+                    elif node == 'APPID_COUNTER':
+                        # self.logger.custom("ENVIE FIN A APPIDS")
+                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_APPID_COUNT_SCORE)

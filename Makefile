@@ -17,6 +17,7 @@ docker-image:
 	docker build -f ./filters/english/Dockerfile -t "english:latest" .
 	docker build -f ./counters/os_counter/Dockerfile -t "os_counter:latest" .
 	docker build -f ./counters/avg_counter/Dockerfile -t "avg_counter:latest" .
+	docker build -f ./counters/appids_counter/Dockerfile -t "appids_counter:latest" .
 	docker build -f ./joiners/q3_joiner/Dockerfile -t "q3_joiner:latest" .
 	docker build -f ./joiners/q4_joiner/Dockerfile -t "q4_joiner:latest" .
 	docker build -f ./joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
@@ -39,6 +40,11 @@ docker-compose-down:
 docker-compose-logs:
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
+
+docker-compose-up-logs: docker-image
+	docker compose -f docker-compose-dev.yaml up -d --build
+	docker compose -f docker-compose-dev.yaml logs -f
+.PHONY: docker-compose-up-logs
 
 rabbitmq-up:
 	docker compose -f docker-compose-rabbit.yaml up -d

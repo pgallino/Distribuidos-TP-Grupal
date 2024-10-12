@@ -10,7 +10,7 @@ def main():
     genre_filter = GenreFilter(
     int(os.environ['INSTANCE_ID']), 
     int(os.environ['GENRE_INSTANCES']), 
-    [('RELEASE_DATE', int(os.environ['RELEASE_DATE_INSTANCES'])), ('JOINER_Q3', 1), ('SHOOTER', 1)]
+    [('RELEASE_DATE', int(os.environ['RELEASE_DATE_INSTANCES'])), ('JOINER_Q3', 1), ('SHOOTER', 1), ('APPID_COUNTER', 1)]
     )
 
 

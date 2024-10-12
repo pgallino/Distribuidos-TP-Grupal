@@ -6,6 +6,22 @@ networks:
       - subnet: 172.25.125.0/24
       driver: default
 services:
+  appids_counter:
+    container_name: appids_counter
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=5
+    image: appids_counter:latest
+    networks:
+    - testing_net
   avg_counter:
     container_name: avg_counter
     depends_on:

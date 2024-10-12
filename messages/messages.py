@@ -10,6 +10,7 @@ class MsgType(Enum):
     GAMES = 3
     REVIEWS = 4
     RESULT = 5
+    APPSIDS = 6
 
 class Dataset(Enum):
     GAME = 0
@@ -95,6 +96,10 @@ def decode_msg(data):
     elif msg_type == MsgType.RESULT:
 
         return decode_result_wrapper(data[1:])
+
+    elif msg_type == MsgType.APPSIDS:
+
+        return AppIDs.decode(data[1:])
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {msg_type}")
@@ -204,3 +209,38 @@ class Fin(Message):
 
     def __str__(self):
         return f"Fin(id={self.id})"
+
+# ===================================================================================================================== #
+#    
+class AppIDs(Message):
+    def __init__(self, id: int, app_ids: set):
+        super().__init__(id, MsgType.APPSIDS)
+        self.app_ids = app_ids
+
+    def encode(self) -> bytes:
+        # Codificamos el tipo de mensaje, el ID y la cantidad de app_ids (1 byte cada uno)
+        # Luego añadimos cada app_id (4 bytes cada uno)
+        app_ids_bytes = b''.join(struct.pack('>I', app_id) for app_id in self.app_ids)
+        num_app_ids = len(self.app_ids)
+
+        # Empaquetamos el tipo de mensaje, ID, cantidad de app_ids y luego los app_ids
+        body = struct.pack('>BBI', int(MsgType.APPSIDS.value), self.id, num_app_ids) + app_ids_bytes
+        
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
+        total_length = len(body)
+
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body
+
+    @staticmethod
+    def decode(data: bytes) -> 'AppIDs':
+        # Decodifica el mensaje AppIDs
+        id, num_app_ids = struct.unpack('>BI', data[:5])
+
+        # Extraemos cada app_id de 4 bytes y los añadimos al conjunto
+        app_ids = {struct.unpack('>I', data[i:i+4])[0] for i in range(5, 5 + num_app_ids * 4, 4)}
+
+        return AppIDs(id, app_ids)
+
+    def __str__(self):
+        return f"AppIDs(id={self.id}, app_ids={self.app_ids})"

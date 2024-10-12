@@ -35,6 +35,9 @@ Q_2010_GAMES = '2010_games'
 Q_COORD_RELEASE_DATE = 'coord-release_date'
 Q_SCORE_Q4_JOINER = 'score-q4_joiner'
 Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
+Q_GENRE_APPID_COUNT = "genre-appid_count"
+Q_SCORE_APPID_COUNT = "score-appid_count"
+Q_APPID_COUNT_ENGLISH = 'appid_count-english'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'
@@ -57,3 +60,5 @@ K_Q1GAME = 'q1game'
 K_POSITIVE = 'positive'
 K_REVIEW = 'review'
 K_NEGATIVE_TEXT = 'negative_text'
+K_APPID_COUNT_GENRE = "appid_count_genre"
+K_APPID_COUNT_SCORE = "appid_count_score"

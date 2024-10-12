@@ -38,7 +38,7 @@ def main():
     n_reviews = config_params["n_reviews"]
     batch = config_params["batch"]
     # Crear una instancia de Q4Joiner
-    joiner = Q4Joiner(1, 1, [('ENGLISH', int(os.environ['ENGLISH_INSTANCES']))], batch, n_reviews)
+    joiner = Q4Joiner(1, 1, [], batch, n_reviews)
 
     # Iniciar el filtro, escuchando mensajes en la cola
     joiner.run()

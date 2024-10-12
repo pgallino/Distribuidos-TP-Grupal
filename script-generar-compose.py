@@ -89,8 +89,8 @@ def generate_docker_compose(instances):
                 'networks': ['testing_net']
             }
 
-    # Definición de nodos no escalables (q3_joiner, q4_joiner, q5_joiner)
-    non_scalable_nodes = ['q3_joiner', 'q4_joiner', 'q5_joiner', 'os_counter', 'avg_counter']
+    # Definición de nodos no escalables (q3_joiner, q4_joiner, q5_joiner, contador_apps_ids)
+    non_scalable_nodes = ['q3_joiner', 'q4_joiner', 'q5_joiner', 'os_counter', 'avg_counter', 'appids_counter']
     for node in non_scalable_nodes:
         services[node] = {
             'container_name': node,

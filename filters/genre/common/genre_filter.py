@@ -1,8 +1,8 @@
 from typing import List, Tuple
-from messages.messages import Genre, MsgType, decode_msg
+from messages.messages import Genre, MsgType, decode_msg, AppIDs
 from messages.games_msg import Q2Game, Q2Games, BasicGame, BasicGames
 from node.node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
+from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER, K_APPID_COUNT_GENRE
 
 
 class GenreFilter(Node):
@@ -48,6 +48,8 @@ class GenreFilter(Node):
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
                             elif node == 'SHOOTER':
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                            elif node == 'APPID_COUNTER':
+                                self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_APPID_COUNT_GENRE) 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
                 self._shutdown()
                 return
@@ -67,6 +69,7 @@ class GenreFilter(Node):
     def _process_games_message(self, msg):
         """Filtra juegos por género y los envía a las colas correspondientes."""
         indie_basic_games, indie_q2_games, shooter_games = [], [], []
+        app_ids_set = set()
 
         for game in msg.games:
             for genre in game.genres:
@@ -75,6 +78,12 @@ class GenreFilter(Node):
                     indie_q2_games.append(Q2Game(app_id=game.app_id, name=game.name, release_date=game.release_date, avg_playtime=game.avg_playtime))
                 elif genre == Genre.ACTION.value:
                     shooter_games.append(BasicGame(app_id=game.app_id, name=game.name))
+                    app_ids_set.add(game.app_id)
+
+        if app_ids_set:
+            # self.logger.custom(f"envio estos apps-ids: {app_ids_set}")
+            app_ids_msg = AppIDs(id=msg.id, app_ids=app_ids_set)
+            self._middleware.send_to_queue(E_FROM_GENRE, app_ids_msg.encode(), key=K_APPID_COUNT_GENRE)
 
         if indie_basic_games:
             indie_basic_msg = BasicGames(id=msg.id, games=indie_basic_games)
@@ -104,3 +113,5 @@ class GenreFilter(Node):
                         self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
                     elif node == 'SHOOTER':
                         self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                    elif node == 'APPID_COUNTER':
+                        self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_APPID_COUNT_GENRE)
