@@ -128,7 +128,6 @@ def generate_docker_compose(instances):
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {
         'name': 'steamyanalytics',
-        'version': '3.8',
         'services': services,
         'networks': {
             'testing_net': {

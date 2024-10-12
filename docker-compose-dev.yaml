@@ -292,4 +292,3 @@ services:
     image: trimmer:latest
     networks:
     - testing_net
-version: '3.8'
