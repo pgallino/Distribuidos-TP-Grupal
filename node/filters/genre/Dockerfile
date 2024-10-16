@@ -4,13 +4,13 @@ FROM python:3.9.7-slim
 RUN pip install --no-cache-dir pika==1.2.0
 
 # Copiamos los archivos necesarios
-COPY server/main.py /
-COPY server/server.py /
+COPY node/filters/genre/main.py /
+COPY node/filters/genre/genre_filter.py /
+COPY node/node.py /
 
-COPY messages /messages
-
+# Copiar la carpeta completa middleware
 COPY middleware /middleware
-
+COPY messages /messages
 COPY utils /utils
 
 # Configura el ENTRYPOINT para ejecutar main.py al iniciar

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-from common.server import Server
+from server import Server
 import logging
-import os
 from utils.initilization import initialize_config
 import utils.logging_config # Esto ejecuta la configuración del logger
 
