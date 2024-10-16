@@ -6,35 +6,56 @@ networks:
       - subnet: 172.25.125.0/24
       driver: default
 services:
-  avg_counter:
-    container_name: avg_counter
+  avg_counter_1:
+    container_name: avg_counter_1
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: avg_counter:latest
     networks:
     - testing_net
-  client:
-    container_name: client
+  client_1:
+    container_name: client_1
     depends_on:
       rabbitmq:
         condition: service_healthy
       server:
         condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: client:latest
     networks:
     - testing_net
     volumes:
     - ./datasets:/datasets
-    - ./results:/results
   english_1:
     container_name: english_1
     depends_on:
@@ -44,11 +65,17 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: english:latest
     networks:
     - testing_net
@@ -61,11 +88,17 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=2
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: english:latest
     networks:
     - testing_net
@@ -78,11 +111,17 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=3
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: english:latest
     networks:
     - testing_net
@@ -95,11 +134,17 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=4
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: english:latest
     networks:
     - testing_net
@@ -112,11 +157,17 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=5
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: english:latest
     networks:
     - testing_net
@@ -129,75 +180,155 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: genre:latest
     networks:
     - testing_net
-  os_counter:
-    container_name: os_counter
+  genre_2:
+    container_name: genre_2
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - INSTANCE_ID=2
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: genre:latest
+    networks:
+    - testing_net
+  genre_3:
+    container_name: genre_3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=3
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: genre:latest
+    networks:
+    - testing_net
+  os_counter_1:
+    container_name: os_counter_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: os_counter:latest
     networks:
     - testing_net
-  q3_joiner:
-    container_name: q3_joiner
+  q3_joiner_1:
+    container_name: q3_joiner_1
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: q3_joiner:latest
     networks:
     - testing_net
-  q4_joiner:
-    container_name: q4_joiner
+  q4_joiner_1:
+    container_name: q4_joiner_1
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: q4_joiner:latest
     networks:
     - testing_net
-  q5_joiner:
-    container_name: q5_joiner
+  q5_joiner_1:
+    container_name: q5_joiner_1
     depends_on:
       rabbitmq:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: q5_joiner:latest
     networks:
     - testing_net
@@ -232,11 +363,86 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: release_date:latest
+    networks:
+    - testing_net
+  release_date_2:
+    container_name: release_date_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=2
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: release_date:latest
+    networks:
+    - testing_net
+  release_date_3:
+    container_name: release_date_3
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=3
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: release_date:latest
+    networks:
+    - testing_net
+  release_date_4:
+    container_name: release_date_4
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=4
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: release_date:latest
     networks:
     - testing_net
@@ -249,11 +455,17 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: score:latest
     networks:
     - testing_net
@@ -265,11 +477,17 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: server:latest
     networks:
     - testing_net
@@ -284,11 +502,40 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=DEBUG
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
     - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
     - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    image: trimmer:latest
+    networks:
+    - testing_net
+  trimmer_2:
+    container_name: trimmer_2
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=DEBUG
+    - INSTANCE_ID=2
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=3
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=4
+    - ENGLISH_INSTANCES=5
+    - CLIENT_INSTANCES=1
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
     image: trimmer:latest
     networks:
     - testing_net

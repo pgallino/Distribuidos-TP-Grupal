@@ -12,7 +12,6 @@ def main():
 
     # Inicializar configuración y logging
     config_params = initialize_config(required_keys)
-    initialize_log()
 
     # Extraer parámetros del config
     instance_id = config_params["instance_id"]

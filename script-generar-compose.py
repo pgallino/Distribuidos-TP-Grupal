@@ -95,12 +95,12 @@ def generate_docker_compose(instances):
                 'networks': ['testing_net']
             }
 
-            # Si es el cliente, añadir dependencia de servidor
+            # Si es el cliente, añadir dependencia de servidor y volumen datasets
             if node == 'client':
                 services[service_name]['depends_on']['server'] = {
                     'condition': 'service_started'
                 }
-
+                services[service_name]['volumes'] = ['./datasets:/datasets']
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {
         'name': 'steamyanalytics',

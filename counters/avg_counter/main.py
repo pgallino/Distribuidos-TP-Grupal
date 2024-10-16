@@ -24,4 +24,7 @@ def main():
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola
-    avg_counter
+    avg_counter.run()
+
+if __name__ == "__main__":
+    main()
