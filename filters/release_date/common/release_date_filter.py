@@ -1,7 +1,7 @@
 from messages.messages import MsgType, decode_msg
 from messages.games_msg import Q2Games
 from node.node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_2010_GAMES, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
+from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
 class ReleaseDateFilter(Node):
     def __init__(self, id: int, n_nodes: int):
@@ -12,7 +12,7 @@ class ReleaseDateFilter(Node):
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)
         self._middleware.declare_exchange(E_FROM_GENRE)
         self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES)
-        self._middleware.declare_queue(Q_2010_GAMES)
+        self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
 
         # Configura la cola de coordinación
         self._setup_coordination_queue(Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE)
@@ -23,14 +23,13 @@ class ReleaseDateFilter(Node):
             self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
                 self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
-            else:
-                self.shutting_down = True
-                self._middleware.connection.close()
 
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                self._shutdown()
+
+        finally:
+            self._shutdown()
 
     def _process_fin(self, ch, method, properties, raw_message):
         """Procesa mensajes de tipo FIN y coordina con otros nodos."""
@@ -39,11 +38,10 @@ class ReleaseDateFilter(Node):
             self.fins_counter += 1
             if self.fins_counter == self.n_nodes:
                 if self.id == 1:
-                    # Envía mensaje FIN a la cola Q_2010_GAMES
-                    self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                self._shutdown()
-                return
+                    # Envía mensaje FIN a la cola Q_RELEASE_DATE_AVG_COUNTER
+                    self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, msg.encode())
+
+                self._middleware.channel.stop_consuming()
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_message(self, ch, method, properties, raw_message):
@@ -62,7 +60,7 @@ class ReleaseDateFilter(Node):
         batch = [game for game in msg.games if "201" in game.release_date]
         if batch:
             games_msg = Q2Games(msg.id, batch)
-            self._middleware.send_to_queue(Q_2010_GAMES, games_msg.encode())
+            self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, games_msg.encode())
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
@@ -71,5 +69,5 @@ class ReleaseDateFilter(Node):
         if self.n_nodes > 1:
             self._middleware.send_to_queue(E_COORD_RELEASE_DATE, msg.encode(), key=f"coordination_{self.id}")
         else:
-            self._middleware.send_to_queue(Q_2010_GAMES, msg.encode())
+            self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, msg.encode())
 

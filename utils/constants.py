@@ -2,6 +2,7 @@
 
 #### ESTANDAR NOMBRE COLAS ####
 # Q_ORIGEN_DESTINO = "origen-destino"
+# Q_COORD_NODO = "coord-nodo"
 
 #### ESTANDAR NOMBRE EXCHANGES ####
 # E_FROM_ORIGEN = "from_origen"
@@ -31,7 +32,7 @@ Q_GENRE_RELEASE_DATE = "genre-release_date"
 Q_COORD_TRIMMER = 'coord-trimmer'
 Q_COORD_ENGLISH = 'coord-english'
 Q_TRIMMER_OS_COUNTER = "trimmer-os_counter"
-Q_2010_GAMES = '2010_games'
+Q_RELEASE_DATE_AVG_COUNTER = 'release_date-avg_counter'
 Q_COORD_RELEASE_DATE = 'coord-release_date'
 Q_SCORE_Q4_JOINER = 'score-q4_joiner'
 Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
@@ -49,9 +50,9 @@ E_COORD_ENGLISH = 'from-coord-english'
 
 # Routing Keys
 K_GENREGAME = 'genregame'
-K_INDIE_Q2GAMES = 'indieq2'
-K_INDIE_BASICGAMES = 'indiebasic'
-K_SHOOTER_GAMES = 'shooter'
+K_INDIE_Q2GAMES = 'indie_q2games'
+K_INDIE_BASICGAMES = 'indie_basicgames'
+K_SHOOTER_GAMES = 'shooter_games'
 K_NEGATIVE = 'negative'
 K_Q1GAME = 'q1game'
 K_POSITIVE = 'positive'

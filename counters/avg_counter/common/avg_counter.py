@@ -1,19 +1,17 @@
-import signal
-import traceback
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q2Result
 import heapq
 
 from node.node import Node
-from utils.constants import Q_2010_GAMES, Q_QUERY_RESULT_2
+from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 
 class AvgCounter(Node):
 
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
         super().__init__(id, n_nodes, n_next_nodes)
 
-        self._middleware.declare_queue(Q_2010_GAMES)
+        self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
 
         # Estructuras para almacenar datos
@@ -23,12 +21,13 @@ class AvgCounter(Node):
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_2010_GAMES, self._process_message)
+            self._middleware.receive_from_queue(Q_RELEASE_DATE_AVG_COUNTER, self._process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                traceback.print_exc()
+        finally:
+            self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar el mensaje de la cola."""
@@ -39,6 +38,8 @@ class AvgCounter(Node):
 
         elif msg.type == MsgType.FIN:
             self._process_fin_message(msg)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def _process_game_message(self, msg):
         for game in msg.games:
@@ -48,6 +49,8 @@ class AvgCounter(Node):
                 heapq.heapreplace(self.top_10_games, (game.avg_playtime, game.app_id, game))
     
     def _process_fin_message(self, msg):
+
+        self._middleware.channel.stop_consuming()
         # Ordenar y obtener el top 10 de juegos por average playtime
         result = sorted(self.top_10_games, key=lambda x: x[0], reverse=True)
         top_games = [(game.name, avg_playtime) for avg_playtime, _, game in result]
@@ -56,5 +59,3 @@ class AvgCounter(Node):
         result_message = Q2Result(id=msg.id, top_games=top_games)
         self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
         
-        # Marcar el cierre en proceso y cerrar la conexión
-        self._shutdown()

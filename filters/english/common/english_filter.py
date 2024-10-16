@@ -2,7 +2,7 @@ from typing import List
 from messages.messages import MsgType, decode_msg
 from messages.reviews_msg import BasicReview, BasicReviews
 from node.node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_ENGLISH, E_FROM_SCORE, K_NEGATIVE_TEXT, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH, Q_SCORE_ENGLISH
+from utils.constants import E_COORD_ENGLISH, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH
 import langid
 
 
@@ -24,13 +24,13 @@ class EnglishFilter(Node):
             self._middleware.receive_from_queue(Q_Q4_JOINER_ENGLISH, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
                 self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
-            else:
-                self._shutdown()
 
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                self._shutdown()
+
+        finally:
+            self._shutdown()
 
     def _process_fin(self, ch, method, properties, raw_message):
         """Procesa mensajes de tipo FIN y coordina con otros nodos."""
@@ -41,7 +41,7 @@ class EnglishFilter(Node):
                 if self.id == 1:
                     self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, msg.encode())
                 ch.basic_ack(delivery_tag=method.delivery_tag)
-                self._shutdown()
+                self._middleware.channel.stop_consuming()
                 return
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

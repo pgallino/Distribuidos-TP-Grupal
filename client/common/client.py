@@ -19,9 +19,9 @@ class Client:
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.games = games
         self.reviews = reviews
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
     
     def run(self):
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
     
         try:
             self.client_socket.connect(self.server_addr)

@@ -1,8 +1,6 @@
-import signal
 from typing import List, Tuple
 from messages.messages import decode_msg, MsgType
 from messages.results_msg import Q1Result
-import traceback
 
 from node.node import Node
 from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
@@ -20,23 +18,17 @@ class OsCounter(Node):
 
         self.counters = {}
 
-    def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
-        self.shutting_down = True
-        self._middleware.channel.stop_consuming()
-        self._middleware.connection.close()
-
     def run(self):
 
         try:
             # Ejecuta el consumo de mensajes con el callback `process_message`
-            self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER, self._process_message)
+            self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER, self._process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                traceback.print_exc()
+        finally:
+            self._shutdown()
 
 
     def _process_message(self, ch, method, properties, raw_message):
@@ -50,6 +42,8 @@ class OsCounter(Node):
         elif msg.type == MsgType.FIN:
 
             self._process_fin_message(msg)
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def _process_game_message(self, msg):
             
@@ -69,6 +63,8 @@ class OsCounter(Node):
         self.counters[msg.id] = (windows, mac, linux)
 
     def _process_fin_message(self, msg):
+
+        self._middleware.channel.stop_consuming()
         # Obtener el contador final para el id del mensaje
         if msg.id in self.counters:
             windows_count, mac_count, linux_count = self.counters[msg.id]
@@ -78,6 +74,4 @@ class OsCounter(Node):
 
             # Enviar el mensaje codificado a la cola de resultados
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
-        
-        # Cierra la conexión y marca el cierre en proceso
-        self._shutdown()
+    

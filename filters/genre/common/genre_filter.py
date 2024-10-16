@@ -25,13 +25,14 @@ class GenreFilter(Node):
             self._middleware.receive_from_queue(Q_TRIMMER_GENRE_FILTER, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
                 self._middleware.receive_from_queue(self.coordination_queue, self._process_fin, auto_ack=False)
-            else:
-                self._shutdown()
 
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                self._shutdown()
+            
+        finally:
+            self._shutdown()
+
 
     def _process_fin(self, ch, method, properties, raw_message):
         """Procesa mensajes de tipo FIN y coordina con otros nodos."""
@@ -48,9 +49,7 @@ class GenreFilter(Node):
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
                             elif node == 'SHOOTER':
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                self._shutdown()
-                return
+                self._middleware.channel.stop_consuming()
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_message(self, ch, method, properties, raw_message):

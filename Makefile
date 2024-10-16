@@ -40,10 +40,7 @@ docker-compose-logs:
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
 
-rabbitmq-up:
-	docker compose -f docker-compose-rabbit.yaml up -d
-.PHONY: rabbitmq-up
-
-rabbitmq-down:
-	docker compose -f docker-compose-rabbit.yaml down
-.PHONY: rabbitmq-down
+docker-compose-up-logs: docker-image
+	docker compose -f docker-compose-dev.yaml up -d --build
+	docker compose -f docker-compose-dev.yaml logs -f
+.PHONY: docker-compose-logs

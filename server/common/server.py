@@ -13,6 +13,7 @@ class Server:
     def __init__(self, port, listen_backlog, n_next_nodes: int):
 
         self.logger = logging.getLogger(__name__)
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
         self.shutting_down = False
         self.n_next_nodes = n_next_nodes
 
@@ -20,12 +21,12 @@ class Server:
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
         self._middleware = Middleware()
-        self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
-        self._middleware.declare_queue(Q_QUERY_RESULT_1)
-        self._middleware.declare_queue(Q_QUERY_RESULT_2)
-        self._middleware.declare_queue(Q_QUERY_RESULT_3)
-        self._middleware.declare_queue(Q_QUERY_RESULT_4)
-        self._middleware.declare_queue(Q_QUERY_RESULT_5)
+        self._middleware.declare_queues([Q_GATEWAY_TRIMMER,
+                                         Q_QUERY_RESULT_1, 
+                                         Q_QUERY_RESULT_2, 
+                                         Q_QUERY_RESULT_3, 
+                                         Q_QUERY_RESULT_4, 
+                                         Q_QUERY_RESULT_5])
         self.client_sock = None
 
     def _handle_sigterm(self, sig, frame):
@@ -36,30 +37,35 @@ class Server:
     def _shutdown(self):
         if self.shutting_down:
             return
+        self.logger.custom("action: shutdown | result: in progress...")
         self.shutting_down = True
         self._server_socket.close()
-        self._middleware.channel.stop_consuming()
-        self._middleware.channel.close()
-        self._middleware.connection.close()
+        self._middleware.close()
+        self.logger.custom("action: shutdown | result: success")
 
     def run(self):
         """Server loop to accept and handle new client connections."""
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        while True:
-            try:
-                client_socket = self._accept_new_connection()
-                self.__handle_client_connection(client_socket)
-                break
-            except OSError as error:
-                if not self.shutting_down:
-                    logging.error(f"Server error: {error}")
-                    self._shutdown()
-                break
+        try:
+            while True:
+                try:
+                    client_socket = self._accept_new_connection()
+                    self.__handle_client_connection(client_socket)
+                    break
+                except OSError as error:
+                    if not self.shutting_down:
+                        logging.error(f"Server error: {error}")
+                        self._shutdown()
+                    break
+        except Exception as e:
+            if not self.shutting_down:
+                self.logger.error(f"action: run | result: fail | error: {e}")
+        finally:
+            self._shutdown()
 
     def _accept_new_connection(self):
         """Accept new client connections."""
-        self.logger.custom('action: accept_connections | result: in_progress')
+        self.logger.custom('action: accept_connections | result: in progress...')
         client, addr = self._server_socket.accept()
         self.logger.custom(f'action: accept_connections | result: success | ip: {addr[0]}')
         return client
@@ -70,7 +76,7 @@ class Server:
             self.client_sock = client_sock
             while True:
                 raw_msg = recv_msg(client_sock)
-                msg = decode_msg(raw_msg)  # Ahora devuelve directamente un objeto Handshake, Data o Fin
+                msg = decode_msg(raw_msg)
                 
                 # self.logger.custom(f"action: receive_message | result: success | {msg}")
 
@@ -83,25 +89,17 @@ class Server:
                     break
             self._listen_to_result_queues()
         except ValueError as e:
-            # Captura el ValueError y loggea el cierre de la conexión sin lanzar error
-            if not self.shutting_down:
-                self.logger.custom(f"Connection closed or invalid message received: {e}")
-                self._shutdown()
-                return
+            self.logger.custom(f"Connection closed or invalid message received: {e}")
         except OSError as e:
-            logging.error(f"action: receive_message | result: fail | error: {e}")
+            if not self.shutting_down:
+                logging.error(f"action: receive_message | result: fail | error: {e}")
         except Exception as e:
-            self.logger.custom(f"Esta haciendo shutting_down: {self.shutting_down}")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-                self._shutdown()
-                return
-        finally:
-            self.logger.custom(f"action: ending_connection | result: success")
 
     def _listen_to_result_queues(self):
         """Listen to multiple queues for result messages using callbacks."""
-        self.logger.custom("action: listen_to_queues | result: in_progress")
+        self.logger.custom("action: listen to result queues | result: in progress...")
 
         queues = [
             Q_QUERY_RESULT_1,
@@ -122,12 +120,7 @@ class Server:
             self._middleware.channel.stop_consuming()
 
         except ValueError as e:
-            if not self.shutting_down:
-                self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
-                self._shutdown()
+            self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
         except Exception as e:
-            if not self.shutting_down:
-                self.logger.error(f"Failed to process message from {method.routing_key}: {e}")
-                self._shutdown()
-
+            self.logger.error(f"Failed to process message from {method.routing_key}: {e}")
 

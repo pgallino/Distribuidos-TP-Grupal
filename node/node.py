@@ -13,7 +13,6 @@ class Node:
         - id: Unique identifier for the node.
         - n_nodes: Total number of nodes in the system.
         - n_next_nodes: List of tuples with next node details (node type, count).
-        - middleware: Middleware instance for message handling.
         """
         self.id = id
         self.n_nodes = n_nodes
@@ -26,12 +25,16 @@ class Node:
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _shutdown(self):
-        """Gracefully shuts down the node, closing connections."""
+        """Gracefully shuts down the node, stopping consumption and closing connections."""
         if self.shutting_down:
             return
+
+        self.logger.custom("action: shutdown | result: in progress...")
         self.shutting_down = True
-        self._middleware.channel.stop_consuming()
-        self._middleware.connection.close()
+
+        # Cierra la conexión de manera segura
+        self._middleware.close()
+        self.logger.custom("action: shutdown | result: success")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
