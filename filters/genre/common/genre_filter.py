@@ -47,8 +47,11 @@ class GenreFilter(Node):
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
                             elif node == 'JOINER_Q3':
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
-                            elif node == 'SHOOTER':
+                            elif node == 'JOINER_Q4':
                                 self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                            # TODO
+                            # VER QUE HACER CON JOINER Q5
+                            # LA K_SHOOTER_GAMES LE MANDA A LOS DOS, POR LO QUE NO HACE FALTA AGREGARLO
                 self._middleware.channel.stop_consuming()
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -101,5 +104,7 @@ class GenreFilter(Node):
                         self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
                     elif node == 'JOINER_Q3':
                         self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
-                    elif node == 'SHOOTER':
+                    elif node == 'JOINER_Q4':
                         self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
+                    # TODO
+                    # VER QUE HACER CON JOINER Q5

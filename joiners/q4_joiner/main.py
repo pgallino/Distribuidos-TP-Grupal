@@ -1,44 +1,33 @@
-from configparser import ConfigParser
-import logging
-import os
-from utils.initilization import initialize_log
+from utils.initilization import initialize_config
 import utils.logging_config # Esto ejecuta la configuración del logger
 from common.q4_joiner import Q4Joiner
 
-
-def initialize_config():
-    """ Parse env variables or config file to find program config params
-
-    Function that search and parse program configuration parameters in the
-    program environment variables first and the in a config file. 
-    If at least one of the config parameters is not found a KeyError exception 
-    is thrown. If a parameter could not be parsed, a ValueError is thrown. 
-    If parsing succeeded, the function returns a ConfigParser object 
-    with config parameters
-    """
-
-    config = ConfigParser(os.environ)
-    # If config.ini does not exists original config object is not modified
-    config.read("config.ini")
-
-    config_params = {}
-    try:
-        config_params["n_reviews"] = int(os.getenv('N_REVIEWS', config["DEFAULT"]["N_REVIEWS"]))
-        config_params["batch"] = int(os.getenv('MAX_BATCH_SIZE', config["DEFAULT"]["MAX_BATCH_SIZE"]))
-    except KeyError as e:
-        raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
-    except ValueError as e:
-        raise ValueError("Key could not be parsed. Error: {}. Aborting server".format(e))
-
-    return config_params
-
 def main():
+
+    required_keys = {
+        "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
+        "q4_joiner_instances": ("Q4_JOINER_INSTANCES", "Q4_JOINER_INSTANCES"),
+        "n_reviews": ("N_REVIEWS", "N_REVIEWS"),
+        "batch": ("MAX_BATCH_SIZE", "MAX_BATCH_SIZE"),
+        "english_instances": ("ENGLISH_INSTANCES", "ENGLISH_INSTANCES"),
+    }
     
-    config_params = initialize_config()
+    config_params = initialize_config(required_keys)
+
+    # Extraer parámetros del config
+    instance_id = config_params["instance_id"]
+    q4_joiner_instances = config_params["q4_joiner_instances"]
     n_reviews = config_params["n_reviews"]
     batch = config_params["batch"]
-    # Crear una instancia de Q4Joiner
-    joiner = Q4Joiner(1, 1, [('ENGLISH', int(os.environ['ENGLISH_INSTANCES']))], batch, n_reviews)
+    english_instances = config_params["english_instances"]
+
+    joiner = Q4Joiner(
+        instance_id,
+        q4_joiner_instances,
+        [('ENGLISH', english_instances)],
+        batch,
+        n_reviews
+    )
 
     # Iniciar el filtro, escuchando mensajes en la cola
     joiner.run()

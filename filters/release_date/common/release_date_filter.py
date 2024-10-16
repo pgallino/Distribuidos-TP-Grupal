@@ -1,12 +1,13 @@
+from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.games_msg import Q2Games
 from node.node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
 class ReleaseDateFilter(Node):
-    def __init__(self, id: int, n_nodes: int):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
         # Inicializa la clase base Node
-        super().__init__(id, n_nodes, n_next_nodes=[])
+        super().__init__(id, n_nodes, n_next_nodes)
         
         # Configura las colas y los intercambios específicos para ReleaseDateFilter
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)

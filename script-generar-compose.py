@@ -6,13 +6,19 @@ def parse_args():
     try:
         # Los argumentos esperados son el número de instancias para cada nodo
         # Orden: trimmer, genre, score, release_date, english, os_counter, avg_counter
-        args = sys.argv[1:8]
+        args = sys.argv[1:6]
         instances = {
             'trimmer': int(args[0]),
             'genre': int(args[1]),
             'score': int(args[2]),
             'release_date': int(args[3]),
-            'english': int(args[4])
+            'english': int(args[4]),
+            'client': 1,        # client, joiners y counters tienen solo una instancia
+            'q3_joiner': 1,
+            'q4_joiner': 1,
+            'q5_joiner': 1,
+            'os_counter': 1,
+            'avg_counter': 1
         }
         return instances
     except (IndexError, ValueError):
@@ -67,7 +73,7 @@ def generate_docker_compose(instances):
         'networks': ['testing_net']
     }
 
-    # Generación de servicios repetitivos según las instancias escalables
+    # Generación de servicios con instancias, incluyendo nodos de una sola instancia
     for node, count in instances.items():
         for i in range(1, count + 1):
             service_name = f"{node}_{i}"
@@ -89,41 +95,11 @@ def generate_docker_compose(instances):
                 'networks': ['testing_net']
             }
 
-    # Definición de nodos no escalables (q3_joiner, q4_joiner, q5_joiner)
-    non_scalable_nodes = ['q3_joiner', 'q4_joiner', 'q5_joiner', 'os_counter', 'avg_counter']
-    for node in non_scalable_nodes:
-        services[node] = {
-            'container_name': node,
-            'image': f'{node}:latest',
-            'environment': [
-                'PYTHONUNBUFFERED=1',
-                'LOGGING_LEVEL=DEBUG'
-            ] + [
-                f"{other_node.upper()}_INSTANCES={instances[other_node]}" for other_node in instances
-            ],
-            'depends_on': {
-                'rabbitmq': {
-                    'condition': 'service_healthy'
+            # Si es el cliente, añadir dependencia de servidor
+            if node == 'client':
+                services[service_name]['depends_on']['server'] = {
+                    'condition': 'service_started'
                 }
-            },
-            'networks': ['testing_net']
-        }
-
-    # Definición del cliente
-    services['client'] = {
-        'container_name': 'client',
-        'image': 'client:latest',
-        'volumes': ['./datasets:/datasets', './results:/results'],
-        'networks': ['testing_net'],
-        'depends_on': {
-            'rabbitmq': {
-                'condition': 'service_healthy'
-            },
-            'server': {
-                'condition': 'service_started'
-            }
-        }
-    }
 
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {

@@ -14,29 +14,32 @@ def initialize_log():
         datefmt='%Y-%m-%d %H:%M:%S',
     )
 
-def initialize_config():
-    """ Parse env variables or config file to find program config params
-
-    Function that search and parse program configuration parameters in the
-    program environment variables first and the in a config file. 
-    If at least one of the config parameters is not found a KeyError exception 
-    is thrown. If a parameter could not be parsed, a ValueError is thrown. 
-    If parsing succeeded, the function returns a ConfigParser object 
-    with config parameters
+def initialize_config(required_keys):
     """
-
+    Generalized configuration initializer for nodes with varying environment variables.
+    
+    Args:
+    - required_keys (dict): A dictionary where the key is the parameter name and 
+                            the value is a tuple with environment variable name 
+                            and an optional default config file key.
+                            
+    Returns:
+    - dict: A dictionary with configuration parameters.
+    """
     config = ConfigParser(os.environ)
-    # If config.ini does not exists original config object is not modified
-    config.read("config.ini")
+    if not config.read("config.ini"):
+        print("Advertencia: config.ini no encontrado. Se utilizarán solo variables de entorno.")
 
     config_params = {}
-    try:
-        config_params["port"] = int(os.getenv('SERVER_PORT', config["DEFAULT"]["SERVER_PORT"]))
-        config_params["listen_backlog"] = int(os.getenv('SERVER_LISTEN_BACKLOG', config["DEFAULT"]["SERVER_LISTEN_BACKLOG"]))
-        config_params["logging_level"] = os.getenv('LOGGING_LEVEL', config["DEFAULT"]["LOGGING_LEVEL"])
-    except KeyError as e:
-        raise KeyError("Key was not found. Error: {} .Aborting server".format(e))
-    except ValueError as e:
-        raise ValueError("Key could not be parsed. Error: {}. Aborting server".format(e))
-
+    for param, (env_var, config_key) in required_keys.items():
+        try:
+            config_params[param] = os.getenv(env_var) or config.get("DEFAULT", config_key)
+            # Convertir a int si el valor es un número
+            if isinstance(config_params[param], str) and config_params[param].isdigit():
+                config_params[param] = int(config_params[param])
+        except KeyError:
+            raise KeyError(f"Configuración clave '{config_key}' no encontrada en entorno o archivo. Abortando.")
+        except ValueError as e:
+            raise ValueError(f"Valor para '{param}' no se pudo interpretar. Error: {e}. Abortando.")
+    
     return config_params

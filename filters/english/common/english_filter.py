@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.reviews_msg import BasicReview, BasicReviews
 from node.node import Node  # Importa la clase base Node
@@ -7,9 +7,9 @@ import langid
 
 
 class EnglishFilter(Node):
-    def __init__(self, id: int, n_nodes: int):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
         # Inicializa la clase base Node
-        super().__init__(id, n_nodes, n_next_nodes=[])
+        super().__init__(id, n_nodes, n_next_nodes)
 
         # Configura las colas y los intercambios específicos para EnglishFilter
         self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
