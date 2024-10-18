@@ -100,7 +100,8 @@ def generate_docker_compose(instances):
                 services[service_name]['depends_on']['server'] = {
                     'condition': 'service_started'
                 }
-                services[service_name]['volumes'] = [f'./datasets/datasets_{i}:/datasets']
+                services[service_name]['volumes'] = [f'./datasets/datasets_{i}:/datasets', f'./results:/results']
+                
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {
         'name': 'steamyanalytics',

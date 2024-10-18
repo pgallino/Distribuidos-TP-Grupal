@@ -1,8 +1,8 @@
 import logging
-from multiprocessing import Process
 from messages.messages import decode_msg
 from middleware.middleware import Middleware
-from utils.constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
+
+
 
 
 class ResultDispatcher:
@@ -44,15 +44,16 @@ class ResultDispatcher:
 
             # Find the socket associated with the client_id
             # Supuestamente le diccionario esta hecho con un manager para controlar el accesos concurrente
+            self.logger.custom(f"el diccionario es: {self.client_connections}")
             if client_id in self.client_connections:
                 client_sock, n_results_sent = self.client_connections[client_id]
 
                 client_sock.sendall(body)
                 # le añado uno a respuestas enviadas
                 n_results_sent += 1
+                self.client_connections[client_id] = (client_sock, n_results_sent) 
                 if n_results_sent == 5:
                     self.notification_queue.put(client_id)
-                self.client_connections[client_id][1] += 1
             else:
                 self.logger.error(f"No active connection for client_id {client_id}")
             ch.basic_ack(delivery_tag=method.delivery_tag)

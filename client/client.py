@@ -126,10 +126,11 @@ class Client:
         except Exception as e:
             print(f"Error receiving results: {e}")
 
-    def save_to_file(self, filename: str, content: str):
+    def save_to_file(self, filename: str, content: str, id: int):
         """Saves the content to a specified file."""
-        os.makedirs("/results", exist_ok=True)
-        with open(f"/results/{filename}", "w") as file:
+        results_dir = f"/results/results_client_{id}"  # Define el directorio de resultados para cada cliente
+        os.makedirs(results_dir, exist_ok=True)
+        with open(f"{results_dir}/{filename}", "w") as file:
             file.write(content)
         
     def process_q1_result(self, msg):
@@ -141,7 +142,7 @@ class Client:
             f"- Mac: {msg.mac_count}\n"
         )
         self.logger.custom(output)
-        self.save_to_file("Q1.txt", output)
+        self.save_to_file("Q1.txt", output, msg.id)
 
     def process_q2_result(self, msg):
         """Processes and prints Q2 result."""
@@ -151,7 +152,7 @@ class Client:
             f"{top_games_str}\n"
         )
         self.logger.custom(output)
-        self.save_to_file("Q2.txt", output)
+        self.save_to_file("Q2.txt", output, msg.id)
 
     def process_q3_result(self, msg):
         """Processes and prints Q3 result."""
@@ -163,7 +164,7 @@ class Client:
             f"{indie_games_str}\n"
         )
         self.logger.custom(output)
-        self.save_to_file("Q3.txt", output)
+        self.save_to_file("Q3.txt", output, msg.id)
 
     def process_q4_result(self, msg):
         """Processes and prints Q4 result."""
@@ -173,7 +174,7 @@ class Client:
             f"{negative_reviews_str}\n"
         )
         self.logger.custom(output)
-        self.save_to_file("Q4.txt", output)
+        self.save_to_file("Q4.txt", output, msg.id)
 
     def process_q5_result(self, msg):
         """Processes and prints Q5 result."""
@@ -183,4 +184,4 @@ class Client:
             f"{top_negative_str}\n"
         )
         self.logger.custom(output)
-        self.save_to_file("Q5.txt", output)
+        self.save_to_file("Q5.txt", output, msg.id)
