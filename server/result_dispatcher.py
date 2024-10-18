@@ -1,3 +1,4 @@
+import logging
 from multiprocessing import Process
 from messages.messages import decode_msg
 from middleware.middleware import Middleware
@@ -8,6 +9,7 @@ class ResultDispatcher:
     """Listens to RabbitMQ result queues and dispatches results to the correct client."""
 
     def __init__(self, client_connections, notification_queue, result_queue):
+        self.logger = logging.getLogger(__name__)
         self.client_connections = client_connections  # Shared dictionary with client_id -> socket
         self.notification_queue = notification_queue # Comunication queue with Server
         self.processes = []
@@ -28,7 +30,7 @@ class ResultDispatcher:
         # handler de SIGTERM para procesos hijos
         try:
             # Blocking call to receive messages
-            self._middleware.receive_from_queue(self.queue, self._process_result_callback)
+            self._middleware.receive_from_queue(self.queue, self._process_result_callback, False)
         finally:
             # Ensure middleware is closed properly
             self._middleware.close()
@@ -37,7 +39,8 @@ class ResultDispatcher:
         """Callback to process messages from result queues."""
         try:
             result_msg = decode_msg(body)
-            client_id = result_msg.client_id  # Assuming result message has a client_id field
+
+            client_id = result_msg.id  # Assuming result message has a client_id field
 
             # Find the socket associated with the client_id
             # Supuestamente le diccionario esta hecho con un manager para controlar el accesos concurrente
@@ -51,11 +54,9 @@ class ResultDispatcher:
                     self.notification_queue.put(client_id)
                 self.client_connections[client_id][1] += 1
             else:
-                # self.logger.error(f"No active connection for client_id {client_id}")
-                pass
+                self.logger.error(f"No active connection for client_id {client_id}")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
         except ValueError as e:
-            # self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
-            pass
+            self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
         except Exception as e:
-            # self.logger.error(f"Failed to process message from {method.routing_key}: {e}")
-            pass
+            self.logger.error(f"Failed to process message from {method.routing_key}: {e}")

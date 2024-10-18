@@ -1,4 +1,4 @@
-from multiprocessing import Process
+import logging
 from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
 from utils.constants import Q_GATEWAY_TRIMMER
@@ -14,6 +14,7 @@ class ConnectionHandler:
         self.n_next_nodes = n_next_nodes
         self._middleware = Middleware()  # Each child process has its own middleware connection
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
+        self.logger = logging.getLogger(__name__)
 
     def run(self):
         """Runs the main logic for handling a client connection."""
@@ -33,14 +34,11 @@ class ConnectionHandler:
                     break
 
         except ValueError as e:
-            # self.logger.custom(f"Connection closed or invalid message received: {e}")
-            pass
+            self.logger.custom(f"Connection closed or invalid message received: {e}")
         except OSError as e:
-            # self.logger.error(f"action: receive_message | result: fail | error: {e}")
-            pass
+            self.logger.error(f"action: receive_message | result: fail | error: {e}")
         except Exception as e:
-            pass
-            #self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+            self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
         finally:
             # Clean up
             # self.client_sock.close()

@@ -24,7 +24,7 @@ class ReleaseDateFilter(Node):
         """Inicia la recepción de mensajes de la cola."""
         try:
             if self.n_nodes > 1:
-                self.init_coordinator(self.id, Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE, self.n_nodes, self.get_keys())
+                self.init_coordinator(self.id, Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE, self.n_nodes, self.get_keys(), Q_RELEASE_DATE_AVG_COUNTER)
             self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, self._process_message, auto_ack=False)
 
         except Exception as e:

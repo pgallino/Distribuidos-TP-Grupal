@@ -32,7 +32,7 @@ class ScoreFilter(Node):
         """Inicia la recepción de mensajes de la cola."""
         try:
             if self.n_nodes > 1:
-                self.init_coordinator(self.id, Q_COORD_SCORE, E_COORD_SCORE, self.n_nodes, self.get_keys())
+                self.init_coordinator(self.id, Q_COORD_SCORE, E_COORD_SCORE, self.n_nodes, self.get_keys(), E_FROM_SCORE)
             self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
 
         except Exception as e:

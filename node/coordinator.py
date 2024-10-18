@@ -1,18 +1,25 @@
 from collections import defaultdict
+import logging
 from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
 
 
 class CoordinatorNode:
 
-    def __init__(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys) -> None:
+    def __init__(self, id: int, queue_name: str, coord_exchange_name: str, n_nodes: int, keys, exchange: str) -> None:
         self.id = id
         self._middleware = Middleware()
         self.n_nodes = n_nodes
         self.keys = keys
-        self.exchange_name = exchange_name
-        self._setup_coordination_queue(queue_name, exchange_name)
+        self.keys_exchange = exchange
+        self.exchange_name = coord_exchange_name
+        self._setup_coordination_queue(queue_name, coord_exchange_name)
         self.fins_counter = defaultdict(int)  # Common fin counter for coordinating shutdown.
+        self.logger = logging.getLogger(__name__)
+        if len(keys) > 1: # -> si es mas largo que uno es un exchange
+            self._middleware.declare_exchange(self.keys_exchange)
+        else: # -> si tiene uno solo es una cola
+            self._middleware.declare_queue(self.keys_exchange)
 
     def _listen_coordination_queue(self):
         """Proceso dedicado a escuchar la cola de coordinación"""
@@ -42,7 +49,7 @@ class CoordinatorNode:
                 if self.id == 1:
                     for key, n_nodes in self.keys:
                         for _ in range(n_nodes):
-                            self._middleware.send_to_queue(self.exchange_name, msg.encode(), key=key)
+                            self._middleware.send_to_queue(self.keys_exchange, msg.encode(), key=key)
                 
                 # self._middleware.channel.stop_consuming() -> ya no dejo de consumir
                 del self.fins_counter[client_id]

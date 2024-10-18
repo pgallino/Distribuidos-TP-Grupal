@@ -55,7 +55,7 @@ class Trimmer(Node):
 
         try:
             if self.n_nodes > 1:
-                self.init_coordinator(self.id, Q_COORD_TRIMMER, E_COORD_TRIMMER, self.n_nodes, self.get_keys())
+                self.init_coordinator(self.id, Q_COORD_TRIMMER, E_COORD_TRIMMER, self.n_nodes, self.get_keys(), E_TRIMMER_FILTERS)
             
             self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
             

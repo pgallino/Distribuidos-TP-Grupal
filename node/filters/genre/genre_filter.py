@@ -34,7 +34,7 @@ class GenreFilter(Node):
         """Inicia la recepción de mensajes de la cola."""
         try:
             if self.n_nodes > 1:
-                self.init_coordinator(self.id, Q_COORD_GENRE, E_COORD_GENRE, self.n_nodes, self.get_keys())
+                self.init_coordinator(self.id, Q_COORD_GENRE, E_COORD_GENRE, self.n_nodes, self.get_keys(), E_FROM_GENRE)
             self._middleware.receive_from_queue(Q_TRIMMER_GENRE_FILTER, self._process_message, auto_ack=False)
 
         except Exception as e:

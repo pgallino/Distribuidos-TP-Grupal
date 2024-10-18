@@ -56,8 +56,8 @@ class Node:
     def _receive_message(self, queue_name, callback):
         raise NotImplementedError("Debe implementarse en las subclases")
 
-    def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys):
-        coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys)
+    def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
+        coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange)
         process = Process(target=coordinator._listen_coordination_queue)
         process.start()
         self.coordination_process = process

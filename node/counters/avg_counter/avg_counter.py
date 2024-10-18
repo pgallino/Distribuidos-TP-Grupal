@@ -67,12 +67,6 @@ class AvgCounter(Node):
             # Crear y enviar el mensaje de resultado
             result_message = Q2Result(id=msg.id, top_games=top_games)
 
-            top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in result_message.top_games)
-            output = (
-                f"Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
-                f"{top_games_str}\n"
-            )
-            self.logger.custom(output)
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 
             # Limpiar el heap para este cliente
