@@ -15,15 +15,17 @@ class ReleaseDateFilter(Node):
         self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES)
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
 
-        # Configura la cola de coordinación
-        self._setup_coordination_queue(Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE)
+        if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_RELEASE_DATE)
+    
+    def get_keys(self):
+        return [('', 1)]
 
     def run(self):
         """Inicia la recepción de mensajes de la cola."""
         try:
-            self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+                self.init_coordinator(self.id, Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE, self.n_nodes, self.get_keys())
+            self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, self._process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
@@ -31,11 +33,6 @@ class ReleaseDateFilter(Node):
 
         finally:
             self._shutdown()
-
-    def process_fin(self, ch, method, properties, raw_message):
-        """Procesa mensajes de tipo FIN y coordina con otros nodos."""
-        self._process_fin(raw_message, [('', 1)], Q_RELEASE_DATE_AVG_COUNTER)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_GENRE_RELEASE_DATE."""
@@ -57,7 +54,7 @@ class ReleaseDateFilter(Node):
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
-        self._middleware.channel.stop_consuming()
+        # self._middleware.channel.stop_consuming()
         
         if self.n_nodes > 1:
             self._middleware.send_to_queue(E_COORD_RELEASE_DATE, msg.encode(), key=f"coordination_{self.id}")

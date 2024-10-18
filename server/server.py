@@ -1,12 +1,19 @@
-from messages.messages import decode_msg, MsgType
-from messages.results_msg import QueryNumber
-from middleware.middleware import Middleware
-
+from multiprocessing import Process, Queue, Manager
 import socket
 import logging
 import signal
-from utils.constants import Q_GATEWAY_TRIMMER, Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
-from utils.utils import recv_msg
+
+from result_dispatcher import ResultDispatcher
+from connection_handler import ConnectionHandler
+from utils.constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
+
+def handle_client_connection(client_id: int, client_socket: socket.socket, n_next_nodes: int):
+    connection_handler = ConnectionHandler(client_id, client_socket, n_next_nodes)
+    connection_handler.run()
+
+def init_result_dispatcher(client_connections, notification_queue, result_queue):
+    dispatcher = ResultDispatcher(client_connections, notification_queue, result_queue)
+    dispatcher.listen_to_queue()
 
 class Server:
 
@@ -20,14 +27,15 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
         self._server_socket.listen(listen_backlog)
-        self._middleware = Middleware()
-        self._middleware.declare_queues([Q_GATEWAY_TRIMMER,
-                                         Q_QUERY_RESULT_1, 
-                                         Q_QUERY_RESULT_2, 
-                                         Q_QUERY_RESULT_3, 
-                                         Q_QUERY_RESULT_4, 
-                                         Q_QUERY_RESULT_5])
-        self.client_sock = None
+        
+        self.handlers = []
+        self.dispatchers = []
+        self.manager = Manager()
+        self.client_connections = self.manager.dict()  # Managed dictionary for client_id -> {client_id: (conn, n_results_received)}
+        self.connections_limit = listen_backlog
+        self.notification_queue = Queue()   # Queue to receive termination notifications
+        self.dispatcher_process = None  # Variable para el proceso del dispatcher
+        self.client_id_counter = 0  # Inicialización del contador
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -37,21 +45,65 @@ class Server:
     def _shutdown(self):
         if self.shutting_down:
             return
-        self.logger.custom("action: shutdown | result: in progress...")
+        self.logger.info("action: shutdown | result: in progress...")
         self.shutting_down = True
+
+
         self._server_socket.close()
-        self._middleware.close()
-        self.logger.custom("action: shutdown | result: success")
+        self.logger.info("action: shutdown | result: success")
+
+        # Terminar y unir todos los result dispatchers
+        for dispatcher in self.dispatchers:
+            dispatcher.terminate()
+            dispatcher.join()
+
+        # Terminar y unir todos los connection handlers
+        for handler in self.handlers:
+            handler.terminate()
+            handler.join()
 
     def run(self):
         """Server loop to accept and handle new client connections."""
 
+        queues = [
+            Q_QUERY_RESULT_1,
+            Q_QUERY_RESULT_2,
+            Q_QUERY_RESULT_3,
+            Q_QUERY_RESULT_4,
+            Q_QUERY_RESULT_5
+        ]
+
+        for queue_name in queues:
+            process = Process(target=init_result_dispatcher, args=(self.client_connections, self.notification_queue, queue_name,))
+            process.start()
+            self.dispatchers.append(process)
+
         try:
             while True:
+                        
+                if len(self.client_connections) >= self.connections_limit:
+                    # Blocking wait for a child process to finish
+                    finished_client_id = self.notification_queue.get()
+                    # Remove finished child process from the list
+                    if finished_client_id in self.client_connections:
+                        del self.client_connections[finished_client_id] 
+                    self.logger.info(f"Slot freed up by process {finished_client_id}. Accepting new connections.")
+                
                 try:
                     client_socket = self._accept_new_connection()
-                    self.__handle_client_connection(client_socket)
-                    break
+                    self.client_id_counter += 1 # TODO me parece más logico que el server sea el que decida los ids, no que le llegue
+                    client_id = self.client_id_counter
+
+                    child_process = Process(
+                        target=handle_client_connection,
+                        args=(client_id, client_socket, self.n_next_nodes)
+                    )
+
+                    child_process.start()
+                    self.client_connections[client_id] = (client_socket, 0)  # Track client socket by ID
+                    self.handlers.append(child_process)
+
+
                 except OSError as error:
                     if not self.shutting_down:
                         logging.error(f"Server error: {error}")
@@ -69,58 +121,3 @@ class Server:
         client, addr = self._server_socket.accept()
         self.logger.custom(f'action: accept_connections | result: success | ip: {addr[0]}')
         return client
-
-    def __handle_client_connection(self, client_sock):
-        """Handle communication with a connected client."""
-        try:
-            self.client_sock = client_sock
-            while True:
-                raw_msg = recv_msg(client_sock)
-                msg = decode_msg(raw_msg)
-                
-                # self.logger.custom(f"action: receive_message | result: success | {msg}")
-
-                # Enviamos el mensaje ya codificado directamente a la cola
-                if msg.type == MsgType.DATA:
-                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                elif msg.type == MsgType.FIN:
-                    for _ in range(self.n_next_nodes):
-                        self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                    break
-            self._listen_to_result_queues()
-        except ValueError as e:
-            self.logger.custom(f"Connection closed or invalid message received: {e}")
-        except OSError as e:
-            if not self.shutting_down:
-                logging.error(f"action: receive_message | result: fail | error: {e}")
-        except Exception as e:
-            if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-
-    def _listen_to_result_queues(self):
-        """Listen to multiple queues for result messages using callbacks."""
-        self.logger.custom("action: listen to result queues | result: in progress...")
-
-        queues = [
-            Q_QUERY_RESULT_1,
-            Q_QUERY_RESULT_2,
-            Q_QUERY_RESULT_3,
-            Q_QUERY_RESULT_4,
-            Q_QUERY_RESULT_5
-        ]
-
-        for queue_name in queues:
-            self._middleware.receive_from_queue(queue_name, self._process_result_callback)
-
-
-    def _process_result_callback(self, ch, method, properties, body):
-        """Callback to process messages from result queues."""
-        try:
-            self.client_sock.sendall(body)
-            self._middleware.channel.stop_consuming()
-
-        except ValueError as e:
-            self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
-        except Exception as e:
-            self.logger.error(f"Failed to process message from {method.routing_key}: {e}")
-

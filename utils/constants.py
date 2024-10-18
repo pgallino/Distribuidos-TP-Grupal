@@ -14,6 +14,7 @@
 Q_TRIMMER_GENRE_FILTER = "trimmer-genre_filter"
 Q_COORD_GENRE = 'coord-genre'
 Q_GATEWAY_TRIMMER = 'gateway-trimmer'
+Q_QUERY_RESULT = 'query_result'
 Q_QUERY_RESULT_1 = "query_result_1"
 Q_QUERY_RESULT_2 = "query_result_2"
 Q_QUERY_RESULT_3 = "query_result_3"

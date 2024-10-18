@@ -41,6 +41,7 @@ class OsCounter(Node):
         
         elif msg.type == MsgType.FIN:
 
+            self.logger.custom(f"RECIBI FIN DEL CLIENTE: {msg.id}")
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -64,13 +65,20 @@ class OsCounter(Node):
 
     def _process_fin_message(self, msg):
 
-        self._middleware.channel.stop_consuming()
         # Obtener el contador final para el id del mensaje
         if msg.id in self.counters:
             windows_count, mac_count, linux_count = self.counters[msg.id]
 
             # Crear el mensaje de resultado
             result_message = Q1Result(id=msg.id, windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
+
+            output = (
+                f"Q1: OS Count Summary:\n"
+                f"- Windows: {result_message.windows_count}\n"
+                f"- Linux: {result_message.linux_count}\n"
+                f"- Mac: {result_message.mac_count}\n"
+            )
+            self.logger.custom(output)
 
             # Enviar el mensaje codificado a la cola de resultados
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())

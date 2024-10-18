@@ -1,8 +1,9 @@
 # Clase base Nodo
 import logging
+from multiprocessing import Process
 import signal
-from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
+from coordinator import CoordinatorNode
 
 
 class Node:
@@ -20,8 +21,8 @@ class Node:
         self.n_next_nodes = n_next_nodes
         self.shutting_down = False
         self._middleware = Middleware()
-        self.fins_counter = 0  # Common fin counter for coordinating shutdown.
         self.logger = logging.getLogger(__name__)
+        self.coordination_process = None
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -32,6 +33,10 @@ class Node:
 
         self.logger.custom("action: shutdown | result: in progress...")
         self.shutting_down = True
+
+        if self.coordination_process and self.coordination_process.is_alive():
+            self.coordination_process.terminate()
+            self.coordination_process.join()
 
         # Cierra la conexión de manera segura
         self._middleware.close()
@@ -44,49 +49,17 @@ class Node:
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):
         """Sets up the coordination queue if there are multiple nodes."""
-        if self.n_nodes > 1:
-            self.coordination_queue = queue_prefix + f"{self.id}"
-            self._middleware.declare_queue(self.coordination_queue)
-            self._middleware.declare_exchange(exchange_name)
-            for i in range(1, self.n_nodes + 1):
-                if i != self.id:
-                    routing_key = f"coordination_{i}"
-                    self._middleware.bind_queue(self.coordination_queue, exchange_name, routing_key)
-            self.fins_counter = 1
 
     def run(self):
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _receive_message(self, queue_name, callback):
         raise NotImplementedError("Debe implementarse en las subclases")
+
+    def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys):
+        coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys)
+        process = Process(target=coordinator._listen_coordination_queue)
+        process.start()
+        self.coordination_process = process
+
     
-    def _process_fin(self, raw_message, keys, exchange):
-        """
-        Process the FIN message and send it to specified nodes with the associated keys, exchange, and iteration count.
-
-        Args:
-            ch: Channel object.
-            method: Method object with delivery tag.
-            properties: Properties object.
-            raw_message: Raw message received.
-            nodes_and_keys (list of tuples): List of tuples where each tuple contains:
-                                            - key where to route the FIN message
-                                            - number of nodes which will be listening that key.
-        """
-        msg = decode_msg(raw_message)
-        if msg.type == MsgType.FIN:
-            self.fins_counter += 1
-            if self.fins_counter == self.n_nodes:
-                if self.id == 1:
-                    for key, n_nodes in keys:
-                        for _ in range(n_nodes):
-                            self._middleware.send_to_queue(exchange, msg.encode(), key=key)
-                
-                self._middleware.channel.stop_consuming()
-
-
-# [
-#     (K_GENREGAME, 3),
-#     (K_REVIEW, 2),
-#     (K_Q1GAME, 1)
-# ]

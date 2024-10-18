@@ -1,3 +1,4 @@
+from multiprocessing import Process
 from messages.messages import Dataset, Genre, MsgType, decode_msg
 from messages.games_msg import Q1Game, Q1Games, GenreGame, GenreGames
 from messages.reviews_msg import Review, Score, Reviews
@@ -36,18 +37,27 @@ class Trimmer(Node):
         # Configura las colas y los intercambios específicos para Trimmer
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
+        if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_TRIMMER)
+
+
+    def get_keys(self):
+        keys = []
+        for node, n_nodes in self.n_next_nodes:
+            if node == 'GENRE':
+                keys.append((K_GENREGAME, n_nodes))
+            elif node == 'SCORE':
+                keys.append((K_REVIEW, n_nodes))
+            elif node == 'OS_COUNTER':
+                keys.append((K_Q1GAME, n_nodes))
+        return keys
         
-        self._setup_coordination_queue(Q_COORD_TRIMMER, E_COORD_TRIMMER)
-
-
     def run(self):
 
         try:
-
-            self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
-
             if self.n_nodes > 1:
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+                self.init_coordinator(self.id, Q_COORD_TRIMMER, E_COORD_TRIMMER, self.n_nodes, self.get_keys())
+            
+            self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
             
         except Exception as e:
             if not self.shutting_down:
@@ -55,19 +65,6 @@ class Trimmer(Node):
         finally:
             self._shutdown()
 
-    def process_fin(self, ch, method, properties, raw_message):
-        keys = []
-        for node, n_nodes in self.n_next_nodes:
-            if node == 'GENRE':
-                keys.append((K_GENREGAME, n_nodes))
-            if node == 'SCORE':
-                keys.append((K_REVIEW, n_nodes))
-            if node == 'OS_COUNTER':
-                keys.append((K_Q1GAME, n_nodes))
-                
-        self._process_fin(raw_message, keys, E_TRIMMER_FILTERS)
-
-        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_message(self, ch, method, properties, raw_message):
 
@@ -125,8 +122,7 @@ class Trimmer(Node):
     def _process_fin_message(self, msg):
         """Procesa mensajes de tipo FIN, coordinando con otros nodos si es necesario."""
 
-        # deja de consumir de la cola original para no obtener más FIN si hay
-        self._middleware.channel.stop_consuming()
+        # Ya no dejo de consumir
 
         if self.n_nodes > 1:
             self._middleware.send_to_queue(E_COORD_TRIMMER, msg.encode(), key=f"coordination_{self.id}")

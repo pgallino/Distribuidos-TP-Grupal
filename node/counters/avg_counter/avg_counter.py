@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q2Result
@@ -14,8 +15,8 @@ class AvgCounter(Node):
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
 
-        # Estructuras para almacenar datos
-        self.top_10_games = []  # Almacenará el top 10 de juegos de la década del 2010 con mayor average playtime
+        # Diccionario para almacenar un heap por cada cliente
+        self.client_heaps = defaultdict(list)  # client_id -> heap
 
     def run(self):
 
@@ -42,20 +43,38 @@ class AvgCounter(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def _process_game_message(self, msg):
+        client_id = msg.id  # Asumo que cada mensaje tiene un client_id
+
+        # Obtener el heap para este cliente
+        client_heap = self.client_heaps[client_id]
+
         for game in msg.games:
-            if len(self.top_10_games) < 10:
-                heapq.heappush(self.top_10_games, (game.avg_playtime, game.app_id, game))
-            elif game.avg_playtime > self.top_10_games[0][0]:  # 0 es el índice de avg_playtime
-                heapq.heapreplace(self.top_10_games, (game.avg_playtime, game.app_id, game))
+            if len(client_heap) < 10:
+                heapq.heappush(client_heap, (game.avg_playtime, game.app_id, game))
+            elif game.avg_playtime > client_heap[0][0]:  # 0 es el índice de avg_playtime
+                heapq.heapreplace(client_heap, (game.avg_playtime, game.app_id, game))
     
     def _process_fin_message(self, msg):
 
-        self._middleware.channel.stop_consuming()
-        # Ordenar y obtener el top 10 de juegos por average playtime
-        result = sorted(self.top_10_games, key=lambda x: x[0], reverse=True)
-        top_games = [(game.name, avg_playtime) for avg_playtime, _, game in result]
+        client_id = msg.id  # Usar el client_id del mensaje FIN
 
-        # Crear y enviar el mensaje de resultado
-        result_message = Q2Result(id=msg.id, top_games=top_games)
-        self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
+        if client_id in self.client_heaps:
+            # Obtener el heap del cliente y ordenarlo
+            client_heap = self.client_heaps[client_id]
+            result = sorted(client_heap, key=lambda x: x[0], reverse=True)
+            top_games = [(game.name, avg_playtime) for avg_playtime, _, game in result]
+
+            # Crear y enviar el mensaje de resultado
+            result_message = Q2Result(id=msg.id, top_games=top_games)
+
+            top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in result_message.top_games)
+            output = (
+                f"Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
+                f"{top_games_str}\n"
+            )
+            self.logger.custom(output)
+            self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
+
+            # Limpiar el heap para este cliente
+            del self.client_heaps[client_id]
         

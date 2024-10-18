@@ -6,6 +6,8 @@ RUN pip install --no-cache-dir pika==1.2.0
 # Copiamos los archivos necesarios
 COPY server/main.py /
 COPY server/server.py /
+COPY server/connection_handler.py /
+COPY server/result_dispatcher.py /
 
 COPY messages /messages
 

@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY node/counters/os_counter/main.py /
 COPY node/counters/os_counter/os_counter.py /
 COPY node/node.py /
+COPY node/coordinator.py /
 
 # Copiar la carpeta completa middleware
 COPY middleware /middleware

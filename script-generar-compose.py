@@ -6,14 +6,14 @@ def parse_args():
     try:
         # Los argumentos esperados son el número de instancias para cada nodo
         # Orden: trimmer, genre, score, release_date, english, os_counter, avg_counter
-        args = sys.argv[1:6]
+        args = sys.argv[1:7]
         instances = {
             'trimmer': int(args[0]),
             'genre': int(args[1]),
             'score': int(args[2]),
             'release_date': int(args[3]),
             'english': int(args[4]),
-            'client': 1,        # client, joiners y counters tienen solo una instancia
+            'client': int(args[5]),        # client, joiners y counters tienen solo una instancia
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
@@ -100,7 +100,7 @@ def generate_docker_compose(instances):
                 services[service_name]['depends_on']['server'] = {
                     'condition': 'service_started'
                 }
-                services[service_name]['volumes'] = ['./datasets:/datasets']
+                services[service_name]['volumes'] = [f'./datasets/datasets_{i}:/datasets']
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {
         'name': 'steamyanalytics',

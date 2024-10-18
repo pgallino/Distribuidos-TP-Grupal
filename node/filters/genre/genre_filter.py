@@ -16,15 +16,26 @@ class GenreFilter(Node):
         self._middleware.bind_queue(Q_TRIMMER_GENRE_FILTER, E_FROM_TRIMMER, K_GENREGAME)
         self._middleware.declare_exchange(E_FROM_GENRE)
 
-        # Configura la cola de coordinación
-        self._setup_coordination_queue(Q_COORD_GENRE, E_COORD_GENRE)
+        if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_GENRE)
 
+
+    def get_keys(self):
+        keys = []
+        for node, n_nodes in self.n_next_nodes:
+            if node == 'RELEASE_DATE':
+                keys.append((K_INDIE_Q2GAMES, n_nodes))
+            elif node == 'JOINER_Q3':
+                keys.append((K_INDIE_BASICGAMES, n_nodes))
+            elif node == 'JOINER_Q4':
+                keys.append((K_SHOOTER_GAMES, n_nodes))
+        return keys
+    
     def run(self):
         """Inicia la recepción de mensajes de la cola."""
         try:
-            self._middleware.receive_from_queue(Q_TRIMMER_GENRE_FILTER, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+                self.init_coordinator(self.id, Q_COORD_GENRE, E_COORD_GENRE, self.n_nodes, self.get_keys())
+            self._middleware.receive_from_queue(Q_TRIMMER_GENRE_FILTER, self._process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
@@ -32,16 +43,6 @@ class GenreFilter(Node):
             
         finally:
             self._shutdown()
-
-
-    def process_fin(self, ch, method, properties, raw_message):
-        """Procesa mensajes de tipo FIN y coordina con otros nodos."""
-        keys = [(K_INDIE_Q2GAMES if node == 'RELEASE_DATE' 
-                 else K_INDIE_BASICGAMES if node == 'JOINER_Q3' 
-                 else K_SHOOTER_GAMES, n_nodes) 
-                 for node, n_nodes in self.n_next_nodes]
-        self._process_fin(raw_message, keys, E_FROM_GENRE)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_TRIMMER_GENRE_FILTER."""
@@ -80,7 +81,6 @@ class GenreFilter(Node):
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
-        self._middleware.channel.stop_consuming()
         
         if self.n_nodes > 1:
             key=f"coordination_{self.id}"

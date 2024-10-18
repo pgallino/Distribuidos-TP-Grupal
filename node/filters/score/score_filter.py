@@ -15,31 +15,31 @@ class ScoreFilter(Node):
         self._middleware.declare_exchange(E_TRIMMER_FILTERS)
         self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_TRIMMER_FILTERS, K_REVIEW)
         self._middleware.declare_exchange(E_FROM_SCORE)
-
-        # Configura la cola de coordinación
-        self._setup_coordination_queue(Q_COORD_SCORE, E_COORD_SCORE)
-
+        if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_SCORE)
+    
+    def get_keys(self):
+        keys = []
+        for node, n_nodes in self.n_next_nodes:
+            if node == 'JOINER_Q3':
+                keys.append((K_POSITIVE, n_nodes))
+            elif node == 'JOINER_Q4':
+                keys.append((K_NEGATIVE_TEXT, n_nodes))
+            elif node == 'JOINER_Q5':
+                keys.append((K_NEGATIVE, n_nodes))
+        return keys
+    
     def run(self):
         """Inicia la recepción de mensajes de la cola."""
         try:
-            self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
             if self.n_nodes > 1:
-                self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack=False)
+                self.init_coordinator(self.id, Q_COORD_SCORE, E_COORD_SCORE, self.n_nodes, self.get_keys())
+            self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
         finally:
             self._shutdown()
-
-    def process_fin(self, ch, method, properties, raw_message):
-        """Procesa mensajes de tipo FIN y coordina con otros nodos."""
-        keys = [(K_POSITIVE if node == 'JOINER_Q3' 
-                 else K_NEGATIVE_TEXT if node == 'JOINER_Q4' 
-                 else K_NEGATIVE, n_nodes) 
-                 for node, n_nodes in self.n_next_nodes]
-        self._process_fin(raw_message, keys, E_FROM_SCORE)
-        ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola."""
@@ -77,7 +77,7 @@ class ScoreFilter(Node):
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
-        self._middleware.channel.stop_consuming()
+        # self._middleware.channel.stop_consuming() -> ya no dejo de consumir
         
         if self.n_nodes > 1:
             key=f"coordination_{self.id}"
