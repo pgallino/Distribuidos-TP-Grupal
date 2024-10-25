@@ -38,13 +38,22 @@ class EnglishFilter(Node):
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_SCORE_ENGLISH."""
         msg = decode_msg(raw_message)
+
+        with self.condition:
+            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.condition.notify_all()
         
         if msg.type == MsgType.REVIEWS:
             self._process_reviews_message(msg)
+
         elif msg.type == MsgType.FIN:
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        with self.condition:
+            self.processing_client.value = -1 # SETEO EL -1 EN EL processing_client -> TERMINE DE PROCESAR
+            self.condition.notify_all()
 
     def _process_reviews_message(self, msg):
         """Filtra y envía reseñas en inglés a la cola correspondiente."""
@@ -61,7 +70,7 @@ class EnglishFilter(Node):
         # self._middleware.channel.stop_consuming()
         
         if self.n_nodes > 1:
-            self._middleware.send_to_queue(E_COORD_ENGLISH, msg.encode(), key=f"coordination_{self.id}")
+            self.forward_coordfin(E_COORD_ENGLISH, msg)
         else:
             self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, msg.encode())
 

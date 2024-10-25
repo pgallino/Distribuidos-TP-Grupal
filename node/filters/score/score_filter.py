@@ -44,6 +44,10 @@ class ScoreFilter(Node):
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola."""
         msg = decode_msg(raw_message)
+
+        with self.condition:
+            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.condition.notify_all()
         
         if msg.type == MsgType.REVIEWS:
             self._process_reviews_message(msg)
@@ -51,6 +55,10 @@ class ScoreFilter(Node):
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        with self.condition:
+            self.processing_client.value = -1 # SETEO EL -1 EN EL processing_client -> TERMINE DE PROCESAR
+            self.condition.notify_all()
 
     def _process_reviews_message(self, msg):
         """Procesa mensajes de tipo REVIEWS y distribuye según el score."""
@@ -80,14 +88,12 @@ class ScoreFilter(Node):
         # self._middleware.channel.stop_consuming() -> ya no dejo de consumir
         
         if self.n_nodes > 1:
-            key=f"coordination_{self.id}"
-            self._middleware.send_to_queue(E_COORD_SCORE, msg.encode(), key=key)
+            self.forward_coordfin(E_COORD_SCORE, msg)
         else:
-            for node, n_nodes in self.n_next_nodes:
-                for _ in range(n_nodes):
-                    if node == 'JOINER_Q3':
-                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                    elif node == 'JOINER_Q4':
-                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
-                    elif node == 'JOINER_Q5':
-                        self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
+            for node, _ in self.n_next_nodes:
+                if node == 'JOINER_Q3':
+                    self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
+                elif node == 'JOINER_Q4':
+                    self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
+                elif node == 'JOINER_Q5':
+                    self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)

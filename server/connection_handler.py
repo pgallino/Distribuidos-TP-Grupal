@@ -29,8 +29,8 @@ class ConnectionHandler:
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
                 elif msg.type == MsgType.FIN:
                     # Forward the message to the next nodes as specified
-                    for _ in range(self.n_next_nodes):
-                        self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
+                    self.logger.custom(f"ENVIO FIN DE ID {msg.id}")
+                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
                     break
 
         except ValueError as e:

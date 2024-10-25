@@ -37,6 +37,10 @@ class ReleaseDateFilter(Node):
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_GENRE_RELEASE_DATE."""
         msg = decode_msg(raw_message)
+
+        with self.condition:
+            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.condition.notify_all()
         
         if msg.type == MsgType.GAMES:
             self._process_games_message(msg)
@@ -44,6 +48,10 @@ class ReleaseDateFilter(Node):
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        with self.condition:
+            self.processing_client.value = -1 # SETEO EL -1 EN EL processing_client -> TERMINE DE PROCESAR
+            self.condition.notify_all()
 
     def _process_games_message(self, msg):
         """Filtra y envía juegos lanzados en 2010 o después."""
@@ -55,9 +63,10 @@ class ReleaseDateFilter(Node):
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
         # self._middleware.channel.stop_consuming()
+        self.logger.custom(f"ENTRE AL PROCESS_FIN ID {msg.id}")
         
         if self.n_nodes > 1:
-            self._middleware.send_to_queue(E_COORD_RELEASE_DATE, msg.encode(), key=f"coordination_{self.id}")
+            self.forward_coordfin(E_COORD_RELEASE_DATE, msg)
         else:
             self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, msg.encode())
 

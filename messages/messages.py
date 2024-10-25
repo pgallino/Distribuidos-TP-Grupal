@@ -10,6 +10,7 @@ class MsgType(Enum):
     GAMES = 3
     REVIEWS = 4
     RESULT = 5
+    COORDFIN = 6
 
 class Dataset(Enum):
     GAME = 0
@@ -95,6 +96,10 @@ def decode_msg(data):
     elif msg_type == MsgType.RESULT:
 
         return decode_result_wrapper(data[1:])
+    
+    elif msg_type == MsgType.COORDFIN:
+
+        return CoordFin.decode(data[1:])
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {msg_type}")
@@ -204,3 +209,28 @@ class Fin(Message):
 
     def __str__(self):
         return f"Fin(id={self.id})"
+    
+class CoordFin(Message):
+    def __init__(self, id: int, node_id: int):
+        super().__init__(id, MsgType.COORDFIN)
+        self.node_id = node_id
+
+    def encode(self) -> bytes:
+        # Codifica el mensaje Fin
+        # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
+        body = struct.pack('>BBB', int(MsgType.COORDFIN.value), self.id, self.node_id)
+        
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
+        total_length = len(body)
+        
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body
+
+    @staticmethod
+    def decode(data: bytes) -> 'CoordFin':
+        # Decodifica el mensaje Fin
+        id, node_id = struct.unpack('>BB', data)
+        return CoordFin(id, node_id)
+
+    def __str__(self):
+        return f"CoordFin(id={self.id}, node_id={self.node_id})"

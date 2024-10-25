@@ -1,9 +1,10 @@
 # Clase base Nodo
 import logging
-from multiprocessing import Process
+from multiprocessing import Process, Value, Condition
 import signal
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
+from messages.messages import CoordFin
 
 
 class Node:
@@ -23,6 +24,13 @@ class Node:
         self._middleware = Middleware()
         self.logger = logging.getLogger(__name__)
         self.coordination_process = None
+        self.condition = Condition()
+        self.processing_client = Value('i', -1)  # 'i' indica un entero
+
+        # lado del nodo
+        # with self.condition:
+        #     cambio la condicion
+        #     self.condition.notify_all()
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -55,9 +63,15 @@ class Node:
 
     def _receive_message(self, queue_name, callback):
         raise NotImplementedError("Debe implementarse en las subclases")
+    
+    def forward_coordfin(self, coord_exchange_name, msg):
+        for node_id in range(1, self.n_nodes + 1):
+            if node_id != self.id:
+                # Se reenvia el CoordFin del Fin del cliente a cada otra instancia del nodo
+                self._middleware.send_to_queue(coord_exchange_name, CoordFin(msg.id, self.id).encode(), key=f"{node_id}")
 
     def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
-        coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange)
+        coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, self.processing_client, self.condition)
         process = Process(target=coordinator._listen_coordination_queue)
         process.start()
         self.coordination_process = process

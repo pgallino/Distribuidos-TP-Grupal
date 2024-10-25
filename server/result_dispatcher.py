@@ -44,7 +44,6 @@ class ResultDispatcher:
 
             # Find the socket associated with the client_id
             # Supuestamente le diccionario esta hecho con un manager para controlar el accesos concurrente
-            self.logger.custom(f"el diccionario es: {self.client_connections}")
             if client_id in self.client_connections:
                 client_sock, n_results_sent = self.client_connections[client_id]
 
