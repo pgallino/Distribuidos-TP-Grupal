@@ -2,6 +2,7 @@ import logging
 import pika
 import time
 import utils.logging_config # Esto ejecuta la configuración del logger
+from typing import List, Tuple, Callable
 
 
 class Middleware:
@@ -87,6 +88,22 @@ class Middleware:
 
         # Configura el consumidor en el canal con auto_ack
         self.channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=auto_ack)
+
+        # Inicia el consumo de mensajes
+        self.channel.start_consuming()
+    
+    def receive_from_queues(self, queues_with_callbacks: List[Tuple[str, Callable]], auto_ack=True):
+        for queue_with_callback in queues_with_callbacks:
+            queue_name, callback = queue_with_callback
+            if queue_name not in self.queues:
+                raise ValueError(f"La cola '{queue_with_callback[0]}' no está declarada.")
+            
+            # Verifica si el canal está activo antes de configurarlo para el consumo
+            if self.channel is None or self.channel.is_closed:
+                raise RuntimeError("middleware: El canal no está disponible para consumir mensajes.")
+            
+            # Configura el consumidor en el canal con auto_ack
+            self.channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=auto_ack)
 
         # Inicia el consumo de mensajes
         self.channel.start_consuming()
