@@ -24,7 +24,7 @@ class Q3Joiner(Node):
         self._middleware.declare_queue(Q_QUERY_RESULT_3)
 
         # Estructuras para almacenar datos
-        self.games_per_client = defaultdict(lambda: defaultdict(int))  # Almacenará juegos por `app_id`, para cada cliente
+        self.games_per_client = defaultdict(lambda: {})  # Almacenará juegos por `app_id`, para cada cliente
         self.review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas positivas por `app_id`, para cada cliente
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
 

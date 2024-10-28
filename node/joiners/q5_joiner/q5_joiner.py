@@ -22,17 +22,22 @@ class Q5Joiner(Node):
         self._middleware.declare_queue(Q_QUERY_RESULT_5)
 
         # Estructuras de almacenamiento
-        self.games = {}  # Almacena juegos por `app_id`
-        self.negative_review_counts = defaultdict(int)  # Contador de reseñas negativas por `app_id`
+        self.games_per_client = defaultdict(lambda: {})  # Almacena juegos por `app_id`, para cada cliente
+        self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contador de reseñas negativas por `app_id`
+        self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
 
     def process_game_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_GENRE_Q5_JOINER`."""
         msg = decode_msg(raw_message)
         if msg.type == MsgType.GAMES:
+            client_games = self.games_per_client[msg.id]
             for game in msg.games:
-                self.games[game.app_id] = game
+                client_games[game.app_id] = game
         elif msg.type == MsgType.FIN:
-            self._middleware.channel.stop_consuming()
+            client_fins = self.fins_per_client[msg.id]
+            client_fins[0] = True
+            if client_fins[0] and client_fins[1]:
+                self.join_results(msg.id)
             
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -41,43 +46,52 @@ class Q5Joiner(Node):
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.REVIEWS:
+            client_reviews = self.negative_review_counts_per_client[msg.id]
+            client_games = self.games_per_client[msg.id]
+            games_fin_received = self.fins_per_client[msg.id][0]
             for review in msg.reviews:
-                if review.app_id in self.games:
-                    self.negative_review_counts[review.app_id] += 1
+                if (not games_fin_received) or review.app_id in client_games:
+                    client_reviews[review.app_id] += 1
 
         elif msg.type == MsgType.FIN:
+            client_fins = self.fins_per_client[msg.id]
+            client_fins[1] = True
+            if client_fins[0] and client_fins[1]:
+                self.join_results(msg.id)
 
-            self._middleware.channel.stop_consuming()
-
-            # Calcular el percentil 90 de las reseñas negativas
-            counts = np.array(list(self.negative_review_counts.values()))
-            threshold = np.percentile(counts, 90)
-
-            # Seleccionar juegos que superan el umbral del percentil 90
-            top_games = [
-                (app_id, self.games[app_id].name, count)
-                for app_id, count in self.negative_review_counts.items()
-                if count >= threshold
-            ]
-
-            # Ordenar por `app_id` y tomar los primeros 10 resultados
-            top_games_sorted = sorted(top_games, key=lambda x: x[0])[:10]
-
-            # Crear y enviar el mensaje Q5Result
-            result_message = Q5Result(id=msg.id, top_negative_reviews=top_games_sorted)
-            self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
-        
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def run(self):
 
         try:
-            # Consumir mensajes de ambas colas con sus respectivos callbacks
-            self._middleware.receive_from_queue(Q_GENRE_Q5_JOINER, self.process_game_message, auto_ack=False)
-            self._middleware.receive_from_queue(Q_SCORE_Q5_JOINER, self.process_review_message, auto_ack=False)
+            # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo
+            self._middleware.receive_from_queues([(Q_GENRE_Q5_JOINER, self.process_game_message), (Q_SCORE_Q5_JOINER, self.process_review_message)], auto_ack=False)
         
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
         finally:
             self._shutdown()
+
+    def join_results(self, client_id):
+        client_reviews = self.negative_review_counts_per_client[client_id]
+        client_games = self.games_per_client[client_id]
+
+        # Calcular el percentil 90 de las reseñas negativas
+        counts = np.array(list(client_reviews.values()))
+        threshold = np.percentile(counts, 90)
+
+
+        # Seleccionar juegos que superan el umbral del percentil 90
+        top_games = [
+            (app_id, client_games[app_id].name, count)
+            for app_id, count in client_reviews.items()
+            if count >= threshold
+        ]
+
+        # Ordenar por `app_id` y tomar los primeros 10 resultados
+        top_games_sorted = sorted(top_games, key=lambda x: x[0])[:10]
+
+        # Crear y enviar el mensaje Q5Result
+        result_message = Q5Result(id=client_id, top_negative_reviews=top_games_sorted)
+        self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())    
