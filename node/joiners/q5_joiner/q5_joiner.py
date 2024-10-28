@@ -39,7 +39,6 @@ class Q5Joiner(Node):
             client_fins = self.fins_per_client[msg.id]
             client_fins[0] = True
             if client_fins[0] and client_fins[1]:
-                print(f"Me llegaron ambos fins de las colas para el cliente {msg.id}, uno los resultados (por games)")
                 self.join_results(msg.id)
             
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -60,7 +59,6 @@ class Q5Joiner(Node):
             client_fins = self.fins_per_client[msg.id]
             client_fins[1] = True
             if client_fins[0] and client_fins[1]:
-                print(f"Me llegaron ambos fins de las colas para el cliente {msg.id}, uno los resultados (por reviews)")
                 self.join_results(msg.id)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -78,7 +76,6 @@ class Q5Joiner(Node):
             self._shutdown()
 
     def join_results(self, client_id):
-        print(f"Estoy uniendo los resultados del cliente {client_id}")
         client_games = self.games_per_client[client_id]
         client_reviews = self.negative_review_counts_per_client[client_id]
 
@@ -100,4 +97,7 @@ class Q5Joiner(Node):
         # Crear y enviar el mensaje Q5Result
         result_message = Q5Result(id=client_id, top_negative_reviews=top_games_sorted)
         self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
-        print(f"Termine de unir los resultados del cliente {client_id}")
+
+        # Borro los diccionarios de clientes ya resueltos
+        del self.games_per_client[client_id]
+        del self.negative_review_counts_per_client[client_id]

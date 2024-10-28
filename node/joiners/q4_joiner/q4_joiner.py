@@ -99,6 +99,9 @@ class Q4Joiner(Node):
                 if reviews_batch:
                     text_reviews = TextReviews(client_id, reviews_batch)
                     self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+
+        # Borro el diccionario de textos de reviews del cliente
+        del self.negative_reviews_per_client[client_id]
         
         client_reviews.clear() #limpio el diccionario
 
@@ -131,6 +134,10 @@ class Q4Joiner(Node):
             # Crear y enviar el mensaje Q4Result
             result_message = Q4Result(id=msg.id, negative_reviews=negative_reviews)
             self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
+
+            # Borro los diccionarios de clientes ya resueltos
+            del self.games_per_client[msg.id]
+            del self.negative_review_counts_per_client[msg.id]
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

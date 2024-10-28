@@ -96,3 +96,7 @@ class Q3Joiner(Node):
         # Crear y enviar el mensaje Q3Result
         result_message = Q3Result(id=client_id, top_indie_games=top_5_sorted)
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
+
+        # Borro los diccionarios de clientes ya resueltos
+        del self.games_per_client[client_id]
+        del self.review_counts_per_client[client_id]

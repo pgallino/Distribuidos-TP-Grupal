@@ -34,7 +34,7 @@ class CoordinatorNode:
     def _setup_coordination_queue(self, queue_prefix, exchange_name):
         """Sets up the coordination queue if there are multiple nodes."""
         if self.n_nodes > 1:
-            self.coordination_queue = queue_prefix
+            self.coordination_queue = queue_prefix + f"{self.id}"
             self._middleware.declare_queue(self.coordination_queue)
             self._middleware.declare_exchange(exchange_name)
             routing_key = f"{self.id}"
@@ -52,9 +52,10 @@ class CoordinatorNode:
                 del self.fins_counter[client_id]
 
         elif msg.type == MsgType.COORDFIN:
-             with self.condition:
+            key = f"{msg.node_id}"
+            with self.condition:
                 self.condition.wait_for(lambda: self.processing_client.value != msg.id)
-                self._middleware.send_to_queue(self.exchange_name, Fin(msg.id).encode(), key=f"{msg.node_id}")
+                self._middleware.send_to_queue(self.exchange_name, Fin(msg.id).encode(), key=key)
                 self.condition.notify_all()
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
