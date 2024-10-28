@@ -1,5 +1,7 @@
 from collections import defaultdict
 import logging
+import signal
+import os
 from messages.messages import MsgType, decode_msg, Fin
 from multiprocessing import Process, Value, Condition
 from middleware.middleware import Middleware
@@ -19,17 +21,40 @@ class CoordinatorNode:
         self._setup_coordination_queue(queue_name, coord_exchange_name)
         self.fins_counter = defaultdict(int)  # Common fin counter for coordinating shutdown.
         self.logger = logging.getLogger(__name__)
+        self.shutting_down = False
+
         if len(keys) > 1: # -> si es mas largo que uno es un exchange
             self._middleware.declare_exchange(self.keys_exchange)
         else: # -> si tiene uno solo es una cola
             self._middleware.declare_queue(self.keys_exchange)
+
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
+
+    def _shutdown(self):
+        """Gracefully shuts down the node, stopping consumption and closing connections."""
+        self.logger.custom(f"SOY PROCESO {os.getpid()}, MI PADRE ES {os.getppid()} Y ME VOY A CERRAR")
+        if self.shutting_down:
+            return
+
+        self.logger.custom("action: shutdown_coordinator | result: in progress...")
+        self.shutting_down = True
+
+        # Cierra la conexión de manera segura
+        self._middleware.close()
+        self.logger.custom("action: shutdown_coordinator | result: success")
+
+    def _handle_sigterm(self, sig, frame):
+        """Handle SIGTERM signal to close the node gracefully."""
+        self.logger.custom("Received SIGTERM, shutting down gracefully.")
+        self._shutdown()
 
     def _listen_coordination_queue(self):
         """Proceso dedicado a escuchar la cola de coordinación"""
         try:
             self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack = False)
         except Exception as e:
-            self.logger.error(f"action: listen_to_coordination_queue | result: fail | error: {e}")
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_coordination_queue | result: fail | error: {e}")
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):
         """Sets up the coordination queue if there are multiple nodes."""

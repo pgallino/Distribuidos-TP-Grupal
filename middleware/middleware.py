@@ -41,7 +41,7 @@ class Middleware:
         Declara un nuevo exchange del tipo proporcionado e identificado con el nombre
         proporcionado, y lo guarda.
         """
-        if exchange not in self.queues:
+        if exchange not in self.exchanges:
             self.channel.exchange_declare(exchange=exchange, exchange_type=type)
             self.exchanges.add(exchange)
             self.logger.custom(f"action: middleware declare_queue | result: success | exchange: {exchange}")
@@ -118,18 +118,20 @@ class Middleware:
                 if self.channel and self.channel.is_open:
                     self.channel.stop_consuming()
 
-                # Asegurarse de que no hay callbacks pendientes
+                # # Asegurarse de que no hay callbacks pendientes
                 if hasattr(self.channel, 'callbacks') and self.channel.callbacks:
                     self.channel.callbacks.clear()
 
-                # Cierra el canal y la conexión
-                self.channel.close()
-                self.connection.close()
+                # Cerrar el canal y la conexión de forma segura
+                if self.channel.is_open:
+                    self.channel.close()
+                if not self.connection.is_closed:
+                    self.connection.close()
                 self.logger.custom("action: middleware close_connection | result: success")
             except Exception as e:
                 self.logger.custom(f"action: middleware close_connection | result: fail | error: {e}")
         else:
-            self.logger.warning("action: middleware close_connection | result: fail | message: connection already closed or not initialized")
+            self.logger.custom("action: middleware close_connection | result: fail | message: connection already closed or not initialized")
 
     def declare_queues(self, queues_list):
         """

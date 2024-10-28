@@ -1,4 +1,5 @@
 import logging
+import signal
 from messages.messages import decode_msg
 from middleware.middleware import Middleware
 
@@ -17,13 +18,23 @@ class ResultDispatcher:
         self._middleware = Middleware()  # Each process gets its own Middleware instance
         self._middleware.declare_queue(self.queue)
         self.shutting_down = False
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _handle_sigterm(self, sig, frame):
         if self.shutting_down:
             return
         self.shutting_down = True
-        self._middleware.close()
+        self._shutdown()
 
+    def _shutdown(self):
+        if self.shutting_down:
+            return
+        self.logger.custom("action: shutdown | result: in progress...")
+        self.shutting_down = True
+
+        # Cierra la conexión de manera segura
+        self._middleware.close()
+        self.logger.custom("action: shutdown | result: success")
 
     def listen_to_queue(self):
         """Listen to a specific queue and process messages as they arrive."""

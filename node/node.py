@@ -1,7 +1,8 @@
 # Clase base Nodo
 import logging
-from multiprocessing import Process, Value, Condition
 import signal
+import os
+from multiprocessing import Process, Value, Condition
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import CoordFin
@@ -27,28 +28,27 @@ class Node:
         self.condition = Condition()
         self.processing_client = Value('i', -1)  # 'i' indica un entero
 
-        # lado del nodo
-        # with self.condition:
-        #     cambio la condicion
-        #     self.condition.notify_all()
-
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _shutdown(self):
         """Gracefully shuts down the node, stopping consumption and closing connections."""
         if self.shutting_down:
             return
-
-        self.logger.custom("action: shutdown | result: in progress...")
+        
+        self.logger.custom("action: shutdown_node | result: in progress...")
         self.shutting_down = True
 
-        if self.coordination_process and self.coordination_process.is_alive():
+        self.logger.custom(f"SOY EL PROCESO {os.getpid()} coordination process: {self.coordination_process}")
+        if self.coordination_process:
+            self.logger.custom("llego hasta antes de terminate sin is_alive")
             self.coordination_process.terminate()
+            self.logger.custom("llego hasta antes de join sin is_alive")
             self.coordination_process.join()
 
         # Cierra la conexión de manera segura
+        self.logger.custom("llego hasta antes de close")
         self._middleware.close()
-        self.logger.custom("action: shutdown | result: success")
+        self.logger.custom("action: shutdown_node | result: success")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
@@ -72,9 +72,13 @@ class Node:
                 self._middleware.send_to_queue(coord_exchange_name, CoordFin(msg.id, self.id).encode(), key=key)
 
     def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
-        coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, self.processing_client, self.condition)
-        process = Process(target=coordinator._listen_coordination_queue)
+        process = Process(
+            target=create_coordinator,
+            args=(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, self.processing_client, self.condition))
         process.start()
         self.coordination_process = process
 
+def create_coordinator(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition):
+    coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition)
+    coordinator._listen_coordination_queue()
     
