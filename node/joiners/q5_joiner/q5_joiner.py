@@ -29,14 +29,17 @@ class Q5Joiner(Node):
     def process_game_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_GENRE_Q5_JOINER`."""
         msg = decode_msg(raw_message)
+
         if msg.type == MsgType.GAMES:
             client_games = self.games_per_client[msg.id]
             for game in msg.games:
                 client_games[game.app_id] = game
+
         elif msg.type == MsgType.FIN:
             client_fins = self.fins_per_client[msg.id]
             client_fins[0] = True
             if client_fins[0] and client_fins[1]:
+                print(f"Me llegaron ambos fins de las colas para el cliente {msg.id}, uno los resultados (por games)")
                 self.join_results(msg.id)
             
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -57,6 +60,7 @@ class Q5Joiner(Node):
             client_fins = self.fins_per_client[msg.id]
             client_fins[1] = True
             if client_fins[0] and client_fins[1]:
+                print(f"Me llegaron ambos fins de las colas para el cliente {msg.id}, uno los resultados (por reviews)")
                 self.join_results(msg.id)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -69,13 +73,14 @@ class Q5Joiner(Node):
         
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
         finally:
             self._shutdown()
 
     def join_results(self, client_id):
-        client_reviews = self.negative_review_counts_per_client[client_id]
+        print(f"Estoy uniendo los resultados del cliente {client_id}")
         client_games = self.games_per_client[client_id]
+        client_reviews = self.negative_review_counts_per_client[client_id]
 
         # Calcular el percentil 90 de las reseñas negativas
         counts = np.array(list(client_reviews.values()))
@@ -86,7 +91,7 @@ class Q5Joiner(Node):
         top_games = [
             (app_id, client_games[app_id].name, count)
             for app_id, count in client_reviews.items()
-            if count >= threshold
+            if app_id in client_games and count >= threshold
         ]
 
         # Ordenar por `app_id` y tomar los primeros 10 resultados
@@ -94,4 +99,5 @@ class Q5Joiner(Node):
 
         # Crear y enviar el mensaje Q5Result
         result_message = Q5Result(id=client_id, top_negative_reviews=top_games_sorted)
-        self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())    
+        self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
+        print(f"Termine de unir los resultados del cliente {client_id}")

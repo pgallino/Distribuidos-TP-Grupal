@@ -137,9 +137,8 @@ class Q4Joiner(Node):
     def run(self):
 
         try:
-            self._middleware.receive_from_queue(Q_GENRE_Q4_JOINER, self.process_game_message, auto_ack=False)
-            self._middleware.receive_from_queue(Q_SCORE_Q4_JOINER, self.process_review_message, auto_ack=False)
-            self._middleware.receive_from_queue(Q_ENGLISH_Q4_JOINER, self.process_negative_review_message, auto_ack=False)
+            # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo
+            self._middleware.receive_from_queues([(Q_GENRE_Q4_JOINER, self.process_game_message), (Q_SCORE_Q4_JOINER, self.process_review_message), (Q_ENGLISH_Q4_JOINER, self.process_negative_review_message)], auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
