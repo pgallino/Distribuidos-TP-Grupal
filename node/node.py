@@ -42,9 +42,13 @@ class Node:
             self.coordination_process.terminate()
             self.coordination_process.join()
 
-        # Cierra la conexión de manera segura
-        self._middleware.close()
-        self.logger.custom("action: shutdown_node | result: success")
+        self.logger.custom("SALI DE TERMINATE Y JOIN")
+
+        try:
+            self._middleware.close()
+            self.logger.custom("action: shutdown_node | result: success")
+        except Exception as e:
+            self.logger.error(f"action: shutdown_node | result: fail | error: {e}")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""

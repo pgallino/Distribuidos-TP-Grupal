@@ -58,6 +58,7 @@ class Trimmer(Node):
             self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
             
         except Exception as e:
+            self.logger.custom("Entro al except del run")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()

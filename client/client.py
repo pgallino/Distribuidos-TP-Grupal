@@ -16,36 +16,36 @@ class Client:
         self.max_batch_size = max_batch_size * 1024
         self.logger = logging.getLogger(__name__)
         self.shutting_down = False
-        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.games = games
         self.reviews = reviews
         signal.signal(signal.SIGTERM, self._handle_sigterm)
     
     def run(self):
-    
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        
         try:
-            self.client_socket.connect(self.server_addr)
+            client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
             handshake_msg = Handshake(self.id)  # Creamos el mensaje de tipo Handshake con ID 1
-            self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
+            client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
-            self.send_dataset(self.games, self.client_socket, Dataset(Dataset.GAME))
-            self.send_dataset(self.reviews, self.client_socket, Dataset(Dataset.REVIEW))
+            self.send_dataset(self.games, client_socket, Dataset(Dataset.GAME))
+            self.send_dataset(self.reviews, client_socket, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
             fin_msg = Fin(self.id)  # Creamos el mensaje Fin con ID 1
-            self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
+            client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_fin | result: success | message: Fin")
 
             self.recv_results()
             
         except Exception as error:
             if not self.shutting_down:
-                self.logger.custom(f"Error: {error}")
+                self.logger.custom(f"Error en run: {error}")
         
         finally:
-            self.client_socket.close()
+            client_socket.close()
 
     def send_dataset(self, fname, sock, dataset):
         # Chequear si existe el archivo
@@ -88,7 +88,7 @@ class Client:
         self.shutting_down = True
         self._server_socket.close()
 
-    def recv_results(self):
+    def recv_results(self, client_socket):
         """Receive and process results from the server."""
 
         self.logger.custom(f"action: recv_results | result: in progress...")
@@ -96,9 +96,9 @@ class Client:
         try:
             while received_results < 5:
                 # Recibe el mensaje del servidor
-                raw_msg = recv_msg(self.client_socket)
+                raw_msg = recv_msg(client_socket)
                 if not raw_msg:
-                    print("Connection closed by server.")
+                    self.logger.error("Connection closed by server.")
                     break
 
                 # Decodifica el mensaje
@@ -119,12 +119,12 @@ class Client:
                     elif msg.result_type == QueryNumber.Q5:
                         self.process_q5_result(msg)
                     else:
-                        print(f"Received Unknown Result Type: {msg}")
+                        self.logger.error(f"Received Unknown Result Type: {msg}")
                 else:
-                    print(f"Received Non-Result Message: {msg}")
+                    self.logger.error(f"Received Non-Result Message: {msg}")
 
         except Exception as e:
-            print(f"Error receiving results: {e}")
+            self.logger.error(f"Error receiving results: {e}")
 
     def save_to_file(self, filename: str, content: str, id: int):
         """Saves the content to a specified file."""
