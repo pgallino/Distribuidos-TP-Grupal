@@ -28,7 +28,7 @@ class Q4Joiner(Node):
         # Estructuras de almacenamiento
         self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas negativas en inglés, para cada cliente
         self.games_per_client = defaultdict(lambda: {})  # Detalles de juegos de acción/shooter
-        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: [])) # Guarda las reviews negativas de los juegos
+        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False))) # Guarda las reviews negativas de los juegos
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
 
 
@@ -62,7 +62,11 @@ class Q4Joiner(Node):
             for review in msg.reviews: # para un TextReview en TextReviews
                 if (not games_fin_received) or review.app_id in client_games:
                     # Debe funcionar appendiendo el elemento directamente de esta manera
-                    client_reviews[review.app_id].append(review.text)
+                    game_reviews, _ = client_reviews[review.app_id]
+                    game_reviews.append(review.text)
+                    if len(game_reviews) > self.n_reviews:
+                        self.send_reviews_v2(msg.id, review.app_id, game_reviews)
+                        client_reviews[review.app_id] = ([], True)
 
         elif msg.type == MsgType.FIN:
             client_fins = self.fins_per_client[msg.id]
@@ -74,12 +78,33 @@ class Q4Joiner(Node):
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
+    def send_reviews_v2(self, client_id, app_id, reviews):
+        # manda las reviews del juego al filtro de ingles
+        reviews_batch = []
+        curr_reviews_batch_size = 0
+
+        for review in reviews:
+            text_review = TextReview(app_id, review)
+            text_review_size = len(text_review.encode())
+            if text_review_size + curr_reviews_batch_size > self.batch_size:
+                text_reviews = TextReviews(client_id, reviews_batch)
+                self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+                curr_reviews_batch_size = 0
+                reviews_batch = []
+            curr_reviews_batch_size += text_review_size
+            reviews_batch.append(text_review)
+
+        # si me quedaron afuera    
+        if reviews_batch:
+            text_reviews = TextReviews(client_id, reviews_batch)
+            self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+
     def send_reviews(self, client_id):
         client_reviews = self.negative_reviews_per_client[client_id]
 
         # Revisa que juego tiene mas de 5000 resenia negativas
-        for app_id, reviews in client_reviews.items():
-            if len(reviews) > self.n_reviews:
+        for app_id, (reviews, overpass_threshold) in client_reviews.items():
+            if overpass_threshold or len(reviews) > self.n_reviews:
                 # manda las reviews del juego al filtro de ingles
                 reviews_batch = []
                 curr_reviews_batch_size = 0

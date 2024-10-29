@@ -22,7 +22,7 @@ class Client:
     
     def run(self):
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        
+
         try:
             client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
@@ -38,7 +38,7 @@ class Client:
             client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_fin | result: success | message: Fin")
 
-            self.recv_results()
+            self.recv_results(client_socket)
             
         except Exception as error:
             if not self.shutting_down:

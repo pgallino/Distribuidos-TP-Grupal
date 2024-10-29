@@ -24,8 +24,8 @@ def main():
     # client = Client(int(os.environ['INSTANCE_ID']), (ip, port), batch_size)
     client = Client(id, (ip, port), batch_size, games, reviews)
     client.run()
-    if id == 1:
-        client.run()
+    # if id == 1:
+    #     client.run()
 
 
 if __name__ == "__main__":
