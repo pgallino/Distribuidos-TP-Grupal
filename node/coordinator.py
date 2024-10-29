@@ -1,9 +1,7 @@
 from collections import defaultdict
 import logging
 import signal
-import os
 from messages.messages import MsgType, decode_msg, Fin
-from multiprocessing import Process, Value, Condition
 from middleware.middleware import Middleware
 
 
@@ -32,7 +30,6 @@ class CoordinatorNode:
 
     def _shutdown(self):
         """Gracefully shuts down the node, stopping consumption and closing connections."""
-        self.logger.custom(f"SOY PROCESO {os.getpid()}, MI PADRE ES {os.getppid()} Y ME VOY A CERRAR")
         if self.shutting_down:
             return
 
@@ -55,6 +52,7 @@ class CoordinatorNode:
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_coordination_queue | result: fail | error: {e}")
+                self._shutdown()
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):
         """Sets up the coordination queue if there are multiple nodes."""

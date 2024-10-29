@@ -1,5 +1,4 @@
 from collections import defaultdict
-import signal
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q4Result
@@ -150,5 +149,4 @@ class Q4Joiner(Node):
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-        finally:
-            self._shutdown()
+                self._shutdown()

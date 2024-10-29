@@ -11,13 +11,11 @@ def safe_read(sock, n_bytes: int):
         while len(buffer) < n_bytes:
             chunk = sock.recv(n_bytes)
             if not chunk:
-                logging.info("No data received, client may have closed the connection.")
-                return None
+                raise Exception("No data received, client may have closed the connection.")
             buffer.extend(chunk)
         return buffer
     except OSError as e:  # Aquí cambiamos socket.error por OSError
-        logging.error(f"Error receiving data: {e}")
-        return None
+        raise Exception(f"Error receiving data: {e}")
 
 def _recv_all(sock, length):
     """

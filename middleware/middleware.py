@@ -22,8 +22,7 @@ class Middleware:
             self.channel.basic_qos(prefetch_count=1)
             self.logger.custom(f"action: middleware init_middleware | result: success | host: {host}")
         except Exception as e:
-            self.logger.custom(f"action: middleware init_middleware | result: fail | error: {e}")
-            raise
+            raise Exception(f"action: middleware init_middleware | result: fail | error: {e}")
 
     def declare_queue(self, queue_name):
         """
@@ -34,7 +33,7 @@ class Middleware:
             self.queues.add(queue_name)
             self.logger.custom(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
         else:
-            self.logger.custom(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
+            self.logger.error(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
     
     def declare_exchange(self, exchange, type='direct'):
         """
@@ -46,7 +45,7 @@ class Middleware:
             self.exchanges.add(exchange)
             self.logger.custom(f"action: middleware declare_queue | result: success | exchange: {exchange}")
         else:
-            self.logger.custom(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
+            self.logger.error(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
         
     def bind_queue(self, queue_name, exchange, key=None):
         if queue_name not in self.queues or exchange not in self.exchanges:
@@ -65,7 +64,7 @@ class Middleware:
                     body=message
                 )
             except Exception as e:
-                self.logger.custom(f"action: middleware send_to_queue | result: fail | error: {e}")
+                raise Exception(f"action: middleware send_to_queue | result: fail | error: {e}")
         elif log in self.exchanges:
             try:
                 self.channel.basic_publish(
@@ -74,7 +73,7 @@ class Middleware:
                     body=message
                 )
             except Exception as e:
-                self.logger.custom(f"action: middleware send_to_queue | result: fail | error: {e}")
+                raise Exception(f"action: middleware send_to_queue | result: fail | error: {e}")
         else:
             raise ValueError(f"La cola '{log}' no está declarada.")
     
@@ -127,11 +126,10 @@ class Middleware:
                     self.channel.close()
                 if not self.connection.is_closed:
                     self.connection.close()
-                self.logger.custom("action: middleware close_connection | result: success")
             except Exception as e:
-                self.logger.custom(f"action: middleware close_connection | result: fail | error: {e}")
+                raise Exception(f"action: middleware close_connection | result: fail | error: {e}")
         else:
-            self.logger.custom("action: middleware close_connection | result: fail | message: connection already closed or not initialized")
+            raise Exception("action: middleware close_connection | result: fail | message: connection already closed or not initialized")
 
     def declare_queues(self, queues_list):
         """

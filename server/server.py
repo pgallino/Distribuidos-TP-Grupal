@@ -45,22 +45,33 @@ class Server:
     def _shutdown(self):
         if self.shutting_down:
             return
-        self.logger.info("action: shutdown | result: in progress...")
+        
+        self.logger.custom("action: shutdown SERVER | result: in progress...")
         self.shutting_down = True
 
 
         self._server_socket.close()
-        self.logger.info("action: shutdown | result: success")
 
         # Terminar y unir todos los result dispatchers
         for dispatcher in self.dispatchers:
-            dispatcher.terminate()
-            dispatcher.join()
+            if dispatcher:
+                if dispatcher.is_alive():
+                    self.logger.custom("action: cierro dispatcher")
+                    dispatcher.terminate()
+                    dispatcher.join()
 
         # Terminar y unir todos los connection handlers
         for handler in self.handlers:
-            handler.terminate()
-            handler.join()
+            if handler:
+                if handler.is_alive():
+                    self.logger.custom("action: cierro handler")
+                    handler.terminate()
+                    handler.join()
+
+        self.manager.shutdown()
+        self.notification_queue.close()
+
+        self.logger.custom("action: shutdown | result: success")
 
     def run(self):
         """Server loop to accept and handle new client connections."""
@@ -73,12 +84,12 @@ class Server:
             Q_QUERY_RESULT_5
         ]
 
-        for queue_name in queues:
-            process = Process(target=init_result_dispatcher, args=(self.client_connections, self.notification_queue, queue_name,))
-            process.start()
-            self.dispatchers.append(process)
-
         try:
+            for queue_name in queues:
+                process = Process(target=init_result_dispatcher, args=(self.client_connections, self.notification_queue, queue_name,))
+                process.start()
+                self.dispatchers.append(process)
+
             while True:
                         
                 if len(self.client_connections) >= self.connections_limit:
@@ -89,34 +100,25 @@ class Server:
                         del self.client_connections[finished_client_id] 
                     self.logger.info(f"Slot freed up by process {finished_client_id}. Accepting new connections.")
                 
-                try:
-                    client_socket = self._accept_new_connection()
-                    self.client_id_counter += 1 # TODO me parece más logico que el server sea el que decida los ids, no que le llegue
-                    client_id = self.client_id_counter
+                client_socket = self._accept_new_connection()
+                self.client_id_counter += 1 # TODO me parece más logico que el server sea el que decida los ids, no que le llegue
+                client_id = self.client_id_counter
 
-                    child_process = Process(
-                        target=handle_client_connection,
-                        args=(client_id, client_socket, self.n_next_nodes)
-                    )
+                child_process = Process(
+                    target=handle_client_connection,
+                    args=(client_id, client_socket, self.n_next_nodes)
+                )
 
-                    child_process.start()
-                    self.client_connections[client_id] = (client_socket, 0)  # Track client socket by ID
-                    self.handlers.append(child_process)
+                child_process.start()
+                self.client_connections[client_id] = (client_socket, 0)  # Track client socket by ID
+                self.handlers.append(child_process)
 
-
-                except OSError as error:
-                    if not self.shutting_down:
-                        logging.error(f"Server error: {error}")
-                        self._shutdown()
-                    break
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: run | result: fail | error: {e}")
-        finally:
-            self._shutdown()
+                self.logger.custom(f"action: run | result: fail | error: {e}")
+                self._shutdown()  # Trigger shutdown on error
 
     def _accept_new_connection(self):
-        """Accept new client connections."""
         self.logger.custom('action: accept_connections | result: in progress...')
         client, addr = self._server_socket.accept()
         self.logger.custom(f'action: accept_connections | result: success | ip: {addr[0]}')

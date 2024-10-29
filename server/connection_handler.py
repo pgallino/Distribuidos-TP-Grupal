@@ -20,7 +20,7 @@ class ConnectionHandler:
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
+        """Handle SIGTERM signal in handler so the server closes gracefully."""
         self.logger.custom("Received SIGTERM, shutting down server.")
         self._shutdown()
     
@@ -32,32 +32,34 @@ class ConnectionHandler:
 
 
         self._middleware.close()
+        self.client_sock.close()
         self.logger.custom("action: shutdown | result: success")
 
     def run(self):
         """Runs the main logic for handling a client connection."""
-        try:
-            while True:
+        while not self.shutting_down:
+            try:
                 raw_msg = recv_msg(self.client_sock)
+
                 msg = decode_msg(raw_msg)
-                msg.id = self.id # TODO ver que hacer con esto -> le cambio el id a los mensajes
-                
+                msg.id = self.id  # Cambia el id de los mensajes
+
                 # Process the message based on its type
                 if msg.type == MsgType.DATA:
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
                 elif msg.type == MsgType.FIN:
-                    # Forward the message to the next nodes as specified
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
                     break
 
-        except ValueError as e:
-            self.logger.custom(f"Connection closed or invalid message received: {e}")
-        except OSError as e:
-            self.logger.error(f"action: receive_message | result: fail | error: {e}")
-        except Exception as e:
-            if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-        finally:
-            # Clean up
-            # self.client_sock.close()
-            self._middleware.close()
+            except ValueError as e:
+                if not self.shutting_down:
+                    self.logger.error(f"Connection closed or invalid message received: {e}")
+                    self._shutdown()
+            except OSError as e:
+                if not self.shutting_down:
+                    self.logger.error(f"action: receive_message | result: fail | error: {e}")
+                    self._shutdown()
+            except Exception as e:
+                if not self.shutting_down:
+                    self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                    self._shutdown()

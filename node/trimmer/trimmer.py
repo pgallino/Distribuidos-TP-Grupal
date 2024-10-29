@@ -1,4 +1,4 @@
-from messages.messages import CoordFin, Dataset, Genre, MsgType, decode_msg, CoordFin
+from messages.messages import Dataset, Genre, MsgType, decode_msg
 from messages.games_msg import Q1Game, Q1Games, GenreGame, GenreGames
 from messages.reviews_msg import Review, Score, Reviews
 from node import Node  # Importa la clase base Nodo
@@ -60,8 +60,7 @@ class Trimmer(Node):
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
-        finally:
-            self._shutdown()
+                self._shutdown()
 
 
     def _process_message(self, ch, method, properties, raw_message):
@@ -152,7 +151,6 @@ class Trimmer(Node):
         # Verificar si alguno de los valores críticos está ausente o es una cadena vacía
         for key in required_keys:
             if key not in values or values[key].strip() == "":
-                # print(f"Valor faltante o vacío para la clave: {key}")
                 return None, None
 
         try:
@@ -165,7 +163,6 @@ class Trimmer(Node):
             linux = values['Linux'] == "True"
             genres = get_genres(values['Genres'])
         except (ValueError, KeyError) as e:
-            print(f"Error al procesar los valores en _get_game: {e}")
             return None, None
 
         # Crear Q1Game con compatibilidad de plataformas
@@ -181,10 +178,6 @@ class Trimmer(Node):
         required_keys = ['app_id', 'review_text', 'review_score']
         for key in required_keys:
             if key not in values or values[key] == "":
-                # app_id = int(values["app_id"])
-                # score = Score.from_string(values['review_score'])
-                # if (app_id == 105600 or app_id == 252950 or app_id == 391540) and (score == Score.POSITIVE):
-                    # print(f"Valor faltante o vacío para la clave en _get_review: {key}. Review de juego {app_id} con valor: {values['review_text']}")
                 return None
 
         try:
@@ -192,7 +185,6 @@ class Trimmer(Node):
             text = values['review_text']
             score = Score.from_string(values['review_score'])
         except (ValueError, KeyError) as e:
-            print(f"Error al procesar la reseña en _get_review: {e}")
             return None
 
         return Review(app_id, text, score)

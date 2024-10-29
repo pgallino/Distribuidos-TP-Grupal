@@ -38,15 +38,11 @@ class Node:
         self.logger.custom("action: shutdown_node | result: in progress...")
         self.shutting_down = True
 
-        self.logger.custom(f"SOY EL PROCESO {os.getpid()} coordination process: {self.coordination_process}")
         if self.coordination_process:
-            self.logger.custom("llego hasta antes de terminate sin is_alive")
             self.coordination_process.terminate()
-            self.logger.custom("llego hasta antes de join sin is_alive")
             self.coordination_process.join()
 
         # Cierra la conexión de manera segura
-        self.logger.custom("llego hasta antes de close")
         self._middleware.close()
         self.logger.custom("action: shutdown_node | result: success")
 

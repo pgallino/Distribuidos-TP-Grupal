@@ -72,8 +72,7 @@ class Q5Joiner(Node):
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
-        finally:
-            self._shutdown()
+                self._shutdown()
 
     def join_results(self, client_id):
         client_games = self.games_per_client[client_id]

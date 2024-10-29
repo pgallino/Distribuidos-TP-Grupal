@@ -21,9 +21,6 @@ class ResultDispatcher:
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _handle_sigterm(self, sig, frame):
-        if self.shutting_down:
-            return
-        self.shutting_down = True
         self._shutdown()
 
     def _shutdown(self):
@@ -42,9 +39,10 @@ class ResultDispatcher:
         try:
             # Blocking call to receive messages
             self._middleware.receive_from_queue(self.queue, self._process_result_callback, False)
-        finally:
-            # Ensure middleware is closed properly
-            self._middleware.close()
+        except Exception as e:
+            if not self.shutting_down:
+                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                self._shutdown()  # Trigger shutdown on error
 
     def _process_result_callback(self, ch, method, properties, body):
         """Callback to process messages from result queues."""
@@ -65,9 +63,11 @@ class ResultDispatcher:
                 if n_results_sent == 5:
                     self.notification_queue.put(client_id)
             else:
-                self.logger.error(f"No active connection for client_id {client_id}")
+                # Raise an exception if there's no active connection for client_id
+                raise Exception(f"No active connection for client_id {client_id}")
+            
             ch.basic_ack(delivery_tag=method.delivery_tag)
-        except ValueError as e:
-            self.logger.custom(f"Error decoding message from {method.routing_key}: {e}")
-        except Exception as e:
-            self.logger.error(f"Failed to process message from {method.routing_key}: {e}")
+        except (ValueError, Exception) as e:
+            if not self.shutting_down:
+                self.logger.error(f"Error processing message from {method.routing_key}: {e}")
+                self._shutdown()  # Trigger shutdown on error

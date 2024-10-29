@@ -1,5 +1,4 @@
 from collections import defaultdict
-import signal
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q3Result
@@ -74,8 +73,7 @@ class Q3Joiner(Node):
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
-        finally:
-            self._shutdown()
+                self._shutdown()
     
     def join_results(self, client_id: int):
         # Seleccionar los 5 juegos indie con más reseñas positivas

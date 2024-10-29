@@ -40,9 +40,7 @@ class GenreFilter(Node):
         except Exception as e:
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
-            
-        finally:
-            self._shutdown()
+                self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_TRIMMER_GENRE_FILTER."""
