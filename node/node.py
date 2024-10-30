@@ -42,8 +42,6 @@ class Node:
             self.coordination_process.terminate()
             self.coordination_process.join()
 
-        self.logger.custom("SALI DE TERMINATE Y JOIN")
-
         try:
             self._middleware.close()
             self.logger.custom("action: shutdown_node | result: success")
@@ -52,7 +50,7 @@ class Node:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
-        self.logger.info("Received SIGTERM, shutting down gracefully.")
+        self.logger.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):

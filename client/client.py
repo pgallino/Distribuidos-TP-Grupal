@@ -84,7 +84,7 @@ class Client:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
+        self.logger.custom("action: Received SIGTERM | shutting down server.")
         self.shutting_down = True
         self._server_socket.close()
 

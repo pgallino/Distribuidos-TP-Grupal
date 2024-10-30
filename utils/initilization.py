@@ -27,8 +27,9 @@ def initialize_config(required_keys):
     - dict: A dictionary with configuration parameters.
     """
     config = ConfigParser(os.environ)
-    if not config.read("config.ini"):
-        print("Advertencia: config.ini no encontrado. Se utilizarán solo variables de entorno.")
+    config.read("config.ini")
+    # if not config.read("config.ini"):
+        # print("Advertencia: config.ini no encontrado. Se utilizarán solo variables de entorno.")
 
     config_params = {}
     for param, (env_var, config_key) in required_keys.items():

@@ -29,6 +29,7 @@ services:
     image: avg_counter:latest
     networks:
     - testing_net
+    privileged: true
   client_1:
     container_name: client_1
     depends_on:
@@ -54,6 +55,7 @@ services:
     image: client:latest
     networks:
     - testing_net
+    privileged: true
     volumes:
     - ./datasets:/datasets
     - ./results:/results
@@ -80,6 +82,7 @@ services:
     image: english:latest
     networks:
     - testing_net
+    privileged: true
   english_2:
     container_name: english_2
     depends_on:
@@ -103,6 +106,7 @@ services:
     image: english:latest
     networks:
     - testing_net
+    privileged: true
   english_3:
     container_name: english_3
     depends_on:
@@ -126,6 +130,7 @@ services:
     image: english:latest
     networks:
     - testing_net
+    privileged: true
   genre_1:
     container_name: genre_1
     depends_on:
@@ -149,6 +154,7 @@ services:
     image: genre:latest
     networks:
     - testing_net
+    privileged: true
   os_counter_1:
     container_name: os_counter_1
     depends_on:
@@ -172,6 +178,7 @@ services:
     image: os_counter:latest
     networks:
     - testing_net
+    privileged: true
   q3_joiner_1:
     container_name: q3_joiner_1
     depends_on:
@@ -195,6 +202,7 @@ services:
     image: q3_joiner:latest
     networks:
     - testing_net
+    privileged: true
   q4_joiner_1:
     container_name: q4_joiner_1
     depends_on:
@@ -218,6 +226,7 @@ services:
     image: q4_joiner:latest
     networks:
     - testing_net
+    privileged: true
   q5_joiner_1:
     container_name: q5_joiner_1
     depends_on:
@@ -241,6 +250,7 @@ services:
     image: q5_joiner:latest
     networks:
     - testing_net
+    privileged: true
   rabbitmq:
     container_name: rabbitmq
     environment:
@@ -286,6 +296,7 @@ services:
     image: release_date:latest
     networks:
     - testing_net
+    privileged: true
   score_1:
     container_name: score_1
     depends_on:
@@ -309,6 +320,7 @@ services:
     image: score:latest
     networks:
     - testing_net
+    privileged: true
   server:
     container_name: server
     depends_on:
@@ -331,6 +343,7 @@ services:
     image: server:latest
     networks:
     - testing_net
+    privileged: true
     volumes:
     - ./server/config.ini:/config.ini
   trimmer_1:
@@ -356,3 +369,4 @@ services:
     image: trimmer:latest
     networks:
     - testing_net
+    privileged: true

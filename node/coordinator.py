@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+import os
 import signal
 from messages.messages import MsgType, decode_msg, Fin
 from middleware.middleware import Middleware
@@ -26,6 +27,8 @@ class CoordinatorNode:
         else: # -> si tiene uno solo es una cola
             self._middleware.declare_queue(self.keys_exchange)
 
+        # Imprimir el PID del proceso principal
+
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _shutdown(self):
@@ -42,7 +45,7 @@ class CoordinatorNode:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down gracefully.")
+        self.logger.custom("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
 
     def _listen_coordination_queue(self):

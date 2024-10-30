@@ -3,7 +3,7 @@ from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q5Result
 from node import Node
-import numpy as np
+import numpy as np # genera 7 pids en docker stats
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
 class Q5Joiner(Node):

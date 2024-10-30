@@ -70,7 +70,8 @@ def generate_docker_compose(instances):
                 'condition': 'service_healthy'
             }
         },
-        'networks': ['testing_net']
+        'networks': ['testing_net'],
+        'privileged': True  # Añadir el modo privileged
     }
 
     # Generación de servicios con instancias, incluyendo nodos de una sola instancia
@@ -92,7 +93,8 @@ def generate_docker_compose(instances):
                         'condition': 'service_healthy'
                     }
                 },
-                'networks': ['testing_net']
+                'networks': ['testing_net'],
+                'privileged': True  # Añadir el modo privileged
             }
 
             # Si es el cliente, añadir dependencia de servidor y volumen datasets
