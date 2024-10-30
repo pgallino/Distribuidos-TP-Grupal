@@ -1,6 +1,6 @@
 import logging
 import signal
-from messages.messages import MsgType, decode_msg
+from messages.messages import Data, Fin, MsgType, decode_msg
 from middleware.middleware import Middleware
 from utils.constants import Q_GATEWAY_TRIMMER
 from utils.utils import recv_msg
@@ -42,13 +42,14 @@ class ConnectionHandler:
                 raw_msg = recv_msg(self.client_sock)
 
                 msg = decode_msg(raw_msg)
-                msg.id = self.id  # Cambia el id de los mensajes
 
                 # Process the message based on its type
-                if msg.type == MsgType.DATA:
-                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
-                elif msg.type == MsgType.FIN:
-                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, msg.encode())
+                if msg.type == MsgType.CLIENT_DATA:
+                    data_msg = Data(self.id, msg.rows, msg.dataset)
+                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, data_msg.encode())
+                elif msg.type == MsgType.CLIENT_FIN:
+                    fin_msg = Fin(self.id)
+                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, fin_msg.encode())
                     break
 
             except ValueError as e:

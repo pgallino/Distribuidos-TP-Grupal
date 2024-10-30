@@ -47,7 +47,7 @@ class ResultDispatcher:
     def _process_result_callback(self, ch, method, properties, body):
         """Callback to process messages from result queues."""
         try:
-            result_msg = decode_msg(body)
+            result_msg = decode_msg(body[4:])
 
             client_id = result_msg.id  # Assuming result message has a client_id field
 

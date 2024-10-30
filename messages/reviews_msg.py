@@ -171,8 +171,7 @@ class Reviews(Message):
 
         # Empaqueta el tipo, id del cliente, el número de reseñas y los datos de reseñas
         body = struct.pack('>BBBH', int(MsgType.REVIEWS.value), int(ReviewsType.FULLREVIEW.value), self.id, reviews_count) + reviews_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> "Reviews":
@@ -221,8 +220,7 @@ class BasicReviews(Message):
 
         # Empaqueta el tipo de mensaje, tipo de review, id del cliente, el número de reseñas y los datos de reseñas
         body = struct.pack('>BBBH', int(MsgType.REVIEWS.value), int(ReviewsType.BASICREVIEW.value), self.id, reviews_count) + reviews_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> "BasicReviews":
@@ -273,8 +271,7 @@ class TextReviews(Message):
 
         # Empaqueta el tipo de mensaje, tipo de review, id del cliente, el número de reseñas y los datos de reseñas
         body = struct.pack('>BBBH', int(MsgType.REVIEWS.value), int(ReviewsType.TEXTREVIEW.value), self.id, reviews_count) + reviews_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> "TextReviews":

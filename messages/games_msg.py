@@ -263,8 +263,7 @@ class BasicGames(Games):
 
         # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
         body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.BASICGAME.value), self.id, games_count) + games_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> "BasicGames":
@@ -302,8 +301,7 @@ class Q1Games(Games):
 
         # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
         body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.Q1GAMES.value), self.id, games_count) + games_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> "Q1Games":
@@ -341,8 +339,7 @@ class Q2Games(Games):
 
         # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
         body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.Q2GAMES.value), self.id, games_count) + games_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> "Q2Games":
@@ -380,8 +377,7 @@ class GenreGames(Games):
 
         # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
         body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.GENREGAMES.value), self.id, games_count) + games_bytes
-        total_length = len(body)
-        return struct.pack('>I', total_length) + body
+        return body
     
     @staticmethod
     def decode(data: bytes) -> "GenreGames":

@@ -51,6 +51,4 @@ def recv_msg(sock):
     if not data:
         raise ValueError("No se pudo leer el cuerpo del mensaje; posible desconexión.")
     
-    # Crear `raw_msg` con los 4 bytes del encabezado seguidos de los datos
-    raw_msg = header + data
-    return raw_msg
+    return data

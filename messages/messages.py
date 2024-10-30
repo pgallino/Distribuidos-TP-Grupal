@@ -11,6 +11,8 @@ class MsgType(Enum):
     REVIEWS = 4
     RESULT = 5
     COORDFIN = 6
+    CLIENT_DATA = 7
+    CLIENT_FIN = 8
 
 class Dataset(Enum):
     GAME = 0
@@ -69,15 +71,14 @@ def decode_msg(data):
     """
     Decodifica un mensaje recibido y devuelve una instancia de la clase correspondiente.
     """
-    # Saltar los primeros 4 bytes de longitud
-    data = data[4:]
 
     msg_type = MsgType(data[0])
 
     # Saltamos el primer byte (tipo de mensaje)
 
     if msg_type == MsgType.HANDSHAKE:
-        return Handshake.decode(data[1:])
+
+        return Handshake.decode()
 
     elif msg_type == MsgType.DATA:
         return Data.decode(data[1:])
@@ -100,6 +101,14 @@ def decode_msg(data):
     elif msg_type == MsgType.COORDFIN:
 
         return CoordFin.decode(data[1:])
+    
+    elif msg_type == MsgType.CLIENT_FIN:
+
+        return ClientFin.decode()
+    
+    elif msg_type == MsgType.CLIENT_DATA:
+
+        return ClientData.decode(data[1:])
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {msg_type}")
@@ -125,13 +134,13 @@ class Message:
 # ===================================================================================================================== #
 
 class Handshake(Message):
-    def __init__(self, id: int):
-        super().__init__(id, MsgType.HANDSHAKE)
+    def __init__(self):
+        super().__init__(0, MsgType.HANDSHAKE)
 
     def encode(self) -> bytes:
         # Codifica el mensaje Handshake
         # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
-        body = struct.pack('>BB', int(MsgType.HANDSHAKE.value), self.id)
+        body = struct.pack('>B', int(MsgType.HANDSHAKE.value))
         
         # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
         total_length = len(body)
@@ -140,13 +149,48 @@ class Handshake(Message):
         return struct.pack('>I', total_length) + body
     
     @staticmethod
-    def decode(data: bytes) -> 'Handshake':
+    def decode() -> 'Handshake':
         # Decodifica el mensaje Handshake
-        id = struct.unpack('>B', data[:1])[0]
-        return Handshake(id)
+        return Handshake()
     
     def __str__(self):
-        return f"Handshake(id={self.id})"
+        return f"Handshake()"
+
+# ===================================================================================================================== #
+
+class ClientData(Message):
+    def __init__(self, rows: List[str], dataset: Dataset):
+        super().__init__(0, MsgType.CLIENT_DATA)
+        self.rows = rows  # Ahora se espera una lista de filas en lugar de una sola fila
+        self.dataset = dataset
+    
+    def encode(self) -> bytes:
+        # Convertimos cada fila a bytes y las unimos con un delimitador (por ejemplo, '\n')
+        data_bytes = "\n".join(self.rows).encode()
+        data_length = len(data_bytes)
+        
+        # Empaquetamos el tipo de mensaje, el dataset y la longitud de los datos (4 bytes)
+        body = struct.pack('>BBI', int(MsgType.CLIENT_DATA.value), self.dataset.value, data_length) + data_bytes
+        
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
+        total_length = len(body)
+        
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body
+
+    @staticmethod
+    def decode(data: bytes) -> 'ClientData':
+        # Decodifica el mensaje Data
+        dataset, data_length = struct.unpack('>BI', data[:5])
+        
+        # Decodifica el bloque completo de datos como un solo string y luego lo separa en filas
+        rows_str = data[5:5+data_length].decode()
+        rows = rows_str.split("\n")
+        
+        return ClientData(rows, Dataset(dataset))
+
+    def __str__(self):
+        return f"ClientData(rows={self.rows}, dataset={self.dataset})"
 
 # ===================================================================================================================== #
 
@@ -164,11 +208,7 @@ class Data(Message):
         # Empaquetamos el tipo de mensaje, el ID, el dataset y la longitud de los datos (4 bytes)
         body = struct.pack('>BBBI', int(MsgType.DATA.value), self.id, self.dataset.value, data_length) + data_bytes
         
-        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
-        total_length = len(body)
-        
-        # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> 'Data':
@@ -184,8 +224,6 @@ class Data(Message):
     def __str__(self):
         return f"Data(id={self.id}, rows={self.rows}, dataset={self.dataset})"
 
-# ===================================================================================================================== #
-
 class Fin(Message):
     def __init__(self, id: int):
         super().__init__(id, MsgType.FIN)
@@ -195,11 +233,8 @@ class Fin(Message):
         # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
         body = struct.pack('>BB', int(MsgType.FIN.value), self.id)
         
-        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
-        total_length = len(body)
-        
         # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> 'Fin':
@@ -209,6 +244,29 @@ class Fin(Message):
 
     def __str__(self):
         return f"Fin(id={self.id})"
+    
+class ClientFin(Message):
+    def __init__(self):
+        super().__init__(0, MsgType.CLIENT_FIN)
+
+    def encode(self) -> bytes:
+        # Codifica el mensaje Fin
+        # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
+        body = struct.pack('>B', int(MsgType.CLIENT_FIN.value))
+
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
+        total_length = len(body)
+        
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body
+
+    @staticmethod
+    def decode() -> 'ClientFin':
+        # Decodifica el mensaje Fin
+        return ClientFin()
+
+    def __str__(self):
+        return f"Fin()"
     
 class CoordFin(Message):
     def __init__(self, id: int, node_id: int):
@@ -220,11 +278,7 @@ class CoordFin(Message):
         # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
         body = struct.pack('>BBB', int(MsgType.COORDFIN.value), self.id, self.node_id)
         
-        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
-        total_length = len(body)
-        
-        # Empaquetamos el largo total seguido del cuerpo
-        return struct.pack('>I', total_length) + body
+        return body
 
     @staticmethod
     def decode(data: bytes) -> 'CoordFin':

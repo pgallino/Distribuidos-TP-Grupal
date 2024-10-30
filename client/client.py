@@ -3,7 +3,7 @@ import os
 import signal
 import socket
 
-from messages.messages import Data, Dataset, Fin, Handshake, MsgType, decode_msg
+from messages.messages import ClientData, ClientFin, Dataset, Handshake, MsgType, decode_msg
 from messages.results_msg import QueryNumber
 from utils.utils import recv_msg
 
@@ -26,7 +26,7 @@ class Client:
         try:
             client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
-            handshake_msg = Handshake(self.id)  # Creamos el mensaje de tipo Handshake con ID 1
+            handshake_msg = Handshake()  # Creamos el mensaje de tipo Handshake
             client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
@@ -34,7 +34,7 @@ class Client:
             self.send_dataset(self.reviews, client_socket, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
-            fin_msg = Fin(self.id)  # Creamos el mensaje Fin con ID 1
+            fin_msg = ClientFin()  # Creamos el mensaje Fin con ID 1
             client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_fin | result: success | message: Fin")
 
@@ -62,7 +62,7 @@ class Client:
                 # Verifica si agregar esta línea excedería el tamaño del batch
                 if current_batch_size + line_size > self.max_batch_size:
                     # Envía el batch actual y reinicia
-                    data = Data(self.id, batch, dataset)  # Usa el batch completo
+                    data = ClientData(batch, dataset)  # Usa el batch completo
                     sock.sendall(data.encode())  # Envía el batch codificado
                     # self.logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
@@ -76,7 +76,7 @@ class Client:
 
             # Enviar el último batch si contiene líneas restantes
             if batch:
-                data = Data(self.id, batch, dataset)
+                data = ClientData(batch, dataset)
                 sock.sendall(data.encode())
                 # self.logger.custom(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes")
             
