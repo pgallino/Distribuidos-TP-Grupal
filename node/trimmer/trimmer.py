@@ -58,7 +58,6 @@ class Trimmer(Node):
             self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
             
         except Exception as e:
-            self.logger.custom("Entro al except del run")
             if not self.shutting_down:
                 self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
@@ -131,7 +130,6 @@ class Trimmer(Node):
         # Ya no dejo de consumir
 
         if self.n_nodes > 1:
-            self.logger.custom(f"ENTRE AL PROCESS_FIN ID {msg.id}")
             self.forward_coordfin(E_COORD_TRIMMER, msg)
         else:
             for node, _ in self.n_next_nodes:

@@ -21,19 +21,18 @@ class ConnectionHandler:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal in handler so the server closes gracefully."""
-        self.logger.custom("Received SIGTERM, shutting down server.")
         self._shutdown()
     
     def _shutdown(self):
         if self.shutting_down:
             return
-        self.logger.custom("action: shutdown | result: in progress...")
+        self.logger.custom("action: Handler shutdown | result: in progress...")
         self.shutting_down = True
 
 
         self._middleware.close()
         self.client_sock.close()
-        self.logger.custom("action: shutdown | result: success")
+        self.logger.custom("action: Handler shutdown | result: success")
 
     def run(self):
         """Runs the main logic for handling a client connection."""

@@ -26,12 +26,12 @@ class ResultDispatcher:
     def _shutdown(self):
         if self.shutting_down:
             return
-        self.logger.custom("action: shutdown | result: in progress...")
+        self.logger.custom("action: Dispatcher shutdown | result: in progress...")
         self.shutting_down = True
 
         # Cierra la conexión de manera segura
         self._middleware.close()
-        self.logger.custom("action: shutdown | result: success")
+        self.logger.custom("action: Dispatcher shutdown | result: success")
 
     def listen_to_queue(self):
         """Listen to a specific queue and process messages as they arrive."""

@@ -56,17 +56,17 @@ class Server:
         for dispatcher in self.dispatchers:
             if dispatcher:
                 if dispatcher.is_alive():
-                    self.logger.custom("action: cierro dispatcher")
                     dispatcher.terminate()
                     dispatcher.join()
+                    self.logger.custom("action: close dispatcher | result: success")
 
         # Terminar y unir todos los connection handlers
         for handler in self.handlers:
             if handler:
                 if handler.is_alive():
-                    self.logger.custom("action: cierro handler")
                     handler.terminate()
                     handler.join()
+                    self.logger.custom("action: close handler | result: success")
 
         self.manager.shutdown()
         self.notification_queue.close()

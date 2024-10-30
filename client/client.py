@@ -18,36 +18,36 @@ class Client:
         self.shutting_down = False
         self.games = games
         self.reviews = reviews
+        self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         signal.signal(signal.SIGTERM, self._handle_sigterm)
     
     def run(self):
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
-            client_socket.connect(self.server_addr)
+            self.client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
             handshake_msg = Handshake()  # Creamos el mensaje de tipo Handshake
-            client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
+            self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_handshake | result: success | message: Handshake")
             
-            self.send_dataset(self.games, client_socket, Dataset(Dataset.GAME))
-            self.send_dataset(self.reviews, client_socket, Dataset(Dataset.REVIEW))
+            self.send_dataset(self.games, Dataset(Dataset.GAME))
+            self.send_dataset(self.reviews, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
             fin_msg = ClientFin()  # Creamos el mensaje Fin con ID 1
-            client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
+            self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             self.logger.custom("action: send_fin | result: success | message: Fin")
 
-            self.recv_results(client_socket)
+            self.recv_results()
             
         except Exception as error:
             if not self.shutting_down:
                 self.logger.custom(f"Error en run: {error}")
-        
-        finally:
-            client_socket.close()
 
-    def send_dataset(self, fname, sock, dataset):
+        finally:
+            self.client_socket.close()
+
+    def send_dataset(self, fname, dataset):
         # Chequear si existe el archivo
         with open(fname, mode='r') as file:
             self.logger.custom(f"action: send_handshake | result: success | dataset: {dataset}")
@@ -63,7 +63,7 @@ class Client:
                 if current_batch_size + line_size > self.max_batch_size:
                     # Envía el batch actual y reinicia
                     data = ClientData(batch, dataset)  # Usa el batch completo
-                    sock.sendall(data.encode())  # Envía el batch codificado
+                    self.client_socket.sendall(data.encode())  # Envía el batch codificado
                     # self.logger.custom(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
                     # Reinicia el batch y el contador de tamaño
@@ -77,7 +77,7 @@ class Client:
             # Enviar el último batch si contiene líneas restantes
             if batch:
                 data = ClientData(batch, dataset)
-                sock.sendall(data.encode())
+                self.client_socket.sendall(data.encode())
                 # self.logger.custom(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes")
             
             self.logger.custom(f"action: send_data | result: success | dataset: {dataset}")
@@ -86,9 +86,9 @@ class Client:
         """Handle SIGTERM signal so the server closes gracefully."""
         self.logger.custom("action: Received SIGTERM | shutting down server.")
         self.shutting_down = True
-        self._server_socket.close()
+        self.client_socket.close()
 
-    def recv_results(self, client_socket):
+    def recv_results(self):
         """Receive and process results from the server."""
 
         self.logger.custom(f"action: recv_results | result: in progress...")
@@ -96,7 +96,7 @@ class Client:
         try:
             while received_results < 5:
                 # Recibe el mensaje del servidor
-                raw_msg = recv_msg(client_socket)
+                raw_msg = recv_msg(self.client_socket)
                 if not raw_msg:
                     self.logger.error("Connection closed by server.")
                     break
@@ -124,7 +124,8 @@ class Client:
                     self.logger.error(f"Received Non-Result Message: {msg}")
 
         except Exception as e:
-            self.logger.error(f"Error receiving results: {e}")
+            if not self.shutting_down:
+                self.logger.error(f"Error receiving results: {e}")
 
     def save_to_file(self, filename: str, content: str, id: int):
         """Saves the content to a specified file."""

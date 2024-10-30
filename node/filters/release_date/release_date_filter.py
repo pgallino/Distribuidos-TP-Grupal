@@ -60,8 +60,6 @@ class ReleaseDateFilter(Node):
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
-        # self._middleware.channel.stop_consuming()
-        self.logger.custom(f"ENTRE AL PROCESS_FIN ID {msg.id}")
         
         if self.n_nodes > 1:
             self.forward_coordfin(E_COORD_RELEASE_DATE, msg)
