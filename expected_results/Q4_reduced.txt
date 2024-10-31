@@ -1,4 +1,3 @@
 Q4: Action games with more than 5,000 negative reviews in English:
-- Call of Duty®: Infinite Warfare: 2995 negative reviews
-- Insurgency: 21817 negative reviews
-- Path of Exile: 17817 negative reviews
+- Insurgency: 1683 negative reviews
+- Call of Duty®: Infinite Warfare: 1549 negative reviews

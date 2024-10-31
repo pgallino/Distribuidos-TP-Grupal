@@ -51,7 +51,8 @@ def generate_docker_compose(instances):
             'retries': 5,
             'start_period': '30s'
         },
-        'networks': ['testing_net']
+        'networks': ['testing_net'],
+        'privileged': True  # Añadir el modo privileged
     }
 
     # Definición del servidor principal

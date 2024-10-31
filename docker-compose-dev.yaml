@@ -379,6 +379,7 @@ services:
     ports:
     - 5672:5672
     - 15672:15672
+    privileged: true
   release_date_1:
     container_name: release_date_1
     depends_on:
