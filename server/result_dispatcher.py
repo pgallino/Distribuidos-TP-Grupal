@@ -9,10 +9,11 @@ from middleware.middleware import Middleware
 class ResultDispatcher:
     """Listens to RabbitMQ result queues and dispatches results to the correct client."""
 
-    def __init__(self, client_connections, notification_queue, result_queue):
+    def __init__(self, client_sockets, lock, space_available, result_queue):
         self.logger = logging.getLogger(__name__)
-        self.client_connections = client_connections  # Shared dictionary with client_id -> socket
-        self.notification_queue = notification_queue # Comunication queue with Server
+        self.client_connections = client_sockets  # Shared dictionary with client_id -> socket
+        self.lock = lock
+        self.space_available = space_available
         self.processes = []
         self.queue = result_queue
         self._middleware = Middleware()  # Each process gets its own Middleware instance
@@ -36,6 +37,8 @@ class ResultDispatcher:
     def listen_to_queue(self):
         """Listen to a specific queue and process messages as they arrive."""
         # handler de SIGTERM para procesos hijos
+
+        self.logger.custom("SOY DISPATCHER E INICIE")
         try:
             # Blocking call to receive messages
             self._middleware.receive_from_queue(self.queue, self._process_result_callback, False)
@@ -53,18 +56,27 @@ class ResultDispatcher:
 
             # Find the socket associated with the client_id
             # Supuestamente le diccionario esta hecho con un manager para controlar el accesos concurrente
-            if client_id in self.client_connections:
-                client_sock, n_results_sent = self.client_connections[client_id]
+            with self.lock:
+                if client_id in self.client_connections:
+                    client_sock, n_results_sent = self.client_connections[client_id]
 
-                client_sock.sendall(body)
-                # le añado uno a respuestas enviadas
-                n_results_sent += 1
-                self.client_connections[client_id] = (client_sock, n_results_sent) 
-                if n_results_sent == 5:
-                    self.notification_queue.put(client_id)
-            else:
-                # Raise an exception if there's no active connection for client_id
-                raise Exception(f"No active connection for client_id {client_id}")
+                    client_sock.sendall(body)
+                    # le añado uno a respuestas enviadas
+                    n_results_sent += 1
+
+                    self.logger.custom(f"RESULTADOS ENVIADOS HASTA AHORA: {n_results_sent} a {client_id}")
+
+                    self.client_connections[client_id] = (client_sock, n_results_sent)
+
+                    if n_results_sent == 5:
+                        self.logger.custom(f"LLEGUE A 5 PARA EL CLIENTE {client_id}")
+                        with self.space_available:
+                            del self.client_connections[client_id]
+                            self.space_available.notify_all() # notifica que hay espacio libre
+                            self.logger.custom(f"Cliente {client_id} desconectado.")
+                else:
+                    # Raise an exception if there's no active connection for client_id
+                    raise Exception(f"No active connection for client_id {client_id}")
             
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except (ValueError, Exception) as e:
