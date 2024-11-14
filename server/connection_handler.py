@@ -15,7 +15,6 @@ class ConnectionHandler:
         self.n_next_nodes = n_next_nodes
         self._middleware = Middleware()  # Each child process has its own middleware connection
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
-        self.logger = logging.getLogger(__name__)
         self.shutting_down = False
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -26,13 +25,13 @@ class ConnectionHandler:
     def _shutdown(self):
         if self.shutting_down:
             return
-        self.logger.custom("action: Handler shutdown | result: in progress...")
+        logging.info("action: Handler shutdown | result: in progress...")
         self.shutting_down = True
 
 
         self._middleware.close()
         self.client_sock.close()
-        self.logger.custom("action: Handler shutdown | result: success")
+        logging.info("action: Handler shutdown | result: success")
 
     def run(self):
         """Runs the main logic for handling a client connection."""
@@ -53,13 +52,13 @@ class ConnectionHandler:
 
             except ValueError as e:
                 if not self.shutting_down:
-                    self.logger.error(f"Connection closed or invalid message received: {e}")
+                    logging.error(f"Connection closed or invalid message received: {e}")
                     self._shutdown()
             except OSError as e:
                 if not self.shutting_down:
-                    self.logger.error(f"action: receive_message | result: fail | error: {e}")
+                    logging.error(f"action: receive_message | result: fail | error: {e}")
                     self._shutdown()
             except Exception as e:
                 if not self.shutting_down:
-                    self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                    logging.error(f"action: listen_to_queue | result: fail | error: {e}")
                     self._shutdown()

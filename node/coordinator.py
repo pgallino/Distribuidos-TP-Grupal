@@ -1,6 +1,5 @@
 from collections import defaultdict
 import logging
-import os
 import signal
 from messages.messages import MsgType, decode_msg, Fin
 from middleware.middleware import Middleware
@@ -19,7 +18,6 @@ class CoordinatorNode:
         self.processing_client = value # flag de coordination
         self._setup_coordination_queue(queue_name, coord_exchange_name)
         self.fins_counter = defaultdict(int)  # Common fin counter for coordinating shutdown.
-        self.logger = logging.getLogger(__name__)
         self.shutting_down = False
 
         if len(keys) > 1: # -> si es mas largo que uno es un exchange
@@ -36,16 +34,16 @@ class CoordinatorNode:
         if self.shutting_down:
             return
 
-        self.logger.custom("action: shutdown_coordinator | result: in progress...")
+        logging.info("action: shutdown_coordinator | result: in progress...")
         self.shutting_down = True
 
         # Cierra la conexión de manera segura
         self._middleware.close()
-        self.logger.custom("action: shutdown_coordinator | result: success")
+        logging.info("action: shutdown_coordinator | result: success")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
-        self.logger.custom("action: Received SIGTERM | shutting down gracefully.")
+        logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
 
     def _listen_coordination_queue(self):
@@ -54,7 +52,7 @@ class CoordinatorNode:
             self._middleware.receive_from_queue(self.coordination_queue, self.process_fin, auto_ack = False)
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_coordination_queue | result: fail | error: {e}")
+                logging.error(f"action: listen_to_coordination_queue | result: fail | error: {e}")
                 self._shutdown()
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):

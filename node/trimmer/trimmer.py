@@ -1,3 +1,4 @@
+import logging
 from messages.messages import Dataset, Genre, MsgType, decode_msg
 from messages.games_msg import Q1Game, Q1Games, GenreGame, GenreGames
 from messages.reviews_msg import Review, Score, Reviews
@@ -59,7 +60,7 @@ class Trimmer(Node):
             
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
+                logging.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
 

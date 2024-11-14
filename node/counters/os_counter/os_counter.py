@@ -1,3 +1,4 @@
+import logging
 from typing import List, Tuple
 from messages.messages import decode_msg, MsgType
 from messages.results_msg import Q1Result
@@ -26,7 +27,7 @@ class OsCounter(Node):
 
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                logging.error(f"action: listen_to_queue | result: fail | error: {e}")
                 self._shutdown()
 
 
