@@ -13,7 +13,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -39,7 +39,7 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -68,7 +68,7 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=2
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -97,7 +97,7 @@ services:
         condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=3
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -124,7 +124,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -148,7 +148,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=2
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -172,7 +172,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=3
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -196,7 +196,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -220,7 +220,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=2
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -244,7 +244,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=3
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -268,7 +268,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -292,7 +292,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -316,7 +316,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -340,7 +340,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -387,7 +387,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -411,7 +411,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=2
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -435,7 +435,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=3
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -459,7 +459,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -483,7 +483,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=2
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -507,7 +507,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=3
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -531,7 +531,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
     - SCORE_INSTANCES=3
@@ -556,7 +556,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -580,7 +580,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=2
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3
@@ -604,7 +604,7 @@ services:
         condition: service_healthy
     environment:
     - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=DEBUG
+    - LOGGING_LEVEL=INFO
     - INSTANCE_ID=3
     - TRIMMER_INSTANCES=3
     - GENRE_INSTANCES=3

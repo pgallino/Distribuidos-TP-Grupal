@@ -1,5 +1,4 @@
 from utils.initilization import initialize_config, initialize_log
-import utils.logging_config  # Esto ejecuta la configuración del logger
 from release_date_filter import ReleaseDateFilter
 
 def main():
@@ -7,11 +6,13 @@ def main():
     required_keys = {
         "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
         "release_date_instances": ("RELEASE_DATE_INSTANCES", "RELEASE_DATE_INSTANCES"),
-        "avg_counter_instances": ("AVG_COUNTER_INSTANCES", "AVG_COUNTER_INSTANCES")
+        "avg_counter_instances": ("AVG_COUNTER_INSTANCES", "AVG_COUNTER_INSTANCES"),
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
     }
 
     # Inicializar configuración y logging
     config_params = initialize_config(required_keys)
+    initialize_log(config_params["logging_level"])
 
     # Extraer parámetros del config
     instance_id = config_params["instance_id"]

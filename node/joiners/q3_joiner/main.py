@@ -1,5 +1,4 @@
-from utils.initilization import initialize_config
-import utils.logging_config  # Esto ejecuta la configuración del logger
+from utils.initilization import initialize_config, initialize_log
 from q3_joiner import Q3Joiner
 
 def main():
@@ -8,10 +7,12 @@ def main():
     required_keys = {
         "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
         "q3_joiner_instances": ("Q3_JOINER_INSTANCES", "Q3_JOINER_INSTANCES"),
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
     }
     
     # Inicializar configuración
     config_params = initialize_config(required_keys)
+    initialize_log(config_params["logging_level"])
 
     # Extraer parámetros de config
     instance_id = config_params["instance_id"]
