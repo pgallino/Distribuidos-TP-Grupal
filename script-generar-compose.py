@@ -62,7 +62,7 @@ def generate_docker_compose(instances):
         'volumes': ['./server/config.ini:/config.ini'],
         'environment': [
             'PYTHONUNBUFFERED=1',
-            'LOGGING_LEVEL=DEBUG'
+            'LOGGING_LEVEL=INFO'
         ] + [
             f"{node.upper()}_INSTANCES={instances[node]}" for node in instances
         ],
@@ -84,7 +84,7 @@ def generate_docker_compose(instances):
                 'image': f'{node}:latest',
                 'environment': [
                     'PYTHONUNBUFFERED=1',
-                    'LOGGING_LEVEL=DEBUG',
+                    'LOGGING_LEVEL=INFO',
                     f'INSTANCE_ID={i}'
                 ] + [
                     f"{other_node.upper()}_INSTANCES={instances[other_node]}" for other_node in instances

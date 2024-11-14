@@ -1,7 +1,6 @@
 import logging
 import pika
 import time
-import utils.logging_config # Esto ejecuta la configuración del logger
 from typing import List, Tuple, Callable
 
 
@@ -10,7 +9,6 @@ class Middleware:
         """
         Inicializa la conexión con RabbitMQ y el canal.
         """
-        self.logger = logging.getLogger(__name__)
         self.connection = None
         self.channel = None
         self.queues = set()
@@ -20,7 +18,7 @@ class Middleware:
             self.connection = self._connect_to_rabbitmq()
             self.channel = self.connection.channel()
             self.channel.basic_qos(prefetch_count=1)
-            self.logger.custom(f"action: middleware init_middleware | result: success | host: {host}")
+            logging.info(f"action: middleware init_middleware | result: success | host: {host}")
         except Exception as e:
             raise Exception(f"action: middleware init_middleware | result: fail | error: {e}")
 
@@ -31,9 +29,9 @@ class Middleware:
         if queue_name not in self.queues:
             self.channel.queue_declare(queue=queue_name, durable=True)
             self.queues.add(queue_name)
-            self.logger.custom(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
+            logging.info(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
         else:
-            self.logger.error(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
+            logging.error(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
     
     def declare_exchange(self, exchange, type='direct'):
         """
@@ -43,9 +41,9 @@ class Middleware:
         if exchange not in self.exchanges:
             self.channel.exchange_declare(exchange=exchange, exchange_type=type)
             self.exchanges.add(exchange)
-            self.logger.custom(f"action: middleware declare_queue | result: success | exchange: {exchange}")
+            logging.info(f"action: middleware declare_queue | result: success | exchange: {exchange}")
         else:
-            self.logger.error(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
+            logging.error(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
         
     def bind_queue(self, queue_name, exchange, key=None):
         if queue_name not in self.queues or exchange not in self.exchanges:

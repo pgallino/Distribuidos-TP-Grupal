@@ -1,4 +1,5 @@
 from collections import defaultdict
+import logging
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.results_msg import Q3Result
@@ -72,7 +73,7 @@ class Q3Joiner(Node):
         
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
+                logging.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
     
     def join_results(self, client_id: int):

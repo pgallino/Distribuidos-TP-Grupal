@@ -1,5 +1,4 @@
 from utils.initilization import initialize_config, initialize_log
-import utils.logging_config  # Esto ejecuta la configuración del logger
 from score_filter import ScoreFilter
 
 def main():
@@ -10,11 +9,11 @@ def main():
         "q3_joiner_instances": ("Q3_JOINER_INSTANCES", "Q3_JOINER_INSTANCES"),
         "q4_joiner_instances": ("Q4_JOINER_INSTANCES", "Q4_JOINER_INSTANCES"),
         "q5_joiner_instances": ("Q5_JOINER_INSTANCES", "Q5_JOINER_INSTANCES"),
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
     }
-
     # Inicializar configuración y logging
     config_params = initialize_config(required_keys)
-    initialize_log()
+    initialize_log(config_params["logging_level"])
 
     # Extraer parámetros del config
     instance_id = config_params["instance_id"]

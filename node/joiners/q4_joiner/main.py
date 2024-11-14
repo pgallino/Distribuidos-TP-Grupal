@@ -1,5 +1,4 @@
-from utils.initilization import initialize_config
-import utils.logging_config # Esto ejecuta la configuración del logger
+from utils.initilization import initialize_config, initialize_log
 from q4_joiner import Q4Joiner
 
 def main():
@@ -10,9 +9,11 @@ def main():
         "n_reviews": ("N_REVIEWS", "N_REVIEWS"),
         "batch": ("MAX_BATCH_SIZE", "MAX_BATCH_SIZE"),
         "english_instances": ("ENGLISH_INSTANCES", "ENGLISH_INSTANCES"),
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
     }
     
     config_params = initialize_config(required_keys)
+    initialize_log(config_params["logging_level"])
 
     # Extraer parámetros del config
     instance_id = config_params["instance_id"]

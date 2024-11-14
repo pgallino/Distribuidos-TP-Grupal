@@ -23,7 +23,6 @@ class Node:
         self.n_next_nodes = n_next_nodes
         self.shutting_down = False
         self._middleware = Middleware()
-        self.logger = logging.getLogger(__name__)
         self.coordination_process = None
         self.condition = Condition()
         self.processing_client = Value('i', -1)  # 'i' indica un entero
@@ -35,7 +34,7 @@ class Node:
         if self.shutting_down:
             return
         
-        self.logger.custom("action: shutdown_node | result: in progress...")
+        logging.info("action: shutdown_node | result: in progress...")
         self.shutting_down = True
 
         if self.coordination_process:
@@ -44,13 +43,13 @@ class Node:
 
         try:
             self._middleware.close()
-            self.logger.custom("action: shutdown_node | result: success")
+            logging.info("action: shutdown_node | result: success")
         except Exception as e:
-            self.logger.error(f"action: shutdown_node | result: fail | error: {e}")
+            logging.error(f"action: shutdown_node | result: fail | error: {e}")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
-        self.logger.info("action: Received SIGTERM | shutting down gracefully.")
+        logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):
