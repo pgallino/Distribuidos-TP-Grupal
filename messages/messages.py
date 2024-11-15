@@ -13,6 +13,8 @@ class MsgType(Enum):
     COORDFIN = 6
     CLIENT_DATA = 7
     CLIENT_FIN = 8
+    PUSH_DATA = 9
+    PULL_DATA = 10
 
 class Dataset(Enum):
     GAME = 0
@@ -109,6 +111,14 @@ def decode_msg(data):
     elif msg_type == MsgType.CLIENT_DATA:
 
         return ClientData.decode(data[1:])
+    
+    elif msg_type == MsgType.PUSH_DATA:
+
+        return PushDataMessage.decode(data[1:])
+    
+    elif msg_type == MsgType.PULL_DATA:
+
+        return PullDataMessage.decode(data[1:])
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {msg_type}")
@@ -288,3 +298,81 @@ class CoordFin(Message):
 
     def __str__(self):
         return f"CoordFin(id={self.id}, node_id={self.node_id})"
+    
+import struct
+import json
+from messages.messages import Message, MsgType
+
+
+class PushDataMessage(Message):
+    def __init__(self, id: int, data: dict):
+        """
+        Mensaje genérico para enviar datos arbitrarios entre nodos y réplicas.
+        :param id: Identificador del nodo que envía los datos.
+        :param data: Diccionario con los datos a enviar.
+        """
+        super().__init__(id, MsgType.PUSH_DATA)
+        self.data = data  # Diccionario genérico para almacenar los datos
+
+    def encode(self) -> bytes:
+        """
+        Codifica el mensaje en formato binario.
+        """
+        # Serializar el diccionario de datos a JSON
+        data_json = json.dumps(self.data)
+        data_bytes = data_json.encode()
+
+        # Empaquetar encabezado: tipo de mensaje, ID y longitud de los datos
+        body = struct.pack(
+            '>BBI', int(self.type.value), self.id, len(data_bytes)
+        ) + data_bytes
+
+        return body
+
+    @staticmethod
+    def decode(data: bytes) -> 'PushDataMessage':
+        """
+        Decodifica un mensaje `PushDataMessage` desde formato binario.
+        """
+        # Leer encabezado
+        sender_id, data_len = struct.unpack('>BI', data[:5])
+
+        # Extraer y decodificar los datos JSON
+        data_json = data[5:5 + data_len].decode()
+        parsed_data = json.loads(data_json)
+
+        return PushDataMessage(sender_id, parsed_data)
+
+    def __str__(self):
+        return f"PushDataMessage(id={self.id}, data={self.data})"
+
+
+class PullDataMessage(Message):
+    def __init__(self, id: int):
+        """
+        Mensaje para solicitar datos de una réplica.
+        :param id: Identificador del nodo que solicita los datos.
+        """
+        super().__init__(id, MsgType.PULL_DATA)
+
+    def encode(self) -> bytes:
+        """
+        Codifica el mensaje `PullDataMessage` en formato binario.
+        """
+        # Empaquetar el tipo de mensaje y el ID del nodo
+        body = struct.pack('>BB', int(self.type.value), self.id)
+
+        return body
+
+    @staticmethod
+    def decode(data: bytes) -> 'PullDataMessage':
+        """
+        Decodifica un mensaje `PullDataMessage` desde formato binario.
+        """
+        # Leer tipo de mensaje y ID
+        sender_id = struct.unpack('>B', data)
+
+        return PullDataMessage(sender_id)
+
+    def __str__(self):
+        return f"PullDataMessage(id={self.id})"
