@@ -46,6 +46,8 @@ class Node:
             logging.info("action: shutdown_node | result: success")
         except Exception as e:
             logging.error(f"action: shutdown_node | result: fail | error: {e}")
+        
+        self._middleware.check_closed()
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""

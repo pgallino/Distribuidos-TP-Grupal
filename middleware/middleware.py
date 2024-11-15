@@ -109,25 +109,63 @@ class Middleware:
         """
         Cierra la conexión a RabbitMQ de forma segura.
         """
+        logging.info("action: middleware close | status: start | message: Starting close process")
         if self.connection and not self.connection.is_closed:
             try:
                 # Detiene el consumo antes de cerrar
                 if self.channel and self.channel.is_open:
-                    self.channel.stop_consuming()
+                    logging.info("action: middleware close | step: stop_consuming | status: in_progress")
+                    try:
+                        self.channel.stop_consuming()
+                        logging.info("action: middleware close | step: stop_consuming | status: success")
+                    except Exception as e:
+                        logging.error(f"action: middleware close | step: stop_consuming | status: fail | error: {e}")
+                        raise
 
-                # # Asegurarse de que no hay callbacks pendientes
+                # Asegurarse de que no hay callbacks pendientes
                 if hasattr(self.channel, 'callbacks') and self.channel.callbacks:
+                    logging.info("action: middleware close | step: clear_callbacks | status: in_progress")
                     self.channel.callbacks.clear()
+                    logging.info("action: middleware close | step: clear_callbacks | status: success")
 
-                # Cerrar el canal y la conexión de forma segura
+                # Cerrar el canal de forma segura
                 if self.channel.is_open:
-                    self.channel.close()
+                    logging.info("action: middleware close | step: close_channel | status: in_progress")
+                    try:
+                        self.channel.close()
+                        logging.info("action: middleware close | step: close_channel | status: success")
+                    except Exception as e:
+                        logging.error(f"action: middleware close | step: close_channel | status: fail | error: {e}")
+                        raise
+
+                # Cerrar la conexión de forma segura
                 if not self.connection.is_closed:
-                    self.connection.close()
+                    logging.info("action: middleware close | step: close_connection | status: in_progress")
+                    try:
+                        self.connection.close()
+                        logging.info("action: middleware close | step: close_connection | status: success")
+                    except Exception as e:
+                        logging.error(f"action: middleware close | step: close_connection | status: fail | error: {e}")
+                        raise
+
             except Exception as e:
-                raise Exception(f"action: middleware close_connection | result: fail | error: {e}")
+                logging.error(f"action: middleware close | status: fail | error: {e}")
+                raise
         else:
-            raise Exception("action: middleware close_connection | result: fail | message: connection already closed or not initialized")
+            logging.warning("action: middleware close | status: skipped | message: Connection already closed or not initialized")
+        logging.info("action: middleware close | status: completed")
+
+    def check_closed(self):
+        """
+        Verifica si el canal y la conexión están cerrados correctamente.
+        """
+        channel_status = "closed" if self.channel is None or self.channel.is_closed else "open"
+        connection_status = "closed" if self.connection is None or self.connection.is_closed else "open"
+
+        if channel_status == "closed" and connection_status == "closed":
+            logging.info(f"action: middleware check_closed | channel_status: {channel_status} | connection_status: {connection_status} ✅ ")
+        else:
+            logging.error(f"action: middleware check_closed | channel_status: {channel_status} | connection_status: {connection_status} ❌")
 
     def declare_queues(self, queues_list):
         """

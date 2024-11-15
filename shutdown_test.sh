@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Cantidad de pruebas
-num_tests=3
+num_tests=20
 
 # Carpeta donde se guardarán los resultados
 results_dir="shutdown_test_results"
