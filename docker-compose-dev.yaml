@@ -20,7 +20,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -47,67 +47,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_2:
-    container_name: client_2
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=2
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_3:
-    container_name: client_3
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=3
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -135,7 +75,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -160,7 +100,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -185,7 +125,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -210,7 +150,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -235,7 +175,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -260,7 +200,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -285,7 +225,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -333,7 +273,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -358,7 +298,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -382,7 +322,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
@@ -393,8 +333,6 @@ services:
     networks:
     - testing_net
     privileged: true
-    volumes:
-    - ./server/config.ini:/config.ini
   trimmer_1:
     container_name: trimmer_1
     depends_on:
@@ -409,7 +347,7 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=3
+    - CLIENT_INSTANCES=1
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1

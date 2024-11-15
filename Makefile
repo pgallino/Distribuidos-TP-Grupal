@@ -8,19 +8,19 @@ default: build
 all:
 
 docker-image:
-	docker build -f ./server/Dockerfile -t "server:latest" .
-	docker build -f ./client/Dockerfile -t "client:latest" .
-	docker build -f ./node/trimmer/Dockerfile -t "trimmer:latest" .
-	docker build -f ./node/filters/genre/Dockerfile -t "genre:latest" .
-	docker build -f ./node/filters/score/Dockerfile -t "score:latest" .
-	docker build -f ./node/filters/release_date/Dockerfile -t "release_date:latest" .
-	docker build -f ./node/filters/english/Dockerfile -t "english:latest" .
-	docker build -f ./node/counters/os_counter/Dockerfile -t "os_counter:latest" .
-	docker build -f ./node/counters/avg_counter/Dockerfile -t "avg_counter:latest" .
-	docker build -f ./node/joiners/q3_joiner/Dockerfile -t "q3_joiner:latest" .
-	docker build -f ./node/joiners/q4_joiner/Dockerfile -t "q4_joiner:latest" .
-	docker build -f ./node/joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
-	docker build -f ./node/replicas/os_counter_replica/Dockerfile -t "os_counter_replica:latest" .
+	docker build -f ./src/server/Dockerfile -t "server:latest" .
+	docker build -f ./src/client/Dockerfile -t "client:latest" .
+	docker build -f ./src/node/trimmer/Dockerfile -t "trimmer:latest" .
+	docker build -f ./src/node/filters/genre/Dockerfile -t "genre:latest" .
+	docker build -f ./src/node/filters/score/Dockerfile -t "score:latest" .
+	docker build -f ./src/node/filters/release_date/Dockerfile -t "release_date:latest" .
+	docker build -f ./src/node/filters/english/Dockerfile -t "english:latest" .
+	docker build -f ./src/node/counters/os_counter/Dockerfile -t "os_counter:latest" .
+	docker build -f ./src/node/counters/avg_counter/Dockerfile -t "avg_counter:latest" .
+	docker build -f ./src/node/joiners/q3_joiner/Dockerfile -t "q3_joiner:latest" .
+	docker build -f ./src/node/joiners/q4_joiner/Dockerfile -t "q4_joiner:latest" .
+	docker build -f ./src/node/joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
+	docker build -f ./src/node/replicas/os_counter_replica/Dockerfile -t "os_counter_replica:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 
 	# want to avoid rebuilding client image every time the docker-compose-up command 

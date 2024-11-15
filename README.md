@@ -36,3 +36,7 @@ Para cambiar la cantidad de instancias de cada nodo que se levantarán en el sis
 ```bash
 ./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 client=3
 ```
+
+### Datasets
+
+Los distintos tipos de datasets se pueden descargar aqui: [Datasets](https://drive.google.com/drive/folders/1Oqcfio45qJbm07X3Ks3lup3A9c42F1HM?usp=drive_link)

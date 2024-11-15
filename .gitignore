@@ -2,5 +2,5 @@
 /results/
 /.vscode/
 /analisis_datasets.ipynb
-/shutdown_test_results/
-/client_test_results/
+/tests/shutdown_test_results/
+/tests/client_test_results/
