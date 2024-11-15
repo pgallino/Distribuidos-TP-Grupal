@@ -1,4 +1,5 @@
-from multiprocessing import Process, Queue, Manager
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import Condition, Process, Lock, Manager
 import socket
 import logging
 import signal
@@ -7,12 +8,14 @@ from result_dispatcher import ResultDispatcher
 from connection_handler import ConnectionHandler
 from utils.constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
 
+DISPATCH_QUEUES = 5
+
 def handle_client_connection(client_id: int, client_socket: socket.socket, n_next_nodes: int):
     connection_handler = ConnectionHandler(client_id, client_socket, n_next_nodes)
     connection_handler.run()
 
-def init_result_dispatcher(client_connections, notification_queue, result_queue):
-    dispatcher = ResultDispatcher(client_connections, notification_queue, result_queue)
+def init_result_dispatcher(client_sockets, lock, space_available, result_queue):
+    dispatcher = ResultDispatcher(client_sockets, lock, space_available, result_queue)
     dispatcher.listen_to_queue()
 
 class Server:
@@ -25,16 +28,21 @@ class Server:
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(('', port))
-        self._server_socket.listen(listen_backlog)
-        
-        self.handlers = []
+        self._server_socket.listen(5)
+
+
         self.dispatchers = []
+        self.max_connections = listen_backlog
         self.manager = Manager()
-        self.client_connections = self.manager.dict()  # Managed dictionary for client_id -> {client_id: (conn, n_results_received)}
-        self.connections_limit = listen_backlog
-        self.notification_queue = Queue()   # Queue to receive termination notifications
-        self.dispatcher_process = None  # Variable para el proceso del dispatcher
+        self.active_connections = self.manager.dict()  # Shared dictionary for client connections
+        self.active_connections_lock = Lock()
+        self.handler_pool = ProcessPoolExecutor(max_workers=listen_backlog)
+        # Condition variable para sincronización entre procesos
+        self.space_available = Condition()
+
         self.client_id_counter = 0  # Inicialización del contador
+
+        # Inicialización de las pools
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -51,6 +59,9 @@ class Server:
 
         self._server_socket.close()
 
+        # Cerrar la pool
+        self.handler_pool.shutdown(wait=True)
+
         # Terminar y unir todos los result dispatchers
         for dispatcher in self.dispatchers:
             if dispatcher:
@@ -59,22 +70,13 @@ class Server:
                     dispatcher.join()
                     logging.info("action: close dispatcher | result: success")
 
-        # Terminar y unir todos los connection handlers
-        for handler in self.handlers:
-            if handler:
-                if handler.is_alive():
-                    handler.terminate()
-                    handler.join()
-                    logging.info("action: close handler | result: success")
-
         self.manager.shutdown()
         self.notification_queue.close()
 
         logging.info("action: shutdown | result: success")
 
-    def run(self):
-        """Server loop to accept and handle new client connections."""
-
+    def start_dispatchers(self):
+        """Inicializa los dispatchers antes de aceptar conexiones."""
         queues = [
             Q_QUERY_RESULT_1,
             Q_QUERY_RESULT_2,
@@ -83,34 +85,36 @@ class Server:
             Q_QUERY_RESULT_5
         ]
 
+        for queue_name in queues:
+            process = Process(target=init_result_dispatcher, args=(self.active_connections, self.active_connections_lock, self.space_available, queue_name,))
+            process.start()
+            self.dispatchers.append(process)
+
+    def run(self):
+        """Server loop to accept and handle new client connections."""
+
+        self.start_dispatchers()
+
         try:
-            for queue_name in queues:
-                process = Process(target=init_result_dispatcher, args=(self.client_connections, self.notification_queue, queue_name,))
-                process.start()
-                self.dispatchers.append(process)
 
             while True:
                         
-                if len(self.client_connections) >= self.connections_limit:
-                    # Blocking wait for a child process to finish
-                    finished_client_id = self.notification_queue.get()
-                    # Remove finished child process from the list
-                    if finished_client_id in self.client_connections:
-                        del self.client_connections[finished_client_id] 
-                    logging.info(f"Slot freed up by process {finished_client_id}. Accepting new connections.")
-                
+                # Solo bloquear si alcanzamos el límite de conexiones
+                with self.space_available:
+                    if len(self.active_connections) >= self.max_connections:                        
+                        logging.info("Se alcanzó el límite de conexiones, esperando espacio...")
+                        self.space_available.wait()  # Espera hasta recibir una señal de espacio libre
+                        logging.info("Conseguí espacioooooo")
+            
                 client_socket = self._accept_new_connection()
                 self.client_id_counter += 1 # TODO me parece más logico que el server sea el que decida los ids, no que le llegue
                 client_id = self.client_id_counter
 
-                child_process = Process(
-                    target=handle_client_connection,
-                    args=(client_id, client_socket, self.n_next_nodes)
-                )
+                # Asignar la conexión a la pool de handlers
+                self.handler_pool.submit(handle_client_connection, client_id, client_socket, self.n_next_nodes)
 
-                child_process.start()
-                self.client_connections[client_id] = (client_socket, 0)  # Track client socket by ID
-                self.handlers.append(child_process)
+                with self.active_connections_lock:
+                    self.active_connections[client_id] = (client_socket, 0)  # Track client socket by ID
 
         except Exception as e:
             if not self.shutting_down:
