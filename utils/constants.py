@@ -37,6 +37,8 @@ Q_RELEASE_DATE_AVG_COUNTER = 'release_date-avg_counter'
 Q_COORD_RELEASE_DATE = 'coord-release_date'
 Q_SCORE_Q4_JOINER = 'score-q4_joiner'
 Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
+Q_REPLICA_MAIN = 'replica_main'
+Q_REPLICA_RESPONSE = 'replica_response'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'

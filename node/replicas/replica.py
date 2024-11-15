@@ -1,9 +1,8 @@
-from collections import defaultdict
 import logging
 import signal
-from messages.messages import MsgType, PushDataMessage, decode_msg
+from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
-from utils.constants import Q_REPLICA, E_REPLICA
+from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
 
 class Replica:
@@ -11,9 +10,8 @@ class Replica:
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
-        self._middleware.declare_queue(Q_REPLICA)
-        self._middleware.declare_exchange(E_REPLICA)
-        self._middleware.bind_queue(Q_REPLICA, E_REPLICA, "replica_data")
+        self._middleware.declare_queue(Q_REPLICA_MAIN)
+        self._middleware.declare_queue(Q_REPLICA_RESPONSE)
 
         # Inicialización específica
         self._initialize_storage()
@@ -61,7 +59,7 @@ class Replica:
 
             if msg.type == MsgType.PUSH_DATA:
                 # Procesar datos replicados
-                logging.info("Replica: procesando datos de `push`.")
+                # logging.info("Replica: procesando datos de `push`.")
                 self._process_push_data(msg)
 
             elif msg.type == MsgType.PULL_DATA:
@@ -76,4 +74,4 @@ class Replica:
 
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
-        self._middleware.receive_from_queue(Q_REPLICA, self.process_replica_message)
+        self._middleware.receive_from_queue(Q_REPLICA_MAIN, self.process_replica_message, auto_ack=False)

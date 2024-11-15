@@ -18,7 +18,8 @@ def parse_args():
             'q4_joiner': 1,
             'q5_joiner': 1,
             'os_counter': 1,
-            'avg_counter': 1
+            'avg_counter': 1,
+            'os_counter_replica': 1  # Añadido como instancia fija
         }
         return instances
     except (IndexError, ValueError):

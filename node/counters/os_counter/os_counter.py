@@ -1,10 +1,10 @@
 import logging
 from typing import List, Tuple
-from messages.messages import decode_msg, MsgType
+from messages.messages import PullDataMessage, PushDataMessage, decode_msg, MsgType
 from messages.results_msg import Q1Result
 
 from node import Node
-from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
+from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 
@@ -22,7 +22,9 @@ class OsCounter(Node):
     def run(self):
 
         try:
+            self._synchronize_with_replica()  # Sincronizar con la réplica al inicio
             # Ejecuta el consumo de mensajes con el callback `process_message`
+            logging.info(f"ASI QUEDO MI COUNTER DESPUES DE SINCRONIZAR: {self.counters}")
             self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER, self._process_message, auto_ack=False)
 
         except Exception as e:
@@ -39,13 +41,13 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
+            logging.info("LLEGE AL FIN")
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def _process_game_message(self, msg):
-            
-        # Actualizar los contadores para cada sistema operativo
+        # Actualizar los contadores
         client_counters = self.counters.get(msg.id, (0, 0, 0))
         windows, mac, linux = client_counters
 
@@ -60,6 +62,13 @@ class OsCounter(Node):
         # Guardar los contadores actualizados
         self.counters[msg.id] = (windows, mac, linux)
 
+        # Enviar los datos actualizados a la réplica
+        data = {msg.id: self.counters[msg.id]}
+        push_msg = PushDataMessage(id=self.id, data=data)
+        self._middleware.send_to_queue(Q_REPLICA_MAIN, push_msg.encode())
+        # logging.info(f"OsCounter: Datos enviados a réplica: {data}")
+
+
     def _process_fin_message(self, msg):
 
         # Obtener el contador final para el id del mensaje
@@ -71,4 +80,28 @@ class OsCounter(Node):
 
             # Enviar el mensaje codificado a la cola de resultados
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
+
+    def _synchronize_with_replica(self):
+        # Declarar las colas necesarias
+        self._middleware.declare_queue(Q_REPLICA_MAIN)
+        self._middleware.declare_queue(Q_REPLICA_RESPONSE)
+
+        # Enviar un mensaje `PullDataMessage` a Q_REPLICA_MAIN
+        pull_msg = PullDataMessage(id=self.id)
+        self._middleware.send_to_queue(Q_REPLICA_MAIN, pull_msg.encode())
+
+        # Escuchar la respuesta en Q_REPLICA_RESPONSE
+        def on_replica_response(ch, method, properties, body):
+            msg = decode_msg(body)
+            if isinstance(msg, PushDataMessage):
+                for client_id, (windows, mac, linux) in msg.data.items():
+                    # Reemplazar directamente los campos en self.counters
+                    self.counters[int(client_id)] = (windows, mac, linux)
+                logging.info(f"OsCounter: Sincronizado con réplica. Datos recibidos: {msg.data}")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self._middleware.channel.stop_consuming()
+
+        self._middleware.receive_from_queue(Q_REPLICA_RESPONSE, on_replica_response, auto_ack=False)
+
+
     
