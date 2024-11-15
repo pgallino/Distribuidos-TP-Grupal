@@ -1,3 +1,4 @@
+import logging
 from typing import List, Tuple
 from messages.messages import MsgType, decode_msg
 from messages.games_msg import Q2Games
@@ -29,7 +30,7 @@ class ReleaseDateFilter(Node):
 
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                logging.error(f"action: listen_to_queue | result: fail | error: {e}")
                 self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):

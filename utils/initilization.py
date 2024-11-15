@@ -2,7 +2,7 @@ import logging
 import os
 from configparser import ConfigParser
 
-def initialize_log():
+def initialize_log(logging_level):
     """
     Python custom logging initialization
 
@@ -11,8 +11,12 @@ def initialize_log():
     """
     logging.basicConfig(
         format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging_level,
         datefmt='%Y-%m-%d %H:%M:%S',
     )
+    # Configurar el nivel de logging para pika
+    logging.getLogger("pika").setLevel(logging.WARNING)
+
 
 def initialize_config(required_keys):
     """

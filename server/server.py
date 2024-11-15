@@ -23,7 +23,6 @@ class Server:
 
     def __init__(self, port, listen_backlog, n_next_nodes: int):
 
-        self.logger = logging.getLogger(__name__)
         signal.signal(signal.SIGTERM, self._handle_sigterm)
         self.shutting_down = False
         self.n_next_nodes = n_next_nodes
@@ -48,14 +47,14 @@ class Server:
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
-        self.logger.custom("action: Received SIGTERM | shutting down server.")
+        logging.info("action: Received SIGTERM | shutting down server.")
         self._shutdown()
     
     def _shutdown(self):
         if self.shutting_down:
             return
         
-        self.logger.custom("action: shutdown SERVER | result: in progress...")
+        logging.info("action: shutdown SERVER | result: in progress...")
         self.shutting_down = True
 
 
@@ -70,12 +69,12 @@ class Server:
                 if dispatcher.is_alive():
                     dispatcher.terminate()
                     dispatcher.join()
-                    self.logger.custom("action: close dispatcher | result: success")
+                    logging.info("action: close dispatcher | result: success")
 
         self.manager.shutdown()
         self.notification_queue.close()
 
-        self.logger.custom("action: shutdown | result: success")
+        logging.info("action: shutdown | result: success")
 
     def start_dispatchers(self):
         """Inicializa los dispatchers antes de aceptar conexiones."""
@@ -104,9 +103,9 @@ class Server:
                 # Solo bloquear si alcanzamos el límite de conexiones
                 with self.space_available:
                     if len(self.active_connections) >= self.max_connections:                        
-                        self.logger.custom("Se alcanzó el límite de conexiones, esperando espacio...")
+                        logging.info("Se alcanzó el límite de conexiones, esperando espacio...")
                         self.space_available.wait()  # Espera hasta recibir una señal de espacio libre
-                        self.logger.custom("Conseguí espacioooooo")
+                        logging.info("Conseguí espacioooooo")
             
                 client_socket = self._accept_new_connection()
                 self.client_id_counter += 1 # TODO me parece más logico que el server sea el que decida los ids, no que le llegue
@@ -120,11 +119,11 @@ class Server:
 
         except Exception as e:
             if not self.shutting_down:
-                self.logger.custom(f"action: run | result: fail | error: {e}")
+                logging.error(f"action: run | result: fail | error: {e}")
                 self._shutdown()  # Trigger shutdown on error
 
     def _accept_new_connection(self):
-        self.logger.custom('action: accept_connections | result: in progress...')
+        logging.info('action: accept_connections | result: in progress...')
         client, addr = self._server_socket.accept()
-        self.logger.custom(f'action: accept_connections | result: success | ip: {addr[0]}')
+        logging.info(f'action: accept_connections | result: success | ip: {addr[0]}')
         return client

@@ -1,7 +1,6 @@
 import logging
 import pika
 import time
-import utils.logging_config # Esto ejecuta la configuración del logger
 from typing import List, Tuple, Callable
 
 
@@ -10,7 +9,6 @@ class Middleware:
         """
         Inicializa la conexión con RabbitMQ y el canal.
         """
-        self.logger = logging.getLogger(__name__)
         self.connection = None
         self.channel = None
         self.queues = set()
@@ -20,7 +18,7 @@ class Middleware:
             self.connection = self._connect_to_rabbitmq()
             self.channel = self.connection.channel()
             self.channel.basic_qos(prefetch_count=1)
-            self.logger.custom(f"action: middleware init_middleware | result: success | host: {host}")
+            logging.info(f"action: middleware init_middleware | result: success | host: {host}")
         except Exception as e:
             raise Exception(f"action: middleware init_middleware | result: fail | error: {e}")
 
@@ -31,9 +29,9 @@ class Middleware:
         if queue_name not in self.queues:
             self.channel.queue_declare(queue=queue_name, durable=True)
             self.queues.add(queue_name)
-            self.logger.custom(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
+            logging.info(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
         else:
-            self.logger.error(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
+            logging.error(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
     
     def declare_exchange(self, exchange, type='direct'):
         """
@@ -43,9 +41,9 @@ class Middleware:
         if exchange not in self.exchanges:
             self.channel.exchange_declare(exchange=exchange, exchange_type=type)
             self.exchanges.add(exchange)
-            self.logger.custom(f"action: middleware declare_queue | result: success | exchange: {exchange}")
+            logging.info(f"action: middleware declare_queue | result: success | exchange: {exchange}")
         else:
-            self.logger.error(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
+            logging.error(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
         
     def bind_queue(self, queue_name, exchange, key=None):
         if queue_name not in self.queues or exchange not in self.exchanges:
@@ -111,25 +109,63 @@ class Middleware:
         """
         Cierra la conexión a RabbitMQ de forma segura.
         """
+        logging.info("action: middleware close | status: start | message: Starting close process")
         if self.connection and not self.connection.is_closed:
             try:
                 # Detiene el consumo antes de cerrar
                 if self.channel and self.channel.is_open:
-                    self.channel.stop_consuming()
+                    logging.info("action: middleware close | step: stop_consuming | status: in_progress")
+                    try:
+                        self.channel.stop_consuming()
+                        logging.info("action: middleware close | step: stop_consuming | status: success")
+                    except Exception as e:
+                        logging.error(f"action: middleware close | step: stop_consuming | status: fail | error: {e}")
+                        raise
 
-                # # Asegurarse de que no hay callbacks pendientes
+                # Asegurarse de que no hay callbacks pendientes
                 if hasattr(self.channel, 'callbacks') and self.channel.callbacks:
+                    logging.info("action: middleware close | step: clear_callbacks | status: in_progress")
                     self.channel.callbacks.clear()
+                    logging.info("action: middleware close | step: clear_callbacks | status: success")
 
-                # Cerrar el canal y la conexión de forma segura
+                # Cerrar el canal de forma segura
                 if self.channel.is_open:
-                    self.channel.close()
+                    logging.info("action: middleware close | step: close_channel | status: in_progress")
+                    try:
+                        self.channel.close()
+                        logging.info("action: middleware close | step: close_channel | status: success")
+                    except Exception as e:
+                        logging.error(f"action: middleware close | step: close_channel | status: fail | error: {e}")
+                        raise
+
+                # Cerrar la conexión de forma segura
                 if not self.connection.is_closed:
-                    self.connection.close()
+                    logging.info("action: middleware close | step: close_connection | status: in_progress")
+                    try:
+                        self.connection.close()
+                        logging.info("action: middleware close | step: close_connection | status: success")
+                    except Exception as e:
+                        logging.error(f"action: middleware close | step: close_connection | status: fail | error: {e}")
+                        raise
+
             except Exception as e:
-                raise Exception(f"action: middleware close_connection | result: fail | error: {e}")
+                logging.error(f"action: middleware close | status: fail | error: {e}")
+                raise
         else:
-            raise Exception("action: middleware close_connection | result: fail | message: connection already closed or not initialized")
+            logging.warning("action: middleware close | status: skipped | message: Connection already closed or not initialized")
+        logging.info("action: middleware close | status: completed")
+
+    def check_closed(self):
+        """
+        Verifica si el canal y la conexión están cerrados correctamente.
+        """
+        channel_status = "closed" if self.channel is None or self.channel.is_closed else "open"
+        connection_status = "closed" if self.connection is None or self.connection.is_closed else "open"
+
+        if channel_status == "closed" and connection_status == "closed":
+            logging.info(f"action: middleware check_closed | channel_status: {channel_status} | connection_status: {connection_status} ✅ ")
+        else:
+            logging.error(f"action: middleware check_closed | channel_status: {channel_status} | connection_status: {connection_status} ❌")
 
     def declare_queues(self, queues_list):
         """

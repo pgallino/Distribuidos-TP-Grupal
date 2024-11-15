@@ -8,9 +8,7 @@ from middleware.middleware import Middleware
 
 class ResultDispatcher:
     """Listens to RabbitMQ result queues and dispatches results to the correct client."""
-
     def __init__(self, client_sockets, lock, space_available, result_queue):
-        self.logger = logging.getLogger(__name__)
         self.client_connections = client_sockets  # Shared dictionary with client_id -> socket
         self.lock = lock
         self.space_available = space_available
@@ -27,24 +25,24 @@ class ResultDispatcher:
     def _shutdown(self):
         if self.shutting_down:
             return
-        self.logger.custom("action: Dispatcher shutdown | result: in progress...")
+        logging.info("action: Dispatcher shutdown | result: in progress...")
         self.shutting_down = True
 
         # Cierra la conexión de manera segura
         self._middleware.close()
-        self.logger.custom("action: Dispatcher shutdown | result: success")
+        logging.info("action: Dispatcher shutdown | result: success")
 
     def listen_to_queue(self):
         """Listen to a specific queue and process messages as they arrive."""
         # handler de SIGTERM para procesos hijos
 
-        self.logger.custom("SOY DISPATCHER E INICIE")
+        logging.info("SOY DISPATCHER E INICIE")
         try:
             # Blocking call to receive messages
             self._middleware.receive_from_queue(self.queue, self._process_result_callback, False)
         except Exception as e:
             if not self.shutting_down:
-                self.logger.error(f"action: listen_to_queue | result: fail | error: {e}")
+                logging.error(f"action: listen_to_queue | result: fail | error: {e}")
                 self._shutdown()  # Trigger shutdown on error
 
     def _process_result_callback(self, ch, method, properties, body):
@@ -64,16 +62,16 @@ class ResultDispatcher:
                     # le añado uno a respuestas enviadas
                     n_results_sent += 1
 
-                    self.logger.custom(f"RESULTADOS ENVIADOS HASTA AHORA: {n_results_sent} a {client_id}")
+                    logging.info(f"RESULTADOS ENVIADOS HASTA AHORA: {n_results_sent} a {client_id}")
 
                     self.client_connections[client_id] = (client_sock, n_results_sent)
 
                     if n_results_sent == 5:
-                        self.logger.custom(f"LLEGUE A 5 PARA EL CLIENTE {client_id}")
+                        logging.info(f"LLEGUE A 5 PARA EL CLIENTE {client_id}")
                         with self.space_available:
                             del self.client_connections[client_id]
                             self.space_available.notify_all() # notifica que hay espacio libre
-                            self.logger.custom(f"Cliente {client_id} desconectado.")
+                            logging.info(f"Cliente {client_id} desconectado.")
                 else:
                     # Raise an exception if there's no active connection for client_id
                     raise Exception(f"No active connection for client_id {client_id}")
@@ -81,5 +79,5 @@ class ResultDispatcher:
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except (ValueError, Exception) as e:
             if not self.shutting_down:
-                self.logger.error(f"Error processing message from {method.routing_key}: {e}")
+                logging.error(f"Error processing message from {method.routing_key}: {e}")
                 self._shutdown()  # Trigger shutdown on error
