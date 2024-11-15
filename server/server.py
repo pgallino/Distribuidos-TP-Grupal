@@ -15,7 +15,6 @@ def handle_client_connection(client_id: int, client_socket: socket.socket, n_nex
     connection_handler.run()
 
 def init_result_dispatcher(client_sockets, lock, space_available, result_queue):
-    logging.getLogger(__name__).custom(f"Initializing dispatcher for queue: {result_queue}")
     dispatcher = ResultDispatcher(client_sockets, lock, space_available, result_queue)
     dispatcher.listen_to_queue()
 

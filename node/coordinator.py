@@ -73,7 +73,6 @@ class CoordinatorNode:
             if self.fins_counter[client_id] == self.n_nodes - 1: # arranca en cero ahora
                 for key, _ in self.keys:
                     self._middleware.send_to_queue(self.keys_exchange, msg.encode(), key=key)
-                    self.logger.custom(f"ENVIE FIN A {key} DE CLIENTE {client_id}")
                 del self.fins_counter[client_id]
 
         elif msg.type == MsgType.COORDFIN:
