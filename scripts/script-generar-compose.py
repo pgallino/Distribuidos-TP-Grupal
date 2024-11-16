@@ -1,3 +1,4 @@
+import os
 import yaml
 import sys
 
@@ -124,7 +125,11 @@ def generate_docker_compose(instances):
     return docker_compose_dict
 
 # Guardar el diccionario de Docker Compose en un archivo YAML
-def save_docker_compose_file(docker_compose_dict, file_path='docker-compose-dev.yaml'):
+def save_docker_compose_file(docker_compose_dict, file_name='docker-compose-dev.yaml'):
+
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    file_path = os.path.join(project_root, file_name)
+
     with open(file_path, 'w') as file:
         yaml.dump(docker_compose_dict, file, default_flow_style=False)
     print(f'Archivo {file_path} generado con éxito.')

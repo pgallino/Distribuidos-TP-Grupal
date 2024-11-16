@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Obtener la ruta del directorio donde se encuentra este script
+SCRIPT_DIR=$(dirname "$(realpath "$0")")
+
 # Inicializa un array para las instancias
 declare -A INSTANCIAS
 
@@ -18,6 +21,6 @@ for nodo in trimmer genre score release_date english; do
 done
 
 # Ejecuta el script de Python con los parámetros
-python3 scripts/script-generar-compose.py "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}" "${INSTANCIAS[client]}"
+python3 "$SCRIPT_DIR/script-generar-compose.py" "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}" "${INSTANCIAS[client]}"
 
 #./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1
