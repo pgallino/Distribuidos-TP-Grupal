@@ -10,8 +10,6 @@ class Replica:
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
-        self._middleware.declare_queue(Q_REPLICA_MAIN)
-        self._middleware.declare_queue(Q_REPLICA_RESPONSE)
 
         # Inicialización específica
         self._initialize_storage()
@@ -71,7 +69,3 @@ class Replica:
             logging.error(f"action: process_replica_message | result: fail | error: {e}")
         finally:
             ch.basic_ack(delivery_tag=method.delivery_tag)
-
-    def run(self):
-        """Inicia el consumo de mensajes en la cola de la réplica."""
-        self._middleware.receive_from_queue(Q_REPLICA_MAIN, self.process_replica_message, auto_ack=False)

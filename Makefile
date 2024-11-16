@@ -21,6 +21,7 @@ docker-image:
 	docker build -f ./src/node/joiners/q4_joiner/Dockerfile -t "q4_joiner:latest" .
 	docker build -f ./src/node/joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
 	docker build -f ./src/node/replicas/os_counter_replica/Dockerfile -t "os_counter_replica:latest" .
+	docker build -f ./src/node/replicas/avg_counter_replica/Dockerfile -t "avg_counter_replica:latest" .
 	# Execute this command from time to time to clean up intermediate stages generated 
 	# during client build (your hard drive will like this :) ). Don't left uncommented if you 
 	# want to avoid rebuilding client image every time the docker-compose-up command 

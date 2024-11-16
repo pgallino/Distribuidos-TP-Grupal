@@ -20,7 +20,8 @@ def parse_args():
             'q5_joiner': 1,
             'os_counter': 1,
             'avg_counter': 1,
-            'os_counter_replica': 1  # Añadido como instancia fija
+            'os_counter_replica': 1,
+            'avg_counter_replica': 1,
         }
         return instances
     except (IndexError, ValueError):

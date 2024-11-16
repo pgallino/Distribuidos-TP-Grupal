@@ -20,14 +20,41 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: avg_counter:latest
+    networks:
+    - testing_net
+    privileged: true
+  avg_counter_replica_1:
+    container_name: avg_counter_replica_1
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=INFO
+    - INSTANCE_ID=1
+    - TRIMMER_INSTANCES=1
+    - GENRE_INSTANCES=1
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - CLIENT_INSTANCES=3
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
+    image: avg_counter_replica:latest
     networks:
     - testing_net
     privileged: true
@@ -47,43 +74,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_10:
-    container_name: client_10
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=10
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: client:latest
     networks:
     - testing_net
@@ -107,13 +105,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: client:latest
     networks:
     - testing_net
@@ -137,193 +136,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_4:
-    container_name: client_4
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=4
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_5:
-    container_name: client_5
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=5
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_6:
-    container_name: client_6
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=6
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_7:
-    container_name: client_7
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=7
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_8:
-    container_name: client_8
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=8
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
-    image: client:latest
-    networks:
-    - testing_net
-    privileged: true
-    volumes:
-    - ./datasets:/datasets
-    - ./results:/results
-  client_9:
-    container_name: client_9
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-      server:
-        condition: service_started
-    environment:
-    - PYTHONUNBUFFERED=1
-    - LOGGING_LEVEL=INFO
-    - INSTANCE_ID=9
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
-    - SCORE_INSTANCES=1
-    - RELEASE_DATE_INSTANCES=1
-    - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
-    - Q3_JOINER_INSTANCES=1
-    - Q4_JOINER_INSTANCES=1
-    - Q5_JOINER_INSTANCES=1
-    - OS_COUNTER_INSTANCES=1
-    - AVG_COUNTER_INSTANCES=1
-    - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: client:latest
     networks:
     - testing_net
@@ -345,13 +165,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: english:latest
     networks:
     - testing_net
@@ -370,13 +191,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: genre:latest
     networks:
     - testing_net
@@ -395,13 +217,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: os_counter:latest
     networks:
     - testing_net
@@ -420,13 +243,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: os_counter_replica:latest
     networks:
     - testing_net
@@ -445,13 +269,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: q3_joiner:latest
     networks:
     - testing_net
@@ -470,13 +295,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: q4_joiner:latest
     networks:
     - testing_net
@@ -495,13 +321,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: q5_joiner:latest
     networks:
     - testing_net
@@ -543,13 +370,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: release_date:latest
     networks:
     - testing_net
@@ -568,13 +396,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: score:latest
     networks:
     - testing_net
@@ -592,13 +421,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: server:latest
     networks:
     - testing_net
@@ -617,13 +447,14 @@ services:
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
-    - CLIENT_INSTANCES=10
+    - CLIENT_INSTANCES=3
     - Q3_JOINER_INSTANCES=1
     - Q4_JOINER_INSTANCES=1
     - Q5_JOINER_INSTANCES=1
     - OS_COUNTER_INSTANCES=1
     - AVG_COUNTER_INSTANCES=1
     - OS_COUNTER_REPLICA_INSTANCES=1
+    - AVG_COUNTER_REPLICA_INSTANCES=1
     image: trimmer:latest
     networks:
     - testing_net

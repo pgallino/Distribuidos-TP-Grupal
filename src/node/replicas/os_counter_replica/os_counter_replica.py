@@ -2,13 +2,19 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage, PullDataMessage
 from replica import Replica
-from utils.constants import Q_REPLICA_RESPONSE
+from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
 
 class OsCounterReplica(Replica):
 
     def __init__(self, id: int):
         super().__init__(id)
+        self._middleware.declare_queue(Q_REPLICA_MAIN)
+        self._middleware.declare_queue(Q_REPLICA_RESPONSE)
+
+    def run(self):
+        """Inicia el consumo de mensajes en la cola de la réplica."""
+        self._middleware.receive_from_queue(Q_REPLICA_MAIN, self.process_replica_message, auto_ack=False)
         
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""

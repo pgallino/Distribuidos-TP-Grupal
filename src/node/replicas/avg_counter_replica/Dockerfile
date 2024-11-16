@@ -4,10 +4,9 @@ FROM python:3.9.7-slim
 RUN pip install --no-cache-dir pika==1.2.0
 
 # Copiamos los archivos necesarios
-COPY src/node/counters/os_counter/main.py /
-COPY src/node/counters/os_counter/os_counter.py /
-COPY src/node/node.py /
-COPY src/node/coordinator.py /
+COPY src/node/replicas/avg_counter_replica/main.py /
+COPY src/node/replicas/avg_counter_replica/avg_counter_replica.py /
+COPY src/node/replicas/replica.py /
 
 # Copiar la carpeta completa middleware
 COPY src/middleware /middleware
