@@ -39,6 +39,11 @@ Q_SCORE_Q4_JOINER = 'score-q4_joiner'
 Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
 Q_REPLICA_MAIN = 'replica_main'
 Q_REPLICA_RESPONSE = 'replica_response'
+Q_KEEP_ALIVE = {'os': 'q-os-keepalive',
+                'avg': 'q-avg-keepalive',
+                'j3': 'q-j3-keepalive',
+                'j4': 'q-j4-keepalive',
+                'j5': 'q-j5-keepalive'}
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'
@@ -50,6 +55,11 @@ E_FROM_SCORE = "from_score"
 E_COORD_SCORE = 'from-coord-score'
 E_COORD_RELEASE_DATE = 'from-coord-release_date'
 E_COORD_ENGLISH = 'from-coord-english'
+E_KEEP_ALIVE = {'os': 'e-os-keepalive',
+                'avg': 'e-avg-keepalive',
+                'j3': 'e-j3-keepalive',
+                'j4': 'e-j4-keepalive',
+                'j5': 'e-j5-keepalive'}
 
 # Routing Keys
 K_GENREGAME = 'genregame'
@@ -61,3 +71,5 @@ K_Q1GAME = 'q1game'
 K_POSITIVE = 'positive'
 K_REVIEW = 'review'
 K_NEGATIVE_TEXT = 'negative_text'
+K_KEEP_ALIVE = 'keepalive'
+K_ALIVE = 'alive'

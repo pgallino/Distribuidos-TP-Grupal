@@ -15,6 +15,8 @@ class MsgType(Enum):
     CLIENT_FIN = 8
     PUSH_DATA = 9
     PULL_DATA = 10
+    KEEP_ALIVE = 11
+    ALIVE = 12
 
 class Dataset(Enum):
     GAME = 0
@@ -119,6 +121,14 @@ def decode_msg(data):
     elif msg_type == MsgType.PULL_DATA:
 
         return PullDataMessage.decode(data[1:])
+    
+    elif msg_type == MsgType.ALIVE:
+
+        return Alive.decode()
+    
+    elif msg_type == MsgType.KEEP_ALIVE:
+
+        return KeepAlive.decode()
 
     else:
         raise ValueError(f"Tipo de mensaje desconocido: {msg_type}")
@@ -376,3 +386,51 @@ class PullDataMessage(Message):
 
     def __str__(self):
         return f"PullDataMessage(id={self.id})"
+    
+class Alive(Message):
+    def __init__(self):
+        super().__init__(0, MsgType.ALIVE)
+
+    def encode(self) -> bytes:
+        # Codifica el mensaje alive
+        # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
+        body = struct.pack('>B', int(self.type.value))
+        
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
+        total_length = len(body)
+        
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body
+    
+    @staticmethod
+    def decode() -> 'Alive':
+        # Decodifica el mensaje Alive
+        return Alive()
+    
+    def __str__(self):
+        return f"Alive()"
+    
+class KeepAlive(Message):
+    def __init__(self):
+        super().__init__(0, MsgType.KEEP_ALIVE)
+
+    def encode(self) -> bytes:
+        # Codifica el mensaje KeepAlive
+        # Empaquetamos el tipo de mensaje y el ID (1 byte cada uno)
+        body = struct.pack('>B', int(self.type.value))
+        
+        # Calcular la longitud total del mensaje (4 bytes de longitud + cuerpo)
+        total_length = len(body)
+        
+        # Empaquetamos el largo total seguido del cuerpo
+        return struct.pack('>I', total_length) + body
+    
+    @staticmethod
+    def decode() -> 'KeepAlive':
+        # Decodifica el mensaje Handshake
+        return KeepAlive()
+    
+    def __str__(self):
+        return f"KeepAlive()"
+    
+# TODO: limpiar y sacar codigo repetido -> es un asco

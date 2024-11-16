@@ -1,5 +1,7 @@
 from collections import defaultdict
 import logging
+import subprocess
+import time
 from messages.messages import PushDataMessage, PullDataMessage
 from replica import Replica
 from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
@@ -11,10 +13,11 @@ class OsCounterReplica(Replica):
         super().__init__(id)
         self._middleware.declare_queue(Q_REPLICA_MAIN)
         self._middleware.declare_queue(Q_REPLICA_RESPONSE)
+        self.inactivity_detected = False
 
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
-        self._middleware.receive_from_queue(Q_REPLICA_MAIN, self.process_replica_message, auto_ack=False)
+        self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.process_replica_message, self.ask_keepalive, 5, auto_ack=False)
         
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
@@ -46,3 +49,27 @@ class OsCounterReplica(Replica):
             response_data.encode()
         )
         logging.info("OsCounterReplica: Estado enviado exitosamente a Q_REPLICA_RESPONSE.")
+
+    def ask_keepalive(self) -> bool:
+        # manda por la cola de keepalive un keepalive
+        # espera a recibir el keepalive
+        self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.consume_alive, self._handle_inactive_master, 5, auto_ack=False)
+        # si recibe keepalive --> termina la funcion (devuelve true)
+        # si hay timeout --> hay que ejecutar algorimto de consenso 
+        return
+
+    def consume_alive(self):
+        # procesar el coso de alive
+        pass
+
+    def _handle_inactive_master(self):
+        """Levanta un nuevo contenedor para reemplazar al maestro inactivo utilizando subprocess."""
+        container_name = "os_counter_1"  # Reemplaza con el nombre de tu contenedor
+
+        try:
+            # Reiniciar el contenedor maestro
+            result = subprocess.run(['docker', 'start', container_name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            logging.info('Docker start executed. Result={}. Output={}. Error={}'.format(result.returncode, result.stdout.decode(), result.stderr.decode()))
+
+        except Exception as e:
+            logging.error(f"Error inesperado al manejar el maestro inactivo: {e}")
