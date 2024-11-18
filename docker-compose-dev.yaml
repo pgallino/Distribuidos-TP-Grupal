@@ -34,6 +34,8 @@ services:
     privileged: true
   avg_counter_replica_1:
     container_name: avg_counter_replica_1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -231,6 +233,8 @@ services:
     privileged: true
   os_counter_replica_1:
     container_name: os_counter_replica_1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       rabbitmq:
         condition: service_healthy

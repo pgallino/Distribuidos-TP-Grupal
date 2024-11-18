@@ -1,5 +1,7 @@
 from collections import defaultdict
 import logging
+import socket
+import signal
 import subprocess
 import time
 from messages.messages import PushDataMessage, PullDataMessage
@@ -17,7 +19,9 @@ class OsCounterReplica(Replica):
 
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
-        self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.process_replica_message, self.ask_keepalive, 5, auto_ack=False)
+        while True:
+            self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.process_replica_message, 5, auto_ack=False)
+            self.ask_keepalive()
         
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
@@ -50,13 +54,36 @@ class OsCounterReplica(Replica):
         )
         logging.info("OsCounterReplica: Estado enviado exitosamente a Q_REPLICA_RESPONSE.")
 
-    def ask_keepalive(self) -> bool:
+    def ask_keepalive(self):
+        # ===== Opcion con cola =====
         # manda por la cola de keepalive un keepalive
         # espera a recibir el keepalive
-        self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.consume_alive, self._handle_inactive_master, 5, auto_ack=False)
+        # self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.consume_alive, self._handle_inactive_master, 5, auto_ack=False)
         # si recibe keepalive --> termina la funcion (devuelve true)
-        # si hay timeout --> hay que ejecutar algorimto de consenso 
-        return
+        # si hay timeout --> hay que ejecutar algorimto de consenso
+        # ===========================
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
+        try: 
+            logging.info("Intento conectarme")
+            sock.connect(('os_counter_1', 12345))
+            logging.info("me conecte re zarpaddddo")
+        except ConnectionRefusedError:
+            logging.error("Conexión rechazada. El servidor podría estar caído.")
+            self._handle_inactive_master()
+        except socket.gaierror as e:
+            logging.error(f"Error de resolución del nombre de host: {e}")
+            logging.info("Posible problema de red o DNS. Revisar configuración de Docker.")
+            self._handle_inactive_master()
+        except socket.timeout:
+            logging.error("Timeout al intentar conectar con el servidor.")
+            self._handle_inactive_master()
+        except Exception as e:
+            logging.error(f"Error inesperado durante la conexión del socket: {e}")
+            if not self.shutting_down:
+                logging.info(f"Error inesperado en run: {e}")
+            self._handle_inactive_master()
+        sock.close()
 
     def consume_alive(self):
         # procesar el coso de alive
@@ -64,8 +91,11 @@ class OsCounterReplica(Replica):
 
     def _handle_inactive_master(self):
         """Levanta un nuevo contenedor para reemplazar al maestro inactivo utilizando subprocess."""
+
+        
         container_name = "os_counter_1"  # Reemplaza con el nombre de tu contenedor
 
+        logging.info("HAY QUE LEVANTAR CONTAINER")
         try:
             # Reiniciar el contenedor maestro
             result = subprocess.run(['docker', 'start', container_name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

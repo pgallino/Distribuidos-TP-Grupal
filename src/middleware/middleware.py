@@ -106,7 +106,7 @@ class Middleware:
         # Inicia el consumo de mensajes
         self.channel.start_consuming()
 
-    def receive_from_queue_with_timeout(self, queue_name, callback, timeout_callback, inactivity_time, auto_ack=True):
+    def receive_from_queue_with_timeout(self, queue_name, callback, inactivity_time, auto_ack=True):
         if queue_name not in self.queues:
             raise ValueError(f"La cola '{queue_name}' no está declarada.")
 
@@ -128,8 +128,7 @@ class Middleware:
                 # Verifica si se excedió el tiempo de inactividad
                 if current_time - last_message_time > inactivity_time:
                     logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
-                    if timeout_callback():
-                        break
+                    break
         except KeyboardInterrupt:
             logging.info("Consumo interrumpido manualmente.")
 

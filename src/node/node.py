@@ -24,6 +24,7 @@ class Node:
         self.shutting_down = False
         self._middleware = Middleware()
         self.coordination_process = None
+        self.ka_process = None
         self.condition = Condition()
         self.processing_client = Value('i', -1)  # 'i' indica un entero
 
@@ -41,6 +42,9 @@ class Node:
             self.coordination_process.terminate()
             self.coordination_process.join()
 
+        if self.ka_process:
+            self.ka_process.terminate()
+            self.ka_process.join()
         try:
             self._middleware.close()
             logging.info("action: shutdown_node | result: success")
