@@ -1,6 +1,4 @@
-import logging
 import struct
-import socket
 
 BYTES_HEADER = 4
 

@@ -1,6 +1,6 @@
 from collections import defaultdict
 import logging
-from messages.messages import PushDataMessage, PullDataMessage
+from messages.messages import PushDataMessage
 from replica import Replica
 from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
@@ -25,12 +25,11 @@ class AvgCounterReplica(Replica):
         for client_id, heap_data in msg.data.items():
             self.client_heaps[client_id] = heap_data
 
-    def _send_data(self, msg: PullDataMessage):
-        """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
-        logging.info(f"AvgCounterReplica: Respondiendo a solicitud de PullDataMessage del cliente {msg.id}")
+    def _send_data(self):
+        logging.info(f"AvgCounterReplica: Respondiendo a solicitud de PullData")
 
         # Crear el mensaje de respuesta con el estado actual
-        response_data = PushDataMessage(id=self.id, data=dict(self.client_heaps))
+        response_data = PushDataMessage(data=dict(self.client_heaps))
 
         # Enviar el mensaje a Q_REPLICA_RESPONSE
         self._middleware.send_to_queue(

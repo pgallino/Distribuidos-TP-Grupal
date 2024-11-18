@@ -33,7 +33,7 @@ class Client:
             self.send_dataset(self.reviews, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
-            fin_msg = ClientFin()  # Creamos el mensaje Fin con ID 1
+            fin_msg = ClientFin()  # Creamos el mensaje Fin
             self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_fin | result: success | message: Fin")
 
@@ -46,10 +46,10 @@ class Client:
         finally:
             self.client_socket.close()
 
-    def send_dataset(self, fname, dataset):
+    def send_dataset(self, fname, dataset_type):
         # Chequear si existe el archivo
         with open(fname, mode='r') as file:
-            logging.info(f"action: send_handshake | result: success | dataset: {dataset}")
+            logging.info(f"action: send_handshake | result: success | dataset: {dataset_type}")
             next(file)  # Para saltearse el header
             batch = []
             current_batch_size = 0  # Tamaño actual del batch en bytes
@@ -61,7 +61,7 @@ class Client:
                 # Verifica si agregar esta línea excedería el tamaño del batch
                 if current_batch_size + line_size > self.max_batch_size:
                     # Envía el batch actual y reinicia
-                    data = ClientData(batch, dataset)  # Usa el batch completo
+                    data = ClientData(batch, dataset_type)  # Usa el batch completo
                     self.client_socket.sendall(data.encode())  # Envía el batch codificado
                     # logging.info(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
@@ -75,11 +75,11 @@ class Client:
 
             # Enviar el último batch si contiene líneas restantes
             if batch:
-                data = ClientData(batch, dataset)
+                data = ClientData(batch, dataset_type)
                 self.client_socket.sendall(data.encode())
                 # logging.info(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes")
             
-            logging.info(f"action: send_data | result: success | dataset: {dataset}")
+            logging.info(f"action: send_data | result: success | dataset: {dataset_type}")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -107,15 +107,15 @@ class Client:
                 if msg.type == MsgType.RESULT:
                     received_results += 1
                     # Llama al método correspondiente basado en el tipo de resultado
-                    if msg.result_type == QueryNumber.Q1:
+                    if msg.result.result_type == QueryNumber.Q1:
                         self.process_q1_result(msg)
-                    elif msg.result_type == QueryNumber.Q2:
+                    elif msg.result.result_type == QueryNumber.Q2:
                         self.process_q2_result(msg)
-                    elif msg.result_type == QueryNumber.Q3:
+                    elif msg.result.result_type == QueryNumber.Q3:
                         self.process_q3_result(msg)
-                    elif msg.result_type == QueryNumber.Q4:
+                    elif msg.result.result_type == QueryNumber.Q4:
                         self.process_q4_result(msg)
-                    elif msg.result_type == QueryNumber.Q5:
+                    elif msg.result.result_type == QueryNumber.Q5:
                         self.process_q5_result(msg)
                     else:
                         logging.error(f"Received Unknown Result Type: {msg}")
@@ -137,16 +137,16 @@ class Client:
         """Processes and prints Q1 result."""
         output = (
             f"Q1: OS Count Summary:\n"
-            f"- Windows: {msg.windows_count}\n"
-            f"- Linux: {msg.linux_count}\n"
-            f"- Mac: {msg.mac_count}\n"
+            f"- Windows: {msg.result.windows_count}\n"
+            f"- Linux: {msg.result.linux_count}\n"
+            f"- Mac: {msg.result.mac_count}\n"
         )
         logging.info(output)
         self.save_to_file("Q1.txt", output, msg.id)
 
     def process_q2_result(self, msg):
         """Processes and prints Q2 result."""
-        top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.top_games)
+        top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.result.top_games)
         output = (
             f"Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
             f"{top_games_str}\n"
@@ -157,7 +157,7 @@ class Client:
     def process_q3_result(self, msg):
         """Processes and prints Q3 result."""
         indie_games_str = "\n".join(
-            f"{rank}. {name}: {reviews} positive reviews" for rank, (name, reviews) in enumerate(msg.top_indie_games, start=1)
+            f"{rank}. {name}: {reviews} positive reviews" for rank, (name, reviews) in enumerate(msg.result.top_indie_games, start=1)
         )
         output = (
             f"Q3: Top 5 Indie Games with Most Positive Reviews:\n"
@@ -168,7 +168,7 @@ class Client:
 
     def process_q4_result(self, msg):
         """Processes and prints Q4 result."""
-        negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.negative_reviews)
+        negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.result.negative_reviews)
         output = (
             f"Q4: Action games with more than 5,000 negative reviews in English:\n"
             f"{negative_reviews_str}\n"
@@ -178,7 +178,7 @@ class Client:
 
     def process_q5_result(self, msg):
         """Processes and prints Q5 result."""
-        top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.top_negative_reviews)
+        top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.result.top_negative_reviews)
         output = (
             f"Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
             f"{top_negative_str}\n"

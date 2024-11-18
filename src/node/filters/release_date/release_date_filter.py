@@ -1,7 +1,6 @@
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, decode_msg
-from messages.games_msg import Q2Games
+from messages.messages import MsgType, Q2GamesMessage, decode_msg
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
@@ -56,7 +55,7 @@ class ReleaseDateFilter(Node):
         """Filtra y envía juegos lanzados en 2010 o después."""
         batch = [game for game in msg.games if "201" in game.release_date]
         if batch:
-            games_msg = Q2Games(msg.id, batch)
+            games_msg = Q2GamesMessage(id=msg.id, games=batch)
             self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, games_msg.encode())
 
     def _process_fin_message(self, msg):

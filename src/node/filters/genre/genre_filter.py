@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
-from messages.messages import Genre, MsgType, decode_msg
-from messages.games_msg import Q2Game, Q2Games, BasicGame, BasicGames
+from messages.messages import BasicGamesMessage, MsgType, Q2GamesMessage, decode_msg
+from messages.games_msg import Q2Game, BasicGame, Genre
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
 
@@ -75,15 +75,15 @@ class GenreFilter(Node):
                     shooter_games.append(BasicGame(app_id=game.app_id, name=game.name))
 
         if indie_basic_games:
-            indie_basic_msg = BasicGames(id=msg.id, games=indie_basic_games)
+            indie_basic_msg = BasicGamesMessage(id=msg.id, games=indie_basic_games)
             self._middleware.send_to_queue(E_FROM_GENRE, indie_basic_msg.encode(), key=K_INDIE_BASICGAMES)
 
         if indie_q2_games:
-            indie_q2_msg = Q2Games(id=msg.id, games=indie_q2_games)
+            indie_q2_msg = Q2GamesMessage(id=msg.id, games=indie_q2_games)
             self._middleware.send_to_queue(E_FROM_GENRE, indie_q2_msg.encode(), key=K_INDIE_Q2GAMES)
         
         if shooter_games:
-            shooter_msg = BasicGames(id=msg.id, games=shooter_games)
+            shooter_msg = BasicGamesMessage(id=msg.id, games=shooter_games)
             self._middleware.send_to_queue(E_FROM_GENRE, shooter_msg.encode(), key=K_SHOOTER_GAMES)
 
     def _process_fin_message(self, msg):

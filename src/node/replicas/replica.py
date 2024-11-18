@@ -2,7 +2,6 @@ import logging
 import signal
 from messages.messages import MsgType, decode_msg
 from middleware.middleware import Middleware
-from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
 
 class Replica:
@@ -62,8 +61,7 @@ class Replica:
 
             elif msg.type == MsgType.PULL_DATA:
                 # Responder con toda la data replicada
-                logging.info("Replica: respondiendo a solicitud de `pull`.")
-                self._send_data(msg)
+                self._send_data()
 
         except Exception as e:
             logging.error(f"action: process_replica_message | result: fail | error: {e}")

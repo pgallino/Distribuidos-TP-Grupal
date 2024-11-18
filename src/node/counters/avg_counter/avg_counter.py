@@ -1,7 +1,7 @@
 from collections import defaultdict
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, PullDataMessage, PushDataMessage, decode_msg
+from messages.messages import MsgType, PullData, PushDataMessage, ResultMessage, decode_msg
 from messages.results_msg import Q2Result
 import heapq
 
@@ -57,7 +57,7 @@ class AvgCounter(Node):
 
         # Enviar los datos actualizados a la réplica
         data = {client_id: client_heap}
-        push_msg = PushDataMessage(id=self.id, data=data)
+        push_msg = PushDataMessage(data=data)
         self._middleware.send_to_queue(Q_REPLICA_MAIN + "_avg_counter", push_msg.encode())
     
     def _process_fin_message(self, msg):
@@ -71,7 +71,8 @@ class AvgCounter(Node):
             top_games = [(name, avg_playtime) for avg_playtime, _, name in result]
 
             # Crear y enviar el mensaje de resultado
-            result_message = Q2Result(id=msg.id, top_games=top_games)
+            q2_result = Q2Result(top_games=top_games)
+            result_message = ResultMessage(id=msg.id, result=q2_result)
 
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 
@@ -84,7 +85,7 @@ class AvgCounter(Node):
         self._middleware.declare_queue(Q_REPLICA_RESPONSE + "_avg_counter")
 
         # Enviar un mensaje `PullDataMessage` a Q_REPLICA_MAIN
-        pull_msg = PullDataMessage(id=self.id)
+        pull_msg = PullData()
         self._middleware.send_to_queue(Q_REPLICA_MAIN + "_avg_counter", pull_msg.encode())
 
         # Escuchar la respuesta en Q_REPLICA_RESPONSE
