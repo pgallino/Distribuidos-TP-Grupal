@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
-from messages.messages import BasicGamesMessage, MsgType, Q2GamesMessage, decode_msg
-from messages.games_msg import Q2Game, BasicGame, Genre
+from messages.messages import ListMessage, MsgType, decode_msg
+from messages.games_msg import GamesType, Q2Game, BasicGame, Genre
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
 
@@ -66,7 +66,7 @@ class GenreFilter(Node):
         """Filtra juegos por género y los envía a las colas correspondientes."""
         indie_basic_games, indie_q2_games, shooter_games = [], [], []
 
-        for game in msg.games:
+        for game in msg.items:
             for genre in game.genres:
                 if genre == Genre.INDIE.value:
                     indie_basic_games.append(BasicGame(app_id=game.app_id, name=game.name))
@@ -75,15 +75,15 @@ class GenreFilter(Node):
                     shooter_games.append(BasicGame(app_id=game.app_id, name=game.name))
 
         if indie_basic_games:
-            indie_basic_msg = BasicGamesMessage(games=indie_basic_games, id=msg.id)
+            indie_basic_msg = ListMessage(MsgType.GAMES, GamesType.BASICGAME, indie_basic_games, msg.id)
             self._middleware.send_to_queue(E_FROM_GENRE, indie_basic_msg.encode(), key=K_INDIE_BASICGAMES)
 
         if indie_q2_games:
-            indie_q2_msg = Q2GamesMessage(games=indie_q2_games, id=msg.id)
+            indie_q2_msg = ListMessage(MsgType.GAMES, GamesType.Q2GAMES, indie_q2_games, msg.id)
             self._middleware.send_to_queue(E_FROM_GENRE, indie_q2_msg.encode(), key=K_INDIE_Q2GAMES)
         
         if shooter_games:
-            shooter_msg = BasicGamesMessage(games=shooter_games, id=msg.id)
+            shooter_msg = ListMessage(MsgType.GAMES, GamesType.BASICGAME, shooter_games, msg.id)
             self._middleware.send_to_queue(E_FROM_GENRE, shooter_msg.encode(), key=K_SHOOTER_GAMES)
 
     def _process_fin_message(self, msg):

@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
-from messages.messages import BasicReviewsMessage, MsgType, decode_msg
-from messages.reviews_msg import BasicReview
+from messages.messages import ListMessage, MsgType, decode_msg
+from messages.reviews_msg import BasicReview, ReviewsType
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_ENGLISH, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH
 import langid
@@ -57,11 +57,11 @@ class EnglishFilter(Node):
     def _process_reviews_message(self, msg):
         """Filtra y envía reseñas en inglés a la cola correspondiente."""
         en_reviews = [
-            BasicReview(review.app_id) for review in msg.reviews if self.is_english(review.text)
+            BasicReview(review.app_id) for review in msg.items if self.is_english(review.text)
         ]
 
         if en_reviews:
-            english_reviews_msg = BasicReviewsMessage(reviews=en_reviews, id=msg.id)
+            english_reviews_msg = ListMessage(MsgType.REVIEWS, ReviewsType.BASICREVIEW, en_reviews, msg.id)
             self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
 
     def _process_fin_message(self, msg):

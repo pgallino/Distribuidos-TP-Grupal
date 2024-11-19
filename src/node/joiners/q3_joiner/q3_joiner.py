@@ -34,7 +34,7 @@ class Q3Joiner(Node):
 
         if msg.type == MsgType.GAMES:
             client_games = self.games_per_client[msg.id]
-            for game in msg.games:
+            for game in msg.items:
                 client_games[game.app_id] = game
 
         elif msg.type == MsgType.FIN:
@@ -53,7 +53,7 @@ class Q3Joiner(Node):
             client_reviews = self.review_counts_per_client[msg.id]
             client_games = self.games_per_client[msg.id]
             games_fin_received = self.fins_per_client[msg.id][0]
-            for review in msg.reviews:
+            for review in msg.items:
                 if (not games_fin_received) or review.app_id in client_games:
                     client_reviews[review.app_id] += 1
 
