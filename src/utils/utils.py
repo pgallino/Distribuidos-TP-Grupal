@@ -50,3 +50,23 @@ def recv_msg(sock):
         raise ValueError("No se pudo leer el cuerpo del mensaje; posible desconexión.")
     
     return data
+
+class DecodeError(Exception):
+    """Excepción personalizada para errores de decodificación."""
+    def __init__(self, message: str):
+        super().__init__(f"DecodeError: {message}")
+
+
+class EncodeError(Exception):
+    """Excepción personalizada para errores de codificación."""
+    def __init__(self, message: str):
+        super().__init__(f"EncodeError: {message}")
+
+def handle_encode_error(func):
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            raise EncodeError(f"Error in {func.__name__}: {e}")
+    return wrapper
+
