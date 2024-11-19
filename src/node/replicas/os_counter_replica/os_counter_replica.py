@@ -99,21 +99,6 @@ class OsCounterReplica(Replica):
         container_name = 'os_counter_1'
         try:
 
-            # Verificar el estado de los contenedores
-            ps_result = subprocess.run(
-                ['docker', 'ps', '-a'],  # Incluye contenedores detenidos
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            logging.info(
-                'Docker ps executed. Result: {}. Output: {}. Error: {}'.format(
-                    ps_result.returncode,
-                    ps_result.stdout.decode().strip(),
-                    ps_result.stderr.decode().strip()
-                )
-            )
-
             # Intentar reiniciar el contenedor
             start_result = subprocess.run(
                 ['docker', 'start', container_name],
@@ -126,21 +111,6 @@ class OsCounterReplica(Replica):
                     start_result.returncode,
                     start_result.stdout.decode().strip(),
                     start_result.stderr.decode().strip()
-                )
-            )
-
-            # Verificar nuevamente el estado de los contenedores
-            ps_result_after = subprocess.run(
-                ['docker', 'ps'],  # Solo contenedores en ejecución
-                check=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            logging.info(
-                'Docker ps after start executed. Result: {}. Output: {}. Error: {}'.format(
-                    ps_result_after.returncode,
-                    ps_result_after.stdout.decode().strip(),
-                    ps_result_after.stderr.decode().strip()
                 )
             )
 

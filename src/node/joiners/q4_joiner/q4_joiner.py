@@ -1,9 +1,9 @@
 from collections import defaultdict
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, ResultMessage, TextReviewsMessage, decode_msg
+from messages.messages import ListMessage, MsgType, ResultMessage, decode_msg
 from messages.results_msg import Q4Result, QueryNumber
-from messages.reviews_msg import TextReview
+from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
 from utils.constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
@@ -39,7 +39,7 @@ class Q4Joiner(Node):
 
         if msg.type == MsgType.GAMES:
             client_games = self.games_per_client[msg.id]
-            for game in msg.games:
+            for game in msg.items:
                 client_games[game.app_id] = game
                 
         elif msg.type == MsgType.FIN:
@@ -60,7 +60,7 @@ class Q4Joiner(Node):
             client_reviews = self.negative_reviews_per_client[msg.id]
             client_games = self.games_per_client[msg.id]
             games_fin_received = self.fins_per_client[msg.id][0]
-            for review in msg.reviews: # para un TextReview en TextReviews
+            for review in msg.items: # para un TextReview en TextReviews
                 if (not games_fin_received) or review.app_id in client_games:
                     # Debe funcionar appendiendo el elemento directamente de esta manera
                     game_reviews, _ = client_reviews[review.app_id]
@@ -88,7 +88,7 @@ class Q4Joiner(Node):
             text_review = TextReview(app_id, review)
             text_review_size = len(text_review.encode())
             if text_review_size + curr_reviews_batch_size > self.batch_size:
-                text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
+                text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
                 self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
                 curr_reviews_batch_size = 0
                 reviews_batch = []
@@ -97,7 +97,7 @@ class Q4Joiner(Node):
 
         # si me quedaron afuera    
         if reviews_batch:
-            text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
+            text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
             self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
     def send_reviews(self, client_id):
@@ -113,7 +113,7 @@ class Q4Joiner(Node):
                     text_review = TextReview(app_id, review)
                     text_review_size = len(text_review.encode())
                     if text_review_size + curr_reviews_batch_size > self.batch_size:
-                        text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
+                        text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
                         self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
                         curr_reviews_batch_size = 0
                         reviews_batch = []
@@ -122,14 +122,13 @@ class Q4Joiner(Node):
 
                 # si me quedaron afuera    
                 if reviews_batch:
-                    text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
+                    text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
                     self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
         # Borro el diccionario de textos de reviews del cliente
         del self.negative_reviews_per_client[client_id]
         
         client_reviews.clear() #limpio el diccionario
-
                             
     def process_negative_review_message(self, ch, method, properties, raw_message):
 
@@ -139,7 +138,7 @@ class Q4Joiner(Node):
         client_games = self.games_per_client[msg.id]
 
         if msg.type == MsgType.REVIEWS:
-            for review in msg.reviews: # para un TextReview en TextReviews
+            for review in msg.items: # para un TextReview en TextReviews
                 if review.app_id in client_games:
                     client_reviews_count[review.app_id] += 1
 

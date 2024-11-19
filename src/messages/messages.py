@@ -143,12 +143,12 @@ class ClientData(BaseMessage):
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
-        if len(data) < 5:
+        if len(data) < 6:
             raise DecodeError("Insufficient data to decode ClientData: header too short")
-        dataset, data_length = struct.unpack('>BI', data[:5])
-        if len(data) < 5 + data_length:
-            raise DecodeError(f"Insufficient data to decode ClientData: expected {5 + data_length}, got {len(data)}")
-        rows_str = data[5:5 + data_length].decode()
+        _, dataset, data_length = struct.unpack('>BBI', data[:6])
+        if len(data) < 6 + data_length:
+            raise DecodeError(f"Insufficient data to decode ClientData: expected {6 + data_length}, got {len(data)}")
+        rows_str = data[6:6 + data_length].decode()
         rows = rows_str.split("\n")
         return cls(rows=rows, dataset=Dataset(dataset))
 
@@ -172,12 +172,12 @@ class Data(BaseMessage):
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
-        if len(data) < 6:
+        if len(data) < 7:
             raise DecodeError("Insufficient data to decode Data: header too short")
-        id, dataset, data_length = struct.unpack('>BBI', data[:6])
-        if len(data) < 6 + data_length:
-            raise DecodeError(f"Insufficient data to decode Data: expected {6 + data_length}, got {len(data)}")
-        rows_str = data[6:6 + data_length].decode()
+        _, id, dataset, data_length = struct.unpack('>BBBI', data[:7])
+        if len(data) < 7 + data_length:
+            raise DecodeError(f"Insufficient data to decode Data: expected {7 + data_length}, got {len(data)}")
+        rows_str = data[7:7 + data_length].decode()
         rows = rows_str.split("\n")
         return cls(id=id, rows=rows, dataset=Dataset(dataset))
 
@@ -198,9 +198,9 @@ class Fin(BaseMessage):
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
-        if len(data) < 1:
+        if len(data) < 2:
             raise DecodeError("Insufficient data to decode Fin")
-        id = struct.unpack('>B', data[:1])[0]
+        _, id = struct.unpack('>BB', data[:2])
         return cls(id=id)
 
     def __str__(self):
@@ -221,9 +221,9 @@ class CoordFin(BaseMessage):
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
-        if len(data) < 2:
+        if len(data) < 3:
             raise DecodeError("Insufficient data to decode CoordFin")
-        id, node_id = struct.unpack('>BB', data[:2])
+        _, id, node_id = struct.unpack('>BBB', data[:3])
         return cls(id=id, node_id=node_id)
 
     def __str__(self):
@@ -261,12 +261,12 @@ class PushDataMessage(BaseMessage):
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
-        if len(data) < 4:
+        if len(data) < 5:
             raise DecodeError("Insufficient data to decode PushDataMessage: header too short")
-        data_len = struct.unpack('>I', data[:4])[0]
-        if len(data) < 4 + data_len:
-            raise DecodeError(f"Insufficient data to decode PushDataMessage: expected {4 + data_len}, got {len(data)}")
-        data_json = data[4:4 + data_len].decode()
+        _, data_len = struct.unpack('>BI', data[:5])
+        if len(data) < 5 + data_len:
+            raise DecodeError(f"Insufficient data to decode PushDataMessage: expected {5 + data_len}, got {len(data)}")
+        data_json = data[5:5 + data_len].decode()
         parsed_data = json.loads(data_json)
         return cls(data=parsed_data)
 
@@ -274,81 +274,17 @@ class PushDataMessage(BaseMessage):
         return f"PushDataMessage(data={self.data})"
     
 # ===================================================================================================================== #
-    
-class GamesMessage(BaseMessage):
-    def __init__(self, type: MsgType, game_type: GamesType, games: List[Game], id: int):
-        super().__init__(type, games=games, game_type=game_type, id=id)
-
-    @handle_encode_error
-    def encode(self) -> bytes:
-        games_bytes = b"".join([game.encode() for game in self.games])
-        # Empaquetar el tipo de mensaje, el tipo de juego, y la cantidad de juegos
-        body = struct.pack('>BBBH', int(self.type.value), self.game_type.value, self.id, len(self.games)) + games_bytes
-        return body
-
-    @classmethod
-    def decode(cls: Type[T], data: bytes, game_type, game_cls: Type[Game]) -> T:
-        if len(data) < 3:
-            raise DecodeError("Insufficient data to decode GamesMessage: header too short")
-        id, games_count = struct.unpack('>BH', data[:3])
-        games = decode_items(data[3:], games_count, game_cls)
-        return cls(MsgType.GAMES, GamesType(game_type), games, id=id)
-
-
-# Para las subclases específicas
-class BasicGamesMessage(GamesMessage):
-    def __init__(self, games: List[BasicGame], id: int):
-        super().__init__(MsgType.GAMES, GamesType.BASICGAME, games, id)
-
-class Q1GamesMessage(GamesMessage):
-    def __init__(self, games: List[Q1Game], id: int):
-        super().__init__(MsgType.GAMES, GamesType.Q1GAMES, games, id)
-
-class Q2GamesMessage(GamesMessage):
-    def __init__(self, games: List[Q2Game], id: int):
-        super().__init__(MsgType.GAMES, GamesType.Q2GAMES, games, id)
-
-class GenreGamesMessage(GamesMessage):
-    def __init__(self, games: List[GenreGame], id: int):
-        super().__init__(MsgType.GAMES, GamesType.GENREGAMES, games, id)
-
-# ================================================================================================== #
-
-class ReviewsMessage(BaseMessage):
-    def __init__(self, type: MsgType, review_type: ReviewsType, reviews: List[Review], id: int):
-        super().__init__(type, reviews=reviews, review_type=review_type, id=id)
-
-    @handle_encode_error
-    def encode(self) -> bytes:
-        reviews_bytes = b"".join([review.encode() for review in self.reviews])
-        # Empaquetar el tipo de mensaje, el tipo de reseña, y la cantidad de reseñas
-        body = struct.pack('>BBBH', int(self.type.value), self.review_type.value, self.id, len(self.reviews)) + reviews_bytes
-        return body
-
-    @classmethod
-    def decode(cls: Type[T], data: bytes, review_type, review_cls: Type[Review]) -> T:
-        if len(data) < 3:
-            raise DecodeError("Insufficient data to decode ReviewMessage: header too short")
-        id, reviews_count = struct.unpack('>BH', data[:3])
-        reviews = decode_items(data[3:], reviews_count, review_cls)
-        return cls(MsgType.REVIEWS, ReviewsType(review_type), reviews, id=id)
-
-# Para las subclases específicas
-class FullReviewsMessage(ReviewsMessage):
-    def __init__(self, reviews: List[Review], id: int):
-        super().__init__(MsgType.REVIEWS, ReviewsType.FULLREVIEW, reviews, id)
-
-class BasicReviewsMessage(ReviewsMessage):
-    def __init__(self, reviews: List[BasicReview], id: int):
-        super().__init__(MsgType.REVIEWS, ReviewsType.BASICREVIEW, reviews, id)
-
-class TextReviewsMessage(ReviewsMessage):
-    def __init__(self, reviews: List[TextReview], id: int):
-        super().__init__(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews, id)
-
-# ========================================================================================================== #
 
 class ResultMessage(BaseMessage):
+
+    RESULT_CLASSES = {
+        1: Q1Result,
+        2: Q2Result,
+        3: Q3Result,
+        4: Q4Result,
+        5: Q5Result,
+    }
+
     def __init__(self, id: int, result_type: QueryNumber, result: Result):
         super().__init__(MsgType.RESULT, id=id, result_type=result_type, result=result)
 
@@ -361,30 +297,106 @@ class ResultMessage(BaseMessage):
         return struct.pack('>I', total_length) + body
 
     @classmethod
-    def decode(cls: Type[T], data: bytes, result_type, result_cls: Type[Result]) -> T:
-        if len(data) < 1:
+    def decode(cls: Type[T], data: bytes) -> T:
+        if len(data) < 4:
             raise DecodeError("Insufficient data to decode ResultMessage: header too short")
-        id = struct.unpack('>B', data[:1])[0]
-        offset = 1
-        result = result_cls.decode(data[offset:])
+        
+        _, result_type, id = struct.unpack('>BBB', data[:3])
+        result_cls = cls.RESULT_CLASSES.get(result_type)
+        
+        if result_cls is None:
+            raise DecodeError(f"Unknown result type: {result_type}")
+
+        result = result_cls.decode(data[3:])
         return cls(id=id, result_type=QueryNumber(result_type), result=result)
 
 # ========================================================================================================== #
 
-def decode_items(data: bytes, count: int, item_cls: Type[T]) -> List[T]:
-    offset = 0
-    items = []
-    for _ in range(count):
-        if len(data) < offset + 4:
-            raise DecodeError("Insufficient data to decode item length")
-        item_length = struct.unpack('>I', data[offset:offset + 4])[0]
-        offset += 4
-        if len(data) < offset + item_length:
-            raise DecodeError("Insufficient data to decode item data")
-        item_data = data[offset:offset + item_length]
-        offset += item_length
-        items.append(item_cls.decode(item_data))
-    return items
+class ListMessage(BaseMessage):
+
+    # Mapeo de MsgType a los diccionarios que relacionan subtipos con clases
+    TYPE_CLASSES = {
+        MsgType.GAMES.value: {  # Mapeo para juegos
+            0: BasicGame,
+            1: Q1Game,
+            2: Q2Game,
+            3: GenreGame,
+        },
+        MsgType.REVIEWS.value: {  # Mapeo para reseñas
+            0: Review,
+            1: BasicReview,
+            2: TextReview,
+        },
+    }
+
+    def __init__(self, type: MsgType, item_type: Enum, items: List[T], id: int):
+        """
+        Mensaje genérico para listas de elementos.
+        :param type: Tipo de mensaje (MsgType, como GAMES o REVIEWS).
+        :param item_type: Subtipo de los elementos (GamesType, ReviewsType, etc.).
+        :param items: Lista de elementos.
+        :param id: Identificador único del mensaje.
+        """
+        super().__init__(type, items=items, item_type=item_type, id=id)
+        self.item_type = item_type
+        self.items = items
+        self.id = id
+
+    @staticmethod
+    def decode_items(data: bytes, count: int, item_cls: Type[T]) -> List[T]:
+        """
+        Decodifica una lista de elementos desde bytes.
+        :param data: Datos binarios.
+        :param count: Número de elementos a decodificar.
+        :param item_cls: Clase que define el tipo de elementos.
+        :return: Lista de objetos decodificados.
+        """
+        offset = 0
+        items = []
+        for _ in range(count):
+            if len(data) < offset + 4:
+                raise DecodeError("Insufficient data to decode item length")
+            item_length = struct.unpack('>I', data[offset:offset + 4])[0]
+            offset += 4
+            if len(data) < offset + item_length:
+                raise DecodeError("Insufficient data to decode item data")
+            item_data = data[offset:offset + item_length]
+            offset += item_length
+            items.append(item_cls.decode(item_data))
+        return items
+
+    @handle_encode_error
+    def encode(self) -> bytes:
+        """
+        Codifica el mensaje en un formato binario.
+        """
+        items_bytes = b"".join([item.encode() for item in self.items])
+        # Empaquetar el tipo de mensaje, tipo de elementos, identificador y cantidad de elementos
+        body = struct.pack('>BBBH', int(self.type.value), self.item_type.value, self.id, len(self.items)) + items_bytes
+        return body
+
+    @classmethod
+    def decode(cls: Type[T], data: bytes) -> T:
+        """
+        Decodifica un mensaje binario a un objeto `ListMessage`.
+        :param data: Los datos binarios a decodificar.
+        """
+        if len(data) < 5:
+            raise DecodeError("Insufficient data to decode ListMessage: header too short")
+        
+        type_value, item_type_value, id, items_count = struct.unpack('>BBBH', data[:5])
+
+        # Determinar la clase de los elementos según el tipo y subtipo
+        type_classes = cls.TYPE_CLASSES.get(type_value)
+
+        item_cls = type_classes.get(item_type_value)
+
+        # Decodificar los elementos
+        items = cls.decode_items(data[5:], items_count, item_cls)
+        return cls(type=MsgType(type_value), item_type=item_type_value, items=items, id=id)
+
+    def __str__(self):
+        return f"ListMessage(type={self.type}, item_type={self.item_type}, id={self.id}, items={self.items})"
 
 
 # Uso General del Decode
@@ -396,8 +408,8 @@ MESSAGE_CLASSES = {
     MsgType.DATA: Data,
     MsgType.PUSH_DATA: PushDataMessage,
     MsgType.PULL_DATA: PullData,
-    MsgType.GAMES: GamesMessage,
-    MsgType.REVIEWS: ReviewsMessage,
+    MsgType.GAMES: ListMessage,
+    MsgType.REVIEWS: ListMessage,
     MsgType.RESULT: ResultMessage,
     MsgType.CLIENT_DATA: ClientData,
     MsgType.CLIENT_FIN: ClientFin,
@@ -407,26 +419,8 @@ MESSAGE_CLASSES = {
 def decode_msg(data: bytes):
     try:
         type = MsgType(data[0])
+        return MESSAGE_CLASSES[type].decode(data)
     except IndexError:
         raise DecodeError("Data too short to determine message type")
     except ValueError:
         raise DecodeError(f"Unknown MsgType: {data[0]}")
-
-    if type in [MsgType.GAMES, MsgType.REVIEWS, MsgType.RESULT]:
-        cls_map = {
-            MsgType.GAMES: GAME_CLASSES,
-            MsgType.REVIEWS: REVIEW_CLASSES,
-            MsgType.RESULT: RESULT_CLASSES,
-        }
-        try:
-            sub_cls_map = cls_map[type]
-            sub_type = data[1]
-            sub_cls = sub_cls_map[sub_type]
-            return MESSAGE_CLASSES[type].decode(data[2:], sub_type, sub_cls)
-        except KeyError:
-            raise DecodeError(f"Unknown subtype {data[1]} for MsgType {type}")
-
-    elif type in MESSAGE_CLASSES: 
-        return MESSAGE_CLASSES[type].decode(data[1:])
-
-    raise DecodeError(f"Unknown MsgType: {type}")

@@ -56,7 +56,7 @@ class OsCounter(Node):
         client_counters = self.counters.get(msg.id, (0, 0, 0))
         windows, mac, linux = client_counters
 
-        for game in msg.games:
+        for game in msg.items:
             if game.windows:
                 windows += 1
             if game.mac:

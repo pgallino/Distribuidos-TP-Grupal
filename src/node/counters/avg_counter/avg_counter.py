@@ -49,7 +49,7 @@ class AvgCounter(Node):
         # Obtener el heap para este cliente
         client_heap = self.client_heaps[client_id]
 
-        for game in msg.games:
+        for game in msg.items:
             if len(client_heap) < 10:
                 heapq.heappush(client_heap, (game.avg_playtime, game.app_id, game.name))
             elif game.avg_playtime > client_heap[0][0]:  # 0 es el índice de avg_playtime
