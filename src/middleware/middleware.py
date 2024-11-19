@@ -113,24 +113,26 @@ class Middleware:
         # Verifica si el canal está activo antes de configurarlo para el consumo
         if self.channel is None or self.channel.is_closed:
             raise RuntimeError("middleware: El canal no está disponible para consumir mensajes.")
-        
+
+        # Inicializa last_message_time al iniciar el consumo
         last_message_time = time.time()
 
-        # Configura el consumidor en el canal con auto_ack
-        self.channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=auto_ack)
+        def wrapped_callback(ch, method, properties, body):
+            nonlocal last_message_time
+            last_message_time = time.time()  # Actualizar el tiempo del último mensaje
+            callback(ch, method, properties, body)
 
-        try:
-            logging.info("Esperando mensajes. Presiona CTRL+C para salir.")
-            while True:
-                self.connection.process_data_events(time_limit=inactivity_time)  # Procesa eventos con un timeout corto
-                current_time = time.time()
-                
-                # Verifica si se excedió el tiempo de inactividad
-                if current_time - last_message_time > inactivity_time:
-                    logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
-                    break
-        except KeyboardInterrupt:
-            logging.info("Consumo interrumpido manualmente.")
+        # Configura el consumidor en el canal con auto_ack
+        self.channel.basic_consume(queue=queue_name, on_message_callback=wrapped_callback, auto_ack=auto_ack)
+
+        while True:
+            self.connection.process_data_events(time_limit=inactivity_time)  # Procesa eventos con un timeout corto
+            current_time = time.time()
+            
+            # Verifica si se excedió el tiempo de inactividad
+            if current_time - last_message_time > inactivity_time:
+                logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
+                break
 
     def close(self):
         """

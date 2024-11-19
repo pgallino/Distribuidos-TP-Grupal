@@ -13,4 +13,3 @@ CONTAINER_NAME="$1"
 # Detener y eliminar el contenedor
 echo "Deteniendo el contenedor $CONTAINER_NAME..."
 docker stop $CONTAINER_NAME
-docker rm $CONTAINER_NAME

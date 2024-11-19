@@ -15,13 +15,14 @@ class OsCounterReplica(Replica):
         super().__init__(id)
         self._middleware.declare_queue(Q_REPLICA_MAIN)
         self._middleware.declare_queue(Q_REPLICA_RESPONSE)
-        self.inactivity_detected = False
 
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
+        
         while True:
             self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.process_replica_message, 5, auto_ack=False)
             self.ask_keepalive()
+
         
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
@@ -54,6 +55,9 @@ class OsCounterReplica(Replica):
         )
         logging.info("OsCounterReplica: Estado enviado exitosamente a Q_REPLICA_RESPONSE.")
 
+    def _process_fin(self):
+        self._shutdown()
+
     def ask_keepalive(self):
         # ===== Opcion con cola =====
         # manda por la cola de keepalive un keepalive
@@ -67,7 +71,7 @@ class OsCounterReplica(Replica):
         try: 
             logging.info("Intento conectarme")
             sock.connect(('os_counter_1', 12345))
-            logging.info("me conecte re zarpaddddo")
+            logging.info("me conecte, MASTER vivo")
         except ConnectionRefusedError:
             logging.error("Conexión rechazada. El servidor podría estar caído.")
             self._handle_inactive_master()
@@ -85,21 +89,60 @@ class OsCounterReplica(Replica):
             self._handle_inactive_master()
         sock.close()
 
-    def consume_alive(self):
-        # procesar el coso de alive
-        pass
-
     def _handle_inactive_master(self):
-        """Levanta un nuevo contenedor para reemplazar al maestro inactivo utilizando subprocess."""
-
         
-        container_name = "os_counter_1"  # Reemplaza con el nombre de tu contenedor
+        """
+        Intenta detener y luego reiniciar un contenedor Docker, verificando su estado.
+        :param container_name: Nombre del contenedor a manejar.
+        """
 
-        logging.info("HAY QUE LEVANTAR CONTAINER")
+        container_name = 'os_counter_1'
         try:
-            # Reiniciar el contenedor maestro
-            result = subprocess.run(['docker', 'start', container_name], check=False, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            logging.info('Docker start executed. Result={}. Output={}. Error={}'.format(result.returncode, result.stdout.decode(), result.stderr.decode()))
+
+            # Verificar el estado de los contenedores
+            ps_result = subprocess.run(
+                ['docker', 'ps', '-a'],  # Incluye contenedores detenidos
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            logging.info(
+                'Docker ps executed. Result: {}. Output: {}. Error: {}'.format(
+                    ps_result.returncode,
+                    ps_result.stdout.decode().strip(),
+                    ps_result.stderr.decode().strip()
+                )
+            )
+
+            # Intentar reiniciar el contenedor
+            start_result = subprocess.run(
+                ['docker', 'start', container_name],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            logging.info(
+                'Docker start executed. Result: {}. Output: {}. Error: {}'.format(
+                    start_result.returncode,
+                    start_result.stdout.decode().strip(),
+                    start_result.stderr.decode().strip()
+                )
+            )
+
+            # Verificar nuevamente el estado de los contenedores
+            ps_result_after = subprocess.run(
+                ['docker', 'ps'],  # Solo contenedores en ejecución
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            logging.info(
+                'Docker ps after start executed. Result: {}. Output: {}. Error: {}'.format(
+                    ps_result_after.returncode,
+                    ps_result_after.stdout.decode().strip(),
+                    ps_result_after.stderr.decode().strip()
+                )
+            )
 
         except Exception as e:
-            logging.error(f"Error inesperado al manejar el maestro inactivo: {e}")
+            logging.error(f"Unexpected error while handling inactive master: {e}")

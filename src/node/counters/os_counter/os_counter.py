@@ -140,7 +140,7 @@ def _handle_keep_alive():
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('', 12345))
-        sock.listen(5)
+        sock.listen(1)
 
         def handle_sigterm_ka(sig, frame):
             sock.close()
