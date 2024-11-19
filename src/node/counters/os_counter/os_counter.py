@@ -7,7 +7,7 @@ from messages.messages import PullData, PushDataMessage, ResultMessage, decode_m
 from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
-from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER, Q_KEEP_ALIVE, K_KEEP_ALIVE, K_ALIVE, E_KEEP_ALIVE
+from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 

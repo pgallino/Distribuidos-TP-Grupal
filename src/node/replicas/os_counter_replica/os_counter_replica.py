@@ -3,11 +3,11 @@ import logging
 import socket
 import signal
 import subprocess
-import time
 from messages.messages import PushDataMessage
 from replica import Replica
 from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
+TIMEOUT = 5
 
 class OsCounterReplica(Replica):
 
@@ -20,7 +20,7 @@ class OsCounterReplica(Replica):
         """Inicia el consumo de mensajes en la cola de la réplica."""
         
         while True:
-            self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.process_replica_message, 5, auto_ack=False)
+            self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN, self.process_replica_message, TIMEOUT, auto_ack=False)
             self.ask_keepalive()
 
         
