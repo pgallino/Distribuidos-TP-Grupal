@@ -41,7 +41,6 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
-            logging.info("LLEGE AL FIN")
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -66,7 +65,6 @@ class OsCounter(Node):
         data = {msg.id: self.counters[msg.id]}
         push_msg = PushDataMessage(data=data)
         self._middleware.send_to_queue(Q_REPLICA_MAIN, push_msg.encode())
-        # logging.info(f"OsCounter: Datos enviados a réplica: {data}")
 
 
     def _process_fin_message(self, msg):

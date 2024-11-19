@@ -248,11 +248,8 @@ class PushDataMessage(BaseMessage):
             '>BI', int(self.type.value), len(data_bytes)
         ) + data_bytes
 
-        # Calcular la longitud total del mensaje
-        total_length = len(body)
-
         # Empaquetar el largo total seguido del cuerpo
-        return struct.pack('>I', total_length) + body
+        return body
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
@@ -285,21 +282,9 @@ class GamesMessage(BaseMessage):
         if len(data) < 3:
             raise ValueError("Insufficient data to decode GamesMessage: header too short")
         id, games_count = struct.unpack('>BH', data[:3])
-        offset = 3
-        games = []
-
-        for _ in range(games_count):
-            if len(data) < offset + 4:
-                raise ValueError("Insufficient data to decode game length")
-            game_length = struct.unpack('>I', data[offset:offset + 4])[0]
-            offset += 4
-            if len(data) < offset + game_length:
-                raise ValueError("Insufficient data to decode game data")
-            game_data = data[offset:offset + game_length]
-            offset += game_length
-            games.append(game_cls.decode(game_data))
-
+        games = decode_items(data[3:], games_count, game_cls)
         return cls(MsgType.GAMES, GamesType(game_type), games, id=id)
+
 
 # Para las subclases específicas
 class BasicGamesMessage(GamesMessage):
@@ -333,22 +318,9 @@ class ReviewsMessage(BaseMessage):
     @classmethod
     def decode(cls: Type[T], data: bytes, review_type, review_cls: Type[Review]) -> T:
         if len(data) < 3:
-            raise ValueError("Insufficient data to decode ReviewsMessage: header too short")
+            raise ValueError("Insufficient data to decode ReviewMessage: header too short")
         id, reviews_count = struct.unpack('>BH', data[:3])
-        offset = 3
-        reviews = []
-
-        for _ in range(reviews_count):
-            if len(data) < offset + 4:
-                raise ValueError("Insufficient data to decode review length")
-            review_length = struct.unpack('>I', data[offset:offset + 4])[0]
-            offset += 4
-            if len(data) < offset + review_length:
-                raise ValueError("Insufficient data to decode review data")
-            review_data = data[offset:offset + review_length]
-            offset += review_length
-            reviews.append(review_cls.decode(review_data))
-
+        reviews = decode_items(data[3:], reviews_count, review_cls)
         return cls(MsgType.REVIEWS, ReviewsType(review_type), reviews, id=id)
 
 # Para las subclases específicas
@@ -386,7 +358,23 @@ class ResultMessage(BaseMessage):
         result = result_cls.decode(data[offset:])
         return cls(id=id, result_type=QueryNumber(result_type), result=result)
 
-    
+# ========================================================================================================== #
+
+def decode_items(data: bytes, count: int, item_cls: Type[T]) -> List[T]:
+    offset = 0
+    items = []
+    for _ in range(count):
+        if len(data) < offset + 4:
+            raise ValueError("Insufficient data to decode item length")
+        item_length = struct.unpack('>I', data[offset:offset + 4])[0]
+        offset += 4
+        if len(data) < offset + item_length:
+            raise ValueError("Insufficient data to decode item data")
+        item_data = data[offset:offset + item_length]
+        offset += item_length
+        items.append(item_cls.decode(item_data))
+    return items
+
 
 # Uso General del Decode
 MESSAGE_CLASSES = {
