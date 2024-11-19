@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
 from messages.messages import PullData, PushDataMessage, ResultMessage, decode_msg, MsgType
-from messages.results_msg import Q1Result
+from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
 from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
@@ -77,7 +77,7 @@ class OsCounter(Node):
 
             # Crear el mensaje de resultado
             q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
-            result_message = ResultMessage(id=msg.id, result=q1_result)
+            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q1, result=q1_result)
 
             # Enviar el mensaje codificado a la cola de resultados
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())

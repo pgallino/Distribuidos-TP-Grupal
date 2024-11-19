@@ -64,6 +64,6 @@ class Replica:
                 self._send_data()
 
         except Exception as e:
-            logging.error(f"action: process_replica_message | result: fail | error: {e}")
+            logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
         finally:
             ch.basic_ack(delivery_tag=method.delivery_tag)

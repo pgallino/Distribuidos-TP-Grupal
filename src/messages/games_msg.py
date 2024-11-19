@@ -48,12 +48,18 @@ class BasicGame(Game):
         self.name = name
 
     def encode(self) -> bytes:
+        """
+        Codifica `BasicGame` en bytes, incluyendo la longitud total.
+        """
         name_bytes = self.name.encode('utf-8')
         body = struct.pack(f'>I B{len(name_bytes)}s', self.app_id, len(name_bytes), name_bytes)
-        return struct.pack('>I', len(body)) + body
+        return struct.pack('>I', len(body)) + body  # Incluye la longitud total
 
     @staticmethod
     def decode(data: bytes) -> "BasicGame":
+        """
+        Decodifica bytes en un objeto `BasicGame`.
+        """
         app_id, name_length = struct.unpack('>I B', data[:5])
         name = data[5:5 + name_length].decode('utf-8')
         return BasicGame(app_id, name)
@@ -73,14 +79,27 @@ class Q1Game(Game):
         self.mac = mac
 
     def encode(self) -> bytes:
-        platforms = (self.windows << 2) | (self.linux << 1) | self.mac
-        body = struct.pack('>I B', self.app_id, platforms)
-        return struct.pack('>I', len(body)) + body
+        """
+        Codifica `Q1Game` en bytes, incluyendo la longitud total.
+        """
+        platforms = self.encode_platforms()
+        body = struct.pack(f'>I B', self.app_id, platforms)
+        return struct.pack('>I', len(body)) + body  # Incluye la longitud total
+
+    def encode_platforms(self) -> int:
+        platforms = 0
+        if self.windows:
+            platforms |= 0b001
+        if self.linux:
+            platforms |= 0b010
+        if self.mac:
+            platforms |= 0b100
+        return platforms
 
     @staticmethod
     def decode(data: bytes) -> "Q1Game":
         app_id, platforms = struct.unpack('>I B', data[:5])
-        windows, linux, mac = bool(platforms & 0b100), bool(platforms & 0b010), bool(platforms & 0b001)
+        windows, linux, mac = bool(platforms & 0b001), bool(platforms & 0b010), bool(platforms & 0b100)
         return Q1Game(app_id, windows, linux, mac)
 
     def __str__(self):
@@ -98,6 +117,9 @@ class Q2Game(Game):
         self.avg_playtime = avg_playtime
 
     def encode(self) -> bytes:
+        """
+        Codifica `Q2Game` en bytes, incluyendo la longitud total.
+        """
         name_bytes = self.name.encode('utf-8')
         release_date_bytes = self.release_date.encode('utf-8')
         body = struct.pack(
@@ -109,7 +131,7 @@ class Q2Game(Game):
             release_date_bytes,
             self.avg_playtime
         )
-        return struct.pack('>I', len(body)) + body
+        return struct.pack('>I', len(body)) + body  # Incluye la longitud total
 
     @staticmethod
     def decode(data: bytes) -> "Q2Game":
@@ -142,9 +164,13 @@ class GenreGame(Game):
         self.genres = genres
 
     def encode(self) -> bytes:
+        """
+        Codifica `GenreGame` en bytes, incluyendo la longitud total.
+        """
         name_bytes = self.name.encode('utf-8')
         release_date_bytes = self.release_date.encode('utf-8')
-        genres_bytes = struct.pack(f'>{len(self.genres)}B', *self.genres)
+        genres_bytes = b''.join([struct.pack('B', genre.value) for genre in self.genres])
+        
         body = struct.pack(
             f'>I B{len(name_bytes)}s B{len(release_date_bytes)}s I B',
             self.app_id,
@@ -155,7 +181,8 @@ class GenreGame(Game):
             self.avg_playtime,
             len(self.genres)
         ) + genres_bytes
-        return struct.pack('>I', len(body)) + body
+
+        return struct.pack('>I', len(body)) + body  # Incluye la longitud total
 
     @staticmethod
     def decode(data: bytes) -> "GenreGame":
@@ -171,7 +198,7 @@ class GenreGame(Game):
 
         avg_playtime, genres_count = struct.unpack('>IB', data[offset:offset + 5])
         offset += 5
-        genres = list(data[offset:offset + genres_count])
+        genres = [data[offset + i] for i in range(genres_count)]
 
         return GenreGame(app_id, name, release_date, avg_playtime, genres)
 

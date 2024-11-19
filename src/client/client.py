@@ -49,7 +49,6 @@ class Client:
     def send_dataset(self, fname, dataset_type):
         # Chequear si existe el archivo
         with open(fname, mode='r') as file:
-            logging.info(f"action: send_handshake | result: success | dataset: {dataset_type}")
             next(file)  # Para saltearse el header
             batch = []
             current_batch_size = 0  # Tamaño actual del batch en bytes
@@ -79,7 +78,7 @@ class Client:
                 self.client_socket.sendall(data.encode())
                 # logging.info(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes")
             
-            logging.info(f"action: send_data | result: success | dataset: {dataset_type}")
+        logging.info(f"action: send_data | result: success | dataset: {dataset_type}")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal so the server closes gracefully."""
@@ -107,15 +106,15 @@ class Client:
                 if msg.type == MsgType.RESULT:
                     received_results += 1
                     # Llama al método correspondiente basado en el tipo de resultado
-                    if msg.result.result_type == QueryNumber.Q1:
+                    if msg.result_type == QueryNumber.Q1:
                         self.process_q1_result(msg)
-                    elif msg.result.result_type == QueryNumber.Q2:
+                    elif msg.result_type == QueryNumber.Q2:
                         self.process_q2_result(msg)
-                    elif msg.result.result_type == QueryNumber.Q3:
+                    elif msg.result_type == QueryNumber.Q3:
                         self.process_q3_result(msg)
-                    elif msg.result.result_type == QueryNumber.Q4:
+                    elif msg.result_type == QueryNumber.Q4:
                         self.process_q4_result(msg)
-                    elif msg.result.result_type == QueryNumber.Q5:
+                    elif msg.result_type == QueryNumber.Q5:
                         self.process_q5_result(msg)
                     else:
                         logging.error(f"Received Unknown Result Type: {msg}")

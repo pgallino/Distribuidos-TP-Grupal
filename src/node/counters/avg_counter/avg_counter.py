@@ -2,7 +2,7 @@ from collections import defaultdict
 import logging
 from typing import List, Tuple
 from messages.messages import MsgType, PullData, PushDataMessage, ResultMessage, decode_msg
-from messages.results_msg import Q2Result
+from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
 from node import Node
@@ -72,7 +72,7 @@ class AvgCounter(Node):
 
             # Crear y enviar el mensaje de resultado
             q2_result = Q2Result(top_games=top_games)
-            result_message = ResultMessage(id=msg.id, result=q2_result)
+            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q2, result=q2_result)
 
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 

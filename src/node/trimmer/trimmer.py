@@ -107,10 +107,10 @@ class Trimmer(Node):
 
         # Enviar lotes por separado para cada tipo de juego
         if q1_games_batch:
-            q1_games_msg = Q1GamesMessage(id=msg.id, games=q1_games_batch)
+            q1_games_msg = Q1GamesMessage(q1_games_batch, msg.id)
             self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
         if genre_games_batch:
-            genre_games_msg = GenreGamesMessage(id=msg.id, games=genre_games_batch)
+            genre_games_msg = GenreGamesMessage(genre_games_batch, msg.id)
             self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
 
     def _process_review_data(self, msg, reviews_batch):
@@ -122,7 +122,7 @@ class Trimmer(Node):
                 reviews_batch.append(review)
         
         if reviews_batch:
-            reviews_msg = FullReviewsMessage(id=msg.id, reviews=reviews_batch)
+            reviews_msg = FullReviewsMessage(reviews_batch, msg.id)
             self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
 
     def _process_fin_message(self, msg):

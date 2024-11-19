@@ -2,7 +2,7 @@ from collections import defaultdict
 import logging
 from typing import List, Tuple
 from messages.messages import MsgType, ResultMessage, decode_msg
-from messages.results_msg import Q5Result
+from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # genera 7 pids en docker stats
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
@@ -96,7 +96,7 @@ class Q5Joiner(Node):
 
         # Crear y enviar el mensaje Q5Result
         q5_result = Q5Result(top_negative_reviews=top_games_sorted)
-        result_message = ResultMessage(id=client_id, result=q5_result)
+        result_message = ResultMessage(id=client_id, result_type=QueryNumber.Q5, result=q5_result)
         self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
         # Borro los diccionarios de clientes ya resueltos

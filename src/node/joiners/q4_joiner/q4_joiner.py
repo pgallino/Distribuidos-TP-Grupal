@@ -2,7 +2,7 @@ from collections import defaultdict
 import logging
 from typing import List, Tuple
 from messages.messages import MsgType, ResultMessage, TextReviewsMessage, decode_msg
-from messages.results_msg import Q4Result
+from messages.results_msg import Q4Result, QueryNumber
 from messages.reviews_msg import TextReview
 from node import Node
 
@@ -158,7 +158,7 @@ class Q4Joiner(Node):
 
             # Crear y enviar el mensaje Q4Result
             q4_result = Q4Result(negative_reviews=negative_reviews)
-            result_message = ResultMessage(id=msg.id, result=q4_result)
+            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q4, result=q4_result)
             self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
 
             # Borro los diccionarios de clientes ya resueltos

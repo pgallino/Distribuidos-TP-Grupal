@@ -9,8 +9,8 @@ class QueryNumber(Enum):
     Q5 = 5
 
 class Result:
-    def __init__(self, result_type: QueryNumber):
-        self.result_type = result_type
+    def __init__(self):
+        raise NotImplementedError("Debe implementarse en subclases de Result")  
 
     def encode(self) -> bytes:
         raise NotImplementedError("Debe implementarse en subclases de Result")
@@ -21,24 +21,22 @@ class Result:
     
 class Q1Result(Result):
     def __init__(self, windows_count: int, mac_count: int, linux_count: int):
-        super().__init__(QueryNumber.Q1)
         self.windows_count = windows_count
         self.mac_count = mac_count
         self.linux_count = linux_count
 
     def encode(self) -> bytes:
         # Empaqueta los conteos
-        body = struct.pack('>HHH', self.windows_count, self.mac_count, self.linux_count)
+        body = struct.pack('>IHH', self.windows_count, self.mac_count, self.linux_count)
         return body
 
     @classmethod
     def decode(cls, data: bytes) -> "Q1Result":
-        windows_count, mac_count, linux_count = struct.unpack('>HHH', data)
+        windows_count, mac_count, linux_count = struct.unpack('>IHH', data)
         return cls(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
 
 class Q2Result(Result):
     def __init__(self, top_games: list[tuple[str, int]]):
-        super().__init__(QueryNumber.Q2)
         self.top_games = top_games
 
     def encode(self) -> bytes:
@@ -65,7 +63,6 @@ class Q2Result(Result):
 
 class Q3Result(Result):
     def __init__(self, top_indie_games: list[tuple[str, int]]):
-        super().__init__(QueryNumber.Q3)
         self.top_indie_games = top_indie_games
 
     def encode(self) -> bytes:
@@ -92,7 +89,6 @@ class Q3Result(Result):
 
 class Q4Result(Result):
     def __init__(self, negative_reviews: list[tuple[int, str, int]]):
-        super().__init__(QueryNumber.Q4)
         self.negative_reviews = negative_reviews
 
     def encode(self) -> bytes:
@@ -121,7 +117,6 @@ class Q4Result(Result):
 
 class Q5Result(Result):
     def __init__(self, top_negative_reviews: list[tuple[int, str, int]]):
-        super().__init__(QueryNumber.Q5)
         self.top_negative_reviews = top_negative_reviews
 
     def encode(self) -> bytes:
