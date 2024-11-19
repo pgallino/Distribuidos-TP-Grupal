@@ -3,24 +3,24 @@
 # Obtener la ruta del directorio donde se encuentra este script
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
-# Inicializa un array para las instancias
-declare -A INSTANCIAS
+# Cargar las variables desde el archivo .env
+CONFIG_FILE="$SCRIPT_DIR/config.env"
+if [[ ! -f "$CONFIG_FILE" ]]; then
+    echo "Error: Archivo de configuración '$CONFIG_FILE' no encontrado."
+    exit 1
+fi
+# Exportar las variables definidas en config.env
+set -a
+source "$CONFIG_FILE"
+set +a
 
-# Procesa los parámetros
-for arg in "$@"; do
-    IFS='=' read -r nodo valor <<< "$arg"
-    INSTANCIAS["$nodo"]="$valor"
-done
-
-# Verifica que todos los nodos requeridos estén presentes
-for nodo in trimmer genre score release_date english; do
-    if [[ -z "${INSTANCIAS[$nodo]}" ]]; then
-        echo "Error: Falta el parámetro para $nodo"
+# Verificar que todas las variables estén presentes
+for nodo in trimmer genre score release_date english client os_counter_replica avg_counter_replica; do
+    if [[ -z "${!nodo}" ]]; then
+        echo "Error: Falta la configuración para $nodo en '$CONFIG_FILE'."
         exit 1
     fi
 done
 
 # Ejecuta el script de Python con los parámetros
-python3 "$SCRIPT_DIR/script-generar-compose.py" "${INSTANCIAS[trimmer]}" "${INSTANCIAS[genre]}" "${INSTANCIAS[score]}" "${INSTANCIAS[release_date]}" "${INSTANCIAS[english]}" "${INSTANCIAS[client]}"
-
-#./generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 os_counter=2 average_counter=1
+python3 "$SCRIPT_DIR/script-generar-compose.py" "$trimmer" "$genre" "$score" "$release_date" "$english" "$client" "$os_counter_replica" "$avg_counter_replica"

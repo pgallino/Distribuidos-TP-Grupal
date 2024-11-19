@@ -31,11 +31,30 @@ make docker-compose-logs
 
 ### Escalabilidad: modificar cantidad de nodos
 
-Para cambiar la cantidad de instancias de cada nodo que se levantarán en el sistema distribuido se puede usar el siguiente script que modifica el archivo de Docker Compose:
+Para cambiar la cantidad de instancias de cada nodo que se levantarán en el sistema distribuido se debe editar el archivo [config.env](scripts\config.env) de la siguiente manera:
+
+```
+# Número de instancias de cada nodo
+trimmer=1
+genre=1
+score=1
+release_date=1
+english=1
+
+# Número de clientes
+client=2
+
+# Número de Replicas
+os_counter_replica=1
+avg_counter_replica=1
+```
+
+Luego debe ejecutarse el siguiente script que modifica el archivo de Docker Compose con los datos de [config.env](scripts\config.env):
 
 ```bash
-./scripts/generar-compose.sh trimmer=2 genre=3 score=1 release_date=4 english=5 client=3
+./scripts/generar-compose.sh
 ```
+
 
 ### Datasets
 

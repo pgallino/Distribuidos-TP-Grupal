@@ -7,21 +7,21 @@ def parse_args():
     try:
         # Los argumentos esperados son el número de instancias para cada nodo
         # Orden: trimmer, genre, score, release_date, english, os_counter, avg_counter
-        args = sys.argv[1:7]
+        args = sys.argv[1:]
         instances = {
             'trimmer': int(args[0]),
             'genre': int(args[1]),
             'score': int(args[2]),
             'release_date': int(args[3]),
             'english': int(args[4]),
-            'client': int(args[5]),        # client, joiners y counters tienen solo una instancia
+            'client': int(args[5]),
+            'os_counter_replica': int(args[6]),
+            'avg_counter_replica': int(args[7]),
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
             'os_counter': 1,
             'avg_counter': 1,
-            'os_counter_replica': 1,
-            'avg_counter_replica': 1,
         }
         return instances
     except (IndexError, ValueError):
