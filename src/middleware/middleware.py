@@ -75,7 +75,7 @@ class Middleware:
         else:
             raise ValueError(f"La cola '{log}' no está declarada.")
     
-    def receive_from_queue(self, queue_name, callback, auto_ack=True):
+    def receive_from_queue(self, queue_name, callback, auto_ack=True, get_blocked=True):
         if queue_name not in self.queues:
             raise ValueError(f"La cola '{queue_name}' no está declarada.")
 
@@ -87,7 +87,8 @@ class Middleware:
         self.channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=auto_ack)
 
         # Inicia el consumo de mensajes
-        self.channel.start_consuming()
+        if get_blocked:
+            self.channel.start_consuming()
     
     def receive_from_queues(self, queues_with_callbacks: List[Tuple[str, Callable]], auto_ack=True):
         for queue_with_callback in queues_with_callbacks:
@@ -104,6 +105,34 @@ class Middleware:
 
         # Inicia el consumo de mensajes
         self.channel.start_consuming()
+
+    def receive_from_queue_with_timeout(self, queue_name, callback, inactivity_time, auto_ack=True):
+        if queue_name not in self.queues:
+            raise ValueError(f"La cola '{queue_name}' no está declarada.")
+
+        # Verifica si el canal está activo antes de configurarlo para el consumo
+        if self.channel is None or self.channel.is_closed:
+            raise RuntimeError("middleware: El canal no está disponible para consumir mensajes.")
+
+        # Inicializa last_message_time al iniciar el consumo
+        last_message_time = time.time()
+
+        def wrapped_callback(ch, method, properties, body):
+            nonlocal last_message_time
+            last_message_time = time.time()  # Actualizar el tiempo del último mensaje
+            callback(ch, method, properties, body)
+
+        # Configura el consumidor en el canal con auto_ack
+        self.channel.basic_consume(queue=queue_name, on_message_callback=wrapped_callback, auto_ack=auto_ack)
+
+        while True:
+            self.connection.process_data_events(time_limit=inactivity_time)  # Procesa eventos con un timeout corto
+            current_time = time.time()
+            
+            # Verifica si se excedió el tiempo de inactividad
+            if current_time - last_message_time > inactivity_time:
+                logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
+                break
 
     def close(self):
         """
