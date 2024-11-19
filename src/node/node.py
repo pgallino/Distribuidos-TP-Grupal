@@ -68,7 +68,7 @@ class Node:
             if node_id != self.id:
                 # Se reenvia el CoordFin del Fin del cliente a cada otra instancia del nodo
                 key = f"{node_id}"
-                self._middleware.send_to_queue(coord_exchange_name, CoordFin(msg.id, self.id).encode(), key=key)
+                self._middleware.send_to_queue(coord_exchange_name, CoordFin(id=msg.id, node_id=self.id).encode(), key=key)
 
     def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
         process = Process(

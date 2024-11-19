@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, decode_msg
-from messages.reviews_msg import BasicReview, BasicReviews, Score, TextReview, TextReviews
+from messages.messages import BasicReviewsMessage, MsgType, TextReviewsMessage, decode_msg
+from messages.reviews_msg import BasicReview, Score, TextReview
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_TRIMMER_FILTERS, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
 
@@ -72,15 +72,15 @@ class ScoreFilter(Node):
                 negative_reviews.append(BasicReview(review.app_id))
 
         if positive_reviews:
-            reviews_msg = BasicReviews(msg.id, positive_reviews)
+            reviews_msg = BasicReviewsMessage(id=msg.id, reviews=positive_reviews)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_POSITIVE)
 
         if negative_textreviews:
-            reviews_msg = TextReviews(msg.id, negative_textreviews)
+            reviews_msg = TextReviewsMessage(id=msg.id, reviews=negative_textreviews)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE_TEXT)
 
         if negative_reviews:
-            reviews_msg = BasicReviews(msg.id, negative_reviews)
+            reviews_msg = BasicReviewsMessage(id=msg.id, reviews=negative_reviews)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)
 
     def _process_fin_message(self, msg):

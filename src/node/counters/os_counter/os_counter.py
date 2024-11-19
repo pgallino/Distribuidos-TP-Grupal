@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
-from messages.messages import PullDataMessage, PushDataMessage, decode_msg, MsgType
-from messages.results_msg import Q1Result
+from messages.messages import PullData, PushDataMessage, ResultMessage, decode_msg, MsgType
+from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
 from utils.constants import E_TRIMMER_FILTERS, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
@@ -41,7 +41,6 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
-            logging.info("LLEGE AL FIN")
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -64,9 +63,8 @@ class OsCounter(Node):
 
         # Enviar los datos actualizados a la réplica
         data = {msg.id: self.counters[msg.id]}
-        push_msg = PushDataMessage(id=self.id, data=data)
+        push_msg = PushDataMessage(data=data)
         self._middleware.send_to_queue(Q_REPLICA_MAIN, push_msg.encode())
-        # logging.info(f"OsCounter: Datos enviados a réplica: {data}")
 
 
     def _process_fin_message(self, msg):
@@ -76,7 +74,8 @@ class OsCounter(Node):
             windows_count, mac_count, linux_count = self.counters[msg.id]
 
             # Crear el mensaje de resultado
-            result_message = Q1Result(id=msg.id, windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
+            q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
+            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q1, result=q1_result)
 
             # Enviar el mensaje codificado a la cola de resultados
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
@@ -87,7 +86,7 @@ class OsCounter(Node):
         self._middleware.declare_queue(Q_REPLICA_RESPONSE)
 
         # Enviar un mensaje `PullDataMessage` a Q_REPLICA_MAIN
-        pull_msg = PullDataMessage(id=self.id)
+        pull_msg = PullData()
         self._middleware.send_to_queue(Q_REPLICA_MAIN, pull_msg.encode())
 
         # Escuchar la respuesta en Q_REPLICA_RESPONSE

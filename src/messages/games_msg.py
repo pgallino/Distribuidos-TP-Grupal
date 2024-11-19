@@ -1,30 +1,25 @@
+import struct
 from enum import Enum
 from typing import List
-from messages.messages import Message, MsgType
-import struct
+
+class Genre(Enum):
+    INDIE = 0
+    ACTION = 1
+    OTHER = 2
+
+    def from_string(genre: str) -> "Genre":
+        if genre == "Indie":
+            return Genre.INDIE
+        elif genre == "Action":
+            return Genre.ACTION
+        return Genre.OTHER
 
 class GamesType(Enum):
-    Q1GAMES = 0
-    Q2GAMES = 1
-    BASICGAME = 2
+    BASICGAME = 0
+    Q1GAMES = 1
+    Q2GAMES = 2
     GENREGAMES = 3
 
-
-def decode_game(data: bytes):
-    # Leer el tipo específico de Games en el primer byte
-    games_type = GamesType(data[0])
-
-    # Saltamos el primer byte (games_type) para pasar el resto a la subclase correspondiente
-    if games_type == GamesType.BASICGAME:
-        return BasicGames.decode(data[1:])
-    elif games_type == GamesType.Q1GAMES:
-        return Q1Games.decode(data[1:])
-    elif games_type == GamesType.Q2GAMES:
-        return Q2Games.decode(data[1:])
-    elif games_type == GamesType.GENREGAMES:
-        return GenreGames.decode(data[1:])
-    else:
-        raise ValueError(f"Tipo de Games desconocido: {games_type}")
 
 class Game:
     """
@@ -34,22 +29,15 @@ class Game:
         self.app_id = app_id
 
     def encode(self) -> bytes:
-        """
-        Método abstracto de codificación que debe implementarse en subclases.
-        """
         raise NotImplementedError("El método encode() debe ser implementado por las subclases de Game")
 
     @staticmethod
     def decode(data: bytes) -> "Game":
-        """
-        Método abstracto de decodificación que debe implementarse en subclases.
-        """
         raise NotImplementedError("El método decode() debe ser implementado por las subclases de Game")
 
     def __str__(self):
         return f"Game(app_id={self.app_id})"
 
-# ===================================================================================================================== #
 
 class BasicGame(Game):
     """
@@ -79,7 +67,6 @@ class BasicGame(Game):
     def __str__(self):
         return f"BasicGame(app_id={self.app_id}, name={self.name})"
 
-# ===================================================================================================================== #
 
 class Q1Game(Game):
     """
@@ -118,7 +105,6 @@ class Q1Game(Game):
     def __str__(self):
         return f"Q1Game(app_id={self.app_id}, windows={self.windows}, linux={self.linux}, mac={self.mac})"
 
-# ===================================================================================================================== #
 
 class Q2Game(Game):
     """
@@ -165,7 +151,6 @@ class Q2Game(Game):
     def __str__(self):
         return f"Q2Game(app_id={self.app_id}, name={self.name}, release_date={self.release_date}, avg_playtime={self.avg_playtime})"
 
-# ===================================================================================================================== #
 
 class GenreGame(Game):
     """
@@ -219,183 +204,3 @@ class GenreGame(Game):
 
     def __str__(self):
         return f"GenreGame(app_id={self.app_id}, name={self.name}, release_date={self.release_date}, avg_playtime={self.avg_playtime}, genres={self.genres})"
-
-
-# ======================================= GAMES
-
-class Games(Message):
-    """
-    Clase de mensaje que contiene múltiples objetos `Game` (o de sus subclases).
-    """
-    def __init__(self, id: int, games: List[Game]):
-        super().__init__(id, MsgType.GAMES)
-        self.games = games
-
-    def encode(self) -> bytes:
-
-        """
-        Método abstracto de decodificación que debe implementarse en subclases.
-        """
-        raise NotImplementedError("El método decode() debe ser implementado por las subclases de Game")
-
-    @staticmethod
-    def decode(self) -> "Games":
-        """
-        Método abstracto de decodificación que debe implementarse en subclases.
-        """
-        raise NotImplementedError("El método decode() debe ser implementado por las subclases de Game")
-
-
-    def __str__(self):
-        return f"Games(id={self.id}, games={[str(game) for game in self.games]})"
-
-class BasicGames(Games):
-    """
-    Clase de mensaje que contiene múltiples objetos `BasicGame`.
-    """
-    def __init__(self, id: int, games: List[BasicGame]):
-        super().__init__(id, games)
-
-    def encode(self) -> bytes:
-
-        games_bytes = b''.join([game.encode() for game in self.games])
-        games_count = len(self.games)
-
-        # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
-        body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.BASICGAME.value), self.id, games_count) + games_bytes
-        return body
-
-    @staticmethod
-    def decode(data: bytes) -> "BasicGames":
-        offset = 0 
-        id, games_count = struct.unpack('>BH', data[offset:offset + 3])
-        offset += 3
-
-        games = []
-        for _ in range(games_count):
-            game_length = struct.unpack('>I', data[offset:offset + 4])[0]
-            offset += 4
-
-            # Extraer los datos del juego basándonos en `game_length`
-            game_data = data[offset:offset + game_length]
-            game = BasicGame.decode(game_data)
-            games.append(game)
-
-            # Avanzar el offset después de extraer el juego
-            offset += game_length
-
-        return BasicGames(id, games)
-
-
-class Q1Games(Games):
-    """
-    Clase de mensaje que contiene múltiples objetos `Q1Game`.
-    """
-    def __init__(self, id: int, games: List[Q1Game]):
-        super().__init__(id, games)
-
-    def encode(self) -> bytes:
-
-        games_bytes = b''.join([game.encode() for game in self.games])
-        games_count = len(self.games)
-
-        # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
-        body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.Q1GAMES.value), self.id, games_count) + games_bytes
-        return body
-
-    @staticmethod
-    def decode(data: bytes) -> "Q1Games":
-        offset = 0 
-        id, games_count = struct.unpack('>BH', data[offset:offset + 3])
-        offset += 3
-
-        games = []
-        for _ in range(games_count):
-            game_length = struct.unpack('>I', data[offset:offset + 4])[0]
-            offset += 4
-
-            # Extraer los datos del juego basándonos en `game_length`
-            game_data = data[offset:offset + game_length]
-            game = Q1Game.decode(game_data)
-            games.append(game)
-
-            # Avanzar el offset después de extraer el juego
-            offset += game_length
-
-        return Q1Games(id, games)
-
-
-class Q2Games(Games):
-    """
-    Clase de mensaje que contiene múltiples objetos `Q2Game`.
-    """
-    def __init__(self, id: int, games: List[Q2Game]):
-        super().__init__(id, games)
-
-    def encode(self) -> bytes:
-
-        games_bytes = b''.join([game.encode() for game in self.games])
-        games_count = len(self.games)
-
-        # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
-        body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.Q2GAMES.value), self.id, games_count) + games_bytes
-        return body
-
-    @staticmethod
-    def decode(data: bytes) -> "Q2Games":
-        offset = 0 
-        id, games_count = struct.unpack('>BH', data[offset:offset + 3])
-        offset += 3
-
-        games = []
-        for _ in range(games_count):
-            game_length = struct.unpack('>I', data[offset:offset + 4])[0]
-            offset += 4
-
-            # Extraer los datos del juego basándonos en `game_length`
-            game_data = data[offset:offset + game_length]
-            game = Q2Game.decode(game_data)
-            games.append(game)
-
-            # Avanzar el offset después de extraer el juego
-            offset += game_length
-
-        return Q2Games(id, games)
-
-
-class GenreGames(Games):
-    """
-    Clase de mensaje que contiene múltiples objetos `GenreGame`.
-    """
-    def __init__(self, id: int, games: List[GenreGame]):
-        super().__init__(id, games)
-
-    def encode(self) -> bytes:
-
-        games_bytes = b''.join([game.encode() for game in self.games])
-        games_count = len(self.games)
-
-        # Empaqueta tipo de mensaje, id del cliente, número de juegos, tipo de `Games` y datos de juegos
-        body = struct.pack('>BBBH', int(MsgType.GAMES.value), int(GamesType.GENREGAMES.value), self.id, games_count) + games_bytes
-        return body
-    
-    @staticmethod
-    def decode(data: bytes) -> "GenreGames":
-        offset = 0 
-        id, games_count = struct.unpack('>BH', data[offset:offset + 3])
-        offset += 3
-
-        games = []
-        for _ in range(games_count):
-            game_length = struct.unpack('>I', data[offset:offset + 4])[0]
-            offset += 4
-
-            # Extraer los datos del juego basándonos en `game_length`
-            game_data = data[offset:offset + game_length]
-            game = GenreGame.decode(game_data)
-            games.append(game)
-
-            # Avanzar el offset después de extraer el juego
-            offset += game_length
-
-        return GenreGames(id, games)

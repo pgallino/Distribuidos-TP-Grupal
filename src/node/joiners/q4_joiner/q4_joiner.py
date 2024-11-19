@@ -1,9 +1,9 @@
 from collections import defaultdict
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, decode_msg
-from messages.results_msg import Q4Result
-from messages.reviews_msg import TextReview, TextReviews
+from messages.messages import MsgType, ResultMessage, TextReviewsMessage, decode_msg
+from messages.results_msg import Q4Result, QueryNumber
+from messages.reviews_msg import TextReview
 from node import Node
 
 from utils.constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
@@ -88,7 +88,7 @@ class Q4Joiner(Node):
             text_review = TextReview(app_id, review)
             text_review_size = len(text_review.encode())
             if text_review_size + curr_reviews_batch_size > self.batch_size:
-                text_reviews = TextReviews(client_id, reviews_batch)
+                text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
                 self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
                 curr_reviews_batch_size = 0
                 reviews_batch = []
@@ -97,7 +97,7 @@ class Q4Joiner(Node):
 
         # si me quedaron afuera    
         if reviews_batch:
-            text_reviews = TextReviews(client_id, reviews_batch)
+            text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
             self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
     def send_reviews(self, client_id):
@@ -113,7 +113,7 @@ class Q4Joiner(Node):
                     text_review = TextReview(app_id, review)
                     text_review_size = len(text_review.encode())
                     if text_review_size + curr_reviews_batch_size > self.batch_size:
-                        text_reviews = TextReviews(client_id, reviews_batch)
+                        text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
                         self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
                         curr_reviews_batch_size = 0
                         reviews_batch = []
@@ -122,7 +122,7 @@ class Q4Joiner(Node):
 
                 # si me quedaron afuera    
                 if reviews_batch:
-                    text_reviews = TextReviews(client_id, reviews_batch)
+                    text_reviews = TextReviewsMessage(id=client_id, reviews=reviews_batch)
                     self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
         # Borro el diccionario de textos de reviews del cliente
@@ -157,7 +157,8 @@ class Q4Joiner(Node):
 
 
             # Crear y enviar el mensaje Q4Result
-            result_message = Q4Result(id=msg.id, negative_reviews=negative_reviews)
+            q4_result = Q4Result(negative_reviews=negative_reviews)
+            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q4, result=q4_result)
             self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
 
             # Borro los diccionarios de clientes ya resueltos
