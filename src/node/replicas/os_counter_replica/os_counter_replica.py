@@ -4,7 +4,7 @@ import socket
 import signal
 import subprocess
 import time
-from messages.messages import PushDataMessage, PullDataMessage
+from messages.messages import PushDataMessage
 from replica import Replica
 from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
@@ -41,12 +41,12 @@ class OsCounterReplica(Replica):
             )
         # logging.info(f"OsCounterReplica: Estado actualizado: {self.counters}")
 
-    def _send_data(self, msg: PullDataMessage):
+    def _send_data(self):
         """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
-        logging.info(f"OsCounterReplica: Respondiendo a solicitud de PullDataMessage del cliente {msg.id}")
+        logging.info(f"OsCounterReplica: Respondiendo a solicitud de PullDataMessage")
 
         # Crear el mensaje de respuesta con el estado actual
-        response_data = PushDataMessage(id=self.id, data=dict(self.counters))
+        response_data = PushDataMessage(data=dict(self.counters))
 
         # Enviar el mensaje a Q_REPLICA_RESPONSE
         self._middleware.send_to_queue(

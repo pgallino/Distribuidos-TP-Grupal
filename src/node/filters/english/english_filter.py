@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, decode_msg
-from messages.reviews_msg import BasicReview, BasicReviews
+from messages.messages import BasicReviewsMessage, MsgType, decode_msg
+from messages.reviews_msg import BasicReview
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_ENGLISH, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH
 import langid
@@ -61,12 +61,11 @@ class EnglishFilter(Node):
         ]
 
         if en_reviews:
-            english_reviews_msg = BasicReviews(id=msg.id, reviews=en_reviews)
+            english_reviews_msg = BasicReviewsMessage(reviews=en_reviews, id=msg.id)
             self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
 
     def _process_fin_message(self, msg):
         """Reenvía el mensaje FIN y cierra la conexión si es necesario."""
-        # self._middleware.channel.stop_consuming()
         
         if self.n_nodes > 1:
             self.forward_coordfin(E_COORD_ENGLISH, msg)

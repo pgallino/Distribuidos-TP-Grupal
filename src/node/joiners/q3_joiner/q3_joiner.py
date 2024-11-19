@@ -1,8 +1,8 @@
 from collections import defaultdict
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, decode_msg
-from messages.results_msg import Q3Result
+from messages.messages import MsgType, ResultMessage, decode_msg
+from messages.results_msg import Q3Result, QueryNumber
 from node import Node
 import heapq
 
@@ -93,7 +93,8 @@ class Q3Joiner(Node):
         top_5_sorted = [(name, num_reviews) for num_reviews, name in sorted(top_5_heap, reverse=True)]
 
         # Crear y enviar el mensaje Q3Result
-        result_message = Q3Result(id=client_id, top_indie_games=top_5_sorted)
+        q3_result = Q3Result(top_indie_games=top_5_sorted)
+        result_message = ResultMessage(id=client_id, result_type=QueryNumber.Q3, result=q3_result)
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
         # Borro los diccionarios de clientes ya resueltos
