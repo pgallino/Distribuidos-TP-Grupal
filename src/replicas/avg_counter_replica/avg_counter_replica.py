@@ -6,8 +6,8 @@ from utils.constants import Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 
 class AvgCounterReplica(Replica):
 
-    def __init__(self, id: int):
-        super().__init__(id)
+    def __init__(self, id: int, n_instances: int):
+        super().__init__(id, n_instances)
         self._middleware.declare_queue(Q_REPLICA_MAIN + "_avg_counter")
         self._middleware.declare_queue(Q_REPLICA_RESPONSE + "_avg_counter")
 

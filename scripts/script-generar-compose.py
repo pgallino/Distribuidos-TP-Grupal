@@ -106,6 +106,12 @@ def generate_docker_compose(instances):
                     'condition': 'service_started'
                 }
                 services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
+
+            # Si es una réplica, añadir el volumen para el socket de Docker
+            if node == 'os_counter_replica' or node == 'avg_counter_replica':
+                if 'volumes' not in services[service_name]:
+                    services[service_name]['volumes'] = []
+                services[service_name]['volumes'].append('/var/run/docker.sock:/var/run/docker.sock')
                 
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {

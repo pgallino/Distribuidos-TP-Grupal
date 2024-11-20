@@ -11,6 +11,7 @@ class Replica:
         self._middleware = Middleware()
         self.replica_ids = list(range(1, n_instances + 1))
         # Inicialización específica
+        self.listener_process = None
         self._initialize_storage()
 
         # Manejo de señales
@@ -36,6 +37,10 @@ class Replica:
         logging.info("action: shutdown_replica | result: in progress...")
         self.shutting_down = True
 
+        if self.listener_process:
+            self.listener_process.terminate()
+            self.listener_process.join()
+
         try:
             self._middleware.close()
             logging.info("action: shutdown_replica | result: success")
@@ -53,6 +58,7 @@ class Replica:
         """Procesa mensajes de la cola `Q_REPLICA`."""
         try:
             msg = decode_msg(raw_message)
+            # logging.info(f"Recibi un mensaje del tipo: {msg.type}")
 
             if msg.type == MsgType.PUSH_DATA:
                 # Procesar datos replicados
@@ -60,6 +66,7 @@ class Replica:
                 self._process_push_data(msg)
 
             elif msg.type == MsgType.PULL_DATA:
+                logging.info("Voy a mandar la data")
                 # Responder con toda la data replicada
                 self._send_data()
 
