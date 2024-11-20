@@ -3,9 +3,9 @@ import struct
 import json
 from typing import List, Type, TypeVar
 
-from messages.games_msg import BasicGame, Game, GamesType, GenreGame, Q1Game, Q2Game
+from messages.games_msg import BasicGame, GenreGame, Q1Game, Q2Game
 from messages.results_msg import Q1Result, Q2Result, Q3Result, Q4Result, Q5Result, QueryNumber, Result
-from messages.reviews_msg import BasicReview, Review, ReviewsType, TextReview
+from messages.reviews_msg import BasicReview, Review, TextReview
 from utils.utils import DecodeError, handle_encode_error
 
 # Definición de los tipos de mensajes
@@ -23,6 +23,9 @@ class MsgType(Enum):
     PULL_DATA = 10
     KEEP_ALIVE = 11
     ALIVE = 12
+    ELECTION = 13
+    OK_ELECTION = 14
+    LEADER_ELECTION = 15
 
 class Dataset(Enum):
     GAME = 0
@@ -104,6 +107,18 @@ class Alive(SimpleMessage):
 class ClientFin(SimpleMessage):
     def __init__(self):
         super().__init__(MsgType.CLIENT_FIN)
+
+class ElectionMessage(SimpleMessage):
+    def __init__(self):
+        super().__init__(MsgType.ELECTION)
+
+class OkElectionMessage(SimpleMessage):
+    def __init__(self):
+        super().__init__(MsgType.OK_ELECTION)
+
+class LeaderElectionMessage(SimpleMessage):
+    def __init__(self):
+        super().__init__(MsgType.LEADER_ELECTION)
 
 class PullData(SimpleMessage):
     def __init__(self):
@@ -414,6 +429,9 @@ MESSAGE_CLASSES = {
     MsgType.CLIENT_DATA: ClientData,
     MsgType.CLIENT_FIN: ClientFin,
     MsgType.COORDFIN: CoordFin,
+    MsgType.ELECTION: ElectionMessage,
+    MsgType.OK_ELECTION: OkElectionMessage,
+    MsgType.LEADER_ELECTION: LeaderElectionMessage
 }
 
 def decode_msg(data: bytes):

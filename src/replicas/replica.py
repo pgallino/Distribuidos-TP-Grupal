@@ -5,11 +5,11 @@ from middleware.middleware import Middleware
 
 
 class Replica:
-    def __init__(self, id: int):
+    def __init__(self, id: int, n_instances: int):
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
-
+        self.replica_ids = list(range(1, n_instances + 1))
         # Inicialización específica
         self._initialize_storage()
 
