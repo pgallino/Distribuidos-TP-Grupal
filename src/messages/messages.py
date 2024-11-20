@@ -108,18 +108,6 @@ class ClientFin(SimpleMessage):
     def __init__(self):
         super().__init__(MsgType.CLIENT_FIN)
 
-class ElectionMessage(SimpleMessage):
-    def __init__(self):
-        super().__init__(MsgType.ELECTION)
-
-class OkElectionMessage(SimpleMessage):
-    def __init__(self):
-        super().__init__(MsgType.OK_ELECTION)
-
-class LeaderElectionMessage(SimpleMessage):
-    def __init__(self):
-        super().__init__(MsgType.LEADER_ELECTION)
-
 class PullData(SimpleMessage):
     def __init__(self):
         super().__init__(MsgType.PULL_DATA)
@@ -200,6 +188,75 @@ class Data(BaseMessage):
         return f"Data(id={self.id}, rows={self.rows}, dataset={self.dataset})"
 
 # ===================================================================================================================== #
+
+class ElectionMessage(BaseMessage):
+    def __init__(self, id: int):
+        super().__init__(MsgType.ELECTION, id=id)
+
+    @handle_encode_error
+    def encode(self) -> bytes:
+        # Codifica el mensaje Election
+        body = struct.pack('>BB', int(self.type.value), self.id)
+        total_length = len(body)
+        return struct.pack('>I', total_length) + body
+
+
+    @classmethod
+    def decode(cls, data: bytes):
+        if len(data) < 2:
+            raise DecodeError("Insufficient data to decode ElectionMessage")
+        _, id = struct.unpack('>BB', data[:2])
+        return cls(id=id)
+
+    def __str__(self):
+        return f"ElectionMessage(id={self.id})"
+
+
+class OkElectionMessage(BaseMessage):
+    def __init__(self, id: int):
+        super().__init__(MsgType.OK_ELECTION, id=id)
+
+    @handle_encode_error
+    def encode(self) -> bytes:
+        # Codifica el mensaje OkElection
+        body = struct.pack('>BB', int(self.type.value), self.id)
+        total_length = len(body)
+        return struct.pack('>I', total_length) + body
+
+
+    @classmethod
+    def decode(cls, data: bytes):
+        if len(data) < 2:
+            raise DecodeError("Insufficient data to decode OkElectionMessage")
+        _, id = struct.unpack('>BB', data[:2])
+        return cls(id=id)
+
+    def __str__(self):
+        return f"OkElectionMessage(id={self.id})"
+
+
+class LeaderElectionMessage(BaseMessage):
+    def __init__(self, id: int):
+        super().__init__(MsgType.LEADER_ELECTION, id=id)
+
+    @handle_encode_error
+    def encode(self) -> bytes:
+        # Codifica el mensaje LeaderElection
+        body = struct.pack('>BB', int(self.type.value), self.id)
+        total_length = len(body)
+        return struct.pack('>I', total_length) + body
+
+
+    @classmethod
+    def decode(cls, data: bytes):
+        if len(data) < 2:
+            raise DecodeError("Insufficient data to decode LeaderElectionMessage")
+        _, id = struct.unpack('>BB', data[:2])
+        return cls(id=id)
+
+    def __str__(self):
+        return f"LeaderElectionMessage(id={self.id})"
+
 
 class Fin(BaseMessage):
     def __init__(self, id: int):
