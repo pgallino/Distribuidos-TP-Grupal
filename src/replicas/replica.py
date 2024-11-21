@@ -66,7 +66,6 @@ class Replica:
                 self._process_push_data(msg)
 
             elif msg.type == MsgType.PULL_DATA:
-                logging.info("Voy a mandar la data")
                 # Responder con toda la data replicada
                 self._send_data()
 

@@ -7,7 +7,7 @@ from messages.messages import PullData, PushDataMessage, ResultMessage, decode_m
 from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
-from utils.constants import E_FROM_OS_COUNTER_PULL, E_FROM_OS_COUNTER_PUSH, E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MAIN, Q_REPLICA_MAIN_PULL, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
+from utils.constants import E_FROM_OS_COUNTER_PUSH, E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 
@@ -88,9 +88,10 @@ class OsCounter(Node):
     def _synchronize_with_replica(self):
         # Declarar las colas necesarias
 
-        self._middleware.declare_exchange(E_FROM_OS_COUNTER_PUSH, type="fanout") # -> exchange para broadcast de push
-        self._middleware.declare_queue(Q_REPLICA_MAIN) # -> cola para enviar pull al primero que lo agarre
+        self._middleware.declare_exchange(E_FROM_OS_COUNTER_PUSH, type="fanout") # -> exchange para broadcast de push y pull
         self._middleware.declare_queue(Q_REPLICA_RESPONSE) # -> cola para recibir respuestas
+        self._middleware.channel.queue_purge(queue=Q_REPLICA_RESPONSE) # -> limpio la cola para que no haya nada viejo
+
         self.connected = False
 
         # Función de callback para procesar la respuesta
@@ -110,7 +111,7 @@ class OsCounter(Node):
         for attempt in range(retries):
         # Enviar un mensaje `PullDataMessage` a Q_REPLICA_MAIN
             pull_msg = PullData()
-            self._middleware.send_to_queue(Q_REPLICA_MAIN, pull_msg.encode())
+            self._middleware.send_to_queue(E_FROM_OS_COUNTER_PUSH, pull_msg.encode())
             logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
             self._middleware.receive_from_queue_with_timeout(Q_REPLICA_RESPONSE, on_replica_response, inactivity_time=3, auto_ack=False)
             if self.connected:  # Si se recibieron datos, salir del bucle de reintentos
