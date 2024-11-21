@@ -16,7 +16,6 @@ def parse_args():
             'english': int(args[4]),
             'client': int(args[5]),
             'os_counter_replica': int(args[6]),
-            'avg_counter_replica': int(args[7]),
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
@@ -108,7 +107,7 @@ def generate_docker_compose(instances):
                 services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
 
             # Si es una réplica, añadir el volumen para el socket de Docker
-            if node == 'os_counter_replica' or node == 'avg_counter_replica':
+            if node == 'os_counter_replica':
                 if 'volumes' not in services[service_name]:
                     services[service_name]['volumes'] = []
                 services[service_name]['volumes'].append('/var/run/docker.sock:/var/run/docker.sock')

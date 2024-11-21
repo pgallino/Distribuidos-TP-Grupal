@@ -7,7 +7,7 @@ from messages.messages import PullData, PushDataMessage, ResultMessage, decode_m
 from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
-from utils.constants import E_FROM_OS_COUNTER_PUSH, E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_RESPONSE, Q_TRIMMER_OS_COUNTER
+from utils.constants import E_FROM_MASTER_PUSH, E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MASTER, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 
@@ -69,7 +69,7 @@ class OsCounter(Node):
         # Enviar los datos actualizados a la réplica
         data = {msg.id: self.counters[msg.id]}
         push_msg = PushDataMessage(data=data)
-        self._middleware.send_to_queue(E_FROM_OS_COUNTER_PUSH, push_msg.encode())
+        self._middleware.send_to_queue(self.exchange_name, push_msg.encode())
 
 
     def _process_fin_message(self, msg):
@@ -87,10 +87,11 @@ class OsCounter(Node):
 
     def _synchronize_with_replica(self):
         # Declarar las colas necesarias
-
-        self._middleware.declare_exchange(E_FROM_OS_COUNTER_PUSH, type="fanout") # -> exchange para broadcast de push y pull
-        self._middleware.declare_queue(Q_REPLICA_RESPONSE) # -> cola para recibir respuestas
-        self._middleware.channel.queue_purge(queue=Q_REPLICA_RESPONSE) # -> limpio la cola para que no haya nada viejo
+        self.exchange_name = E_FROM_MASTER_PUSH + "_os_counter_1" #TODO poner el nombre dinamicamente por config
+        self.replica_queue = Q_REPLICA_MASTER + "_os_counter_1"
+        self._middleware.declare_exchange(self.exchange_name, type="fanout") # -> exchange para broadcast de push y pull
+        self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
+        self._middleware.channel.queue_purge(queue=self.replica_queue) # -> limpio la cola para que no haya nada viejo
 
         self.connected = False
 
@@ -109,11 +110,11 @@ class OsCounter(Node):
         # Intentar recibir con timeout y reintentar en caso de no recibir respuesta
         retries = 3  # Número de intentos de reintento
         for attempt in range(retries):
-        # Enviar un mensaje `PullDataMessage` a Q_REPLICA_MAIN
+        # Enviar un mensaje `PullDataMessage`
             pull_msg = PullData()
-            self._middleware.send_to_queue(E_FROM_OS_COUNTER_PUSH, pull_msg.encode())
+            self._middleware.send_to_queue(self.exchange_name, pull_msg.encode())
             logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
-            self._middleware.receive_from_queue_with_timeout(Q_REPLICA_RESPONSE, on_replica_response, inactivity_time=3, auto_ack=False)
+            self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
             if self.connected:  # Si se recibieron datos, salir del bucle de reintentos
                 break
             else:
@@ -130,25 +131,7 @@ class OsCounter(Node):
 
 def _handle_keep_alive():
     """Proceso dedicado a manejar mensajes de Keep Alive."""
-    # ===== Opcion con cola =====
-    # middleware = Middleware()
-    # queue = Q_KEEP_ALIVE['os']
-    # exchange = E_KEEP_ALIVE['os']
-    # middleware.declare_queue(queue)
-    # middleware.declare_exchange(exchange)
-    # middleware.bind_queue(queue, exchange, key=K_KEEP_ALIVE)
-    # def process_keep_alive(ch, method, properties, raw_message):
-    #     msg = decode_msg(raw_message)
-    #     if isinstance(msg, MsgType.KEEP_ALIVE):
-    #         alive_msg = Alive()
-    #         middleware.send_to_queue(queue, alive_msg.encode())
-    #         logging.info(f"OsCounter: Respondido ALIVE para KeepAliveMessage de {msg.id}")
-    #     ch.basic_ack(delivery_tag=method.delivery_tag)
 
-    # middleware.receive_from_queue(queue, process_keep_alive, auto_ack=False)
-    # ===========================
-
-    # ===== Opcion con socket =====
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind(('', 12345))

@@ -1,4 +1,6 @@
+import logging
 import struct
+import subprocess
 
 BYTES_HEADER = 4
 
@@ -70,3 +72,24 @@ def handle_encode_error(func):
             raise EncodeError(f"Error in {func.__name__}: {e}")
     return wrapper
 
+def reanimate_container(container_to_restart):
+    """Reanima el contenedor maestro."""
+    try:
+
+        # Intentar reiniciar el contenedor
+        start_result = subprocess.run(
+            ['docker', 'start', container_to_restart],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        logging.info(
+            'Docker start executed. Result: {}. Output: {}. Error: {}'.format(
+                start_result.returncode,
+                start_result.stdout.decode().strip(),
+                start_result.stderr.decode().strip()
+            )
+        )
+
+    except Exception as e:
+        logging.error(f"Unexpected error while handling inactive container: {e}")

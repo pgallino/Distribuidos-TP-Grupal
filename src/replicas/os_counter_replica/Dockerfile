@@ -17,6 +17,7 @@ COPY src/replicas/replica.py /
 COPY src/middleware /middleware
 COPY src/messages /messages
 COPY src/utils /utils
+COPY src/election /election
 
 # Configura el ENTRYPOINT para ejecutar main.py al iniciar
 ENTRYPOINT ["python3", "/main.py"]

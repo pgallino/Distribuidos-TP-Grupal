@@ -8,7 +8,8 @@ def main():
         required_keys = {
             "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
             "n_instances": ("OS_COUNTER_REPLICA_INSTANCES", "OS_COUNTER_REPLICA_INSTANCES"),
-            "id": ("INSTANCE_ID", "INSTANCE_ID")
+            "id": ("INSTANCE_ID", "INSTANCE_ID"),
+            "timeout": ("TIMEOUT", "TIMEOUT")
         }
 
         # Inicializar configuración y logging
@@ -17,7 +18,8 @@ def main():
         # Crear una instancia de OsCounterReplica con un ID único
         replica_id = config_params["id"]
         n_instances = config_params["n_instances"]
-        replica = OsCounterReplica(replica_id, n_instances)
+        timeout = config_params["timeout"]
+        replica = OsCounterReplica(replica_id, n_instances, "os_counter_replica", "os_counter_1", timeout)
         
         logging.info(f"OsCounterReplica {replica_id} iniciada. Esperando mensajes...")
         

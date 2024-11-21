@@ -37,10 +37,8 @@ Q_RELEASE_DATE_AVG_COUNTER = 'release_date-avg_counter'
 Q_COORD_RELEASE_DATE = 'coord-release_date'
 Q_SCORE_Q4_JOINER = 'score-q4_joiner'
 Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
-Q_REPLICA_RESPONSE = 'replica_response'
-Q_REPLICA_MAIN_PULL = 'replica_main_pull'
-Q_REPLICA_MAIN_PUSH = 'replica_main_push'
-Q_REPLICA_MAIN = 'replica_main' # hay que cambiarlos
+Q_REPLICA_MASTER = 'replica_master'
+Q_MASTER_REPLICA = 'master_replica'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'
@@ -51,8 +49,7 @@ E_FROM_SCORE = "from_score"
 E_COORD_SCORE = 'from-coord-score'
 E_COORD_RELEASE_DATE = 'from-coord-release_date'
 E_COORD_ENGLISH = 'from-coord-english'
-E_FROM_OS_COUNTER_PUSH = 'from-os-counter-push'
-E_FROM_OS_COUNTER_PULL = 'from-os-counter-pull'
+E_FROM_MASTER_PUSH = 'from-master-push'
 
 # Routing Keys
 K_GENREGAME = 'genregame'
