@@ -52,6 +52,7 @@ E_COORD_SCORE = 'from-coord-score'
 E_COORD_RELEASE_DATE = 'from-coord-release_date'
 E_COORD_ENGLISH = 'from-coord-english'
 E_FROM_OS_COUNTER_PUSH = 'from-os-counter-push'
+E_FROM_OS_COUNTER_PULL = 'from-os-counter-pull'
 
 # Routing Keys
 K_GENREGAME = 'genregame'

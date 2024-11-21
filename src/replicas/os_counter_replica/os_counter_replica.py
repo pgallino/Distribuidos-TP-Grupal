@@ -6,7 +6,7 @@ import signal
 import subprocess
 from messages.messages import ElectionMessage, LeaderElectionMessage, MsgType, OkElectionMessage, PushDataMessage, decode_msg
 from replica import Replica
-from utils.constants import E_FROM_OS_COUNTER_PUSH, Q_REPLICA_MAIN_PULL, Q_REPLICA_MAIN_PUSH, Q_REPLICA_RESPONSE
+from utils.constants import E_FROM_OS_COUNTER_PULL, E_FROM_OS_COUNTER_PUSH, Q_REPLICA_MAIN_PULL, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
 from utils.utils import recv_msg
 
 TIMEOUT = 5
@@ -16,14 +16,17 @@ class OsCounterReplica(Replica):
 
     def __init__(self, id: int, n_instances: int):
         super().__init__(id, n_instances)
-        self._middleware.declare_queue(Q_REPLICA_MAIN_PULL)
 
-        self._middleware.declare_queue(Q_REPLICA_MAIN_PUSH)
-        self._middleware.declare_exchange(E_FROM_OS_COUNTER_PUSH, type = 'fanout')
-        self._middleware.bind_queue(Q_REPLICA_MAIN_PUSH, E_FROM_OS_COUNTER_PUSH)  # No se necesita `routing_key` para fanout
+        self.current_queue = None
+        self.recv_pull_queue = Q_REPLICA_MAIN
+        self.recv_push_queue = Q_REPLICA_MAIN + f"_os_counter_{self.id}"
+        self._middleware.declare_queue(self.recv_pull_queue) # -> cola por donde recibo pull
+        self._middleware.declare_queue(self.recv_push_queue) # -> cola por donde recibo pushs
+        self._middleware.declare_exchange(E_FROM_OS_COUNTER_PUSH, type = "fanout")
+        self._middleware.bind_queue(self.recv_push_queue, E_FROM_OS_COUNTER_PUSH) # -> bindeo al fanout de los push
 
         # Declarar la cola para enviar respuestas
-        self._middleware.declare_queue(Q_REPLICA_RESPONSE)
+        self._middleware.declare_queue(Q_REPLICA_RESPONSE) # -> cola para enviar
 
         self.container_name = "os_counter_1"
 
@@ -43,13 +46,11 @@ class OsCounterReplica(Replica):
         """Inicia el consumo de mensajes en la cola de la réplica."""
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
-
-        self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN_PULL, self.process_replica_message, TIMEOUT, auto_ack=False)
-        self.ask_keepalive()
+        self.current_queue = self.recv_pull_queue # SETEO PARA ESCUCHAR EL PRIMER PULL
 
         while True:
-            # self._middleware.receive_from_queue(Q_REPLICA_MAIN, self.process_replica_message, auto_ack=False)
-            self._middleware.receive_from_queue_with_timeout(Q_REPLICA_MAIN_PUSH, self.process_replica_message, TIMEOUT, auto_ack=False)
+            self._middleware.receive_from_queue_with_timeout(self.current_queue, self.process_replica_message, TIMEOUT, auto_ack=False)
+            self.current_queue = self.recv_push_queue # LUEGO DE ESCUCHAR EL PULL CAMBIO A PUSH
             self.ask_keepalive()
 
         
@@ -101,16 +102,19 @@ class OsCounterReplica(Replica):
                 if self.election_in_progress.value:
                     print("Elección ya en proceso. Esperando a que termine...")
                     self.condition.wait()  # Espera a que termine la elección
+                    self.current_queue = self.recv_pull_queue # CUANDO TERMINA LA ELECCION CAMBIO A PULL PARA RECIBIR EL PULL
                     return
                 else:
                     # Marcar la elección como en progreso
                     self.election_in_progress.value = True
             initiate_election(self.id, self.replica_ids, self.election_in_progress, self.condition, self.waiting_ok_election, self.condition_ok, self.container_name)
+            self.current_queue = self.recv_pull_queue # CUANDO TERMINA LA ELECCION CAMBIO A PULL PARA RECIBIR EL PULL
         except Exception as e:
             logging.error(f"Error inesperado durante la conexión del socket: {e}")
             if not self.shutting_down:
                 logging.error(f"Error inesperado en run: {e}")
         sock.close()
+
 
 def initiate_election(id, replica_ids, election_in_progress, condition, waiting_ok_election, condition_ok, container_name):
     """Inicia el algoritmo de elección Bully."""

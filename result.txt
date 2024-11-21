@@ -1,0 +1,428 @@
+docker build -f ./src/server/Dockerfile -t "server:latest" .
+docker build -f ./src/client/Dockerfile -t "client:latest" .
+docker build -f ./src/node/trimmer/Dockerfile -t "trimmer:latest" .
+docker build -f ./src/node/filters/genre/Dockerfile -t "genre:latest" .
+docker build -f ./src/node/filters/score/Dockerfile -t "score:latest" .
+docker build -f ./src/node/filters/release_date/Dockerfile -t "release_date:latest" .
+docker build -f ./src/node/filters/english/Dockerfile -t "english:latest" .
+docker build -f ./src/node/counters/os_counter/Dockerfile -t "os_counter:latest" .
+docker build -f ./src/node/counters/avg_counter/Dockerfile -t "avg_counter:latest" .
+docker build -f ./src/node/joiners/q3_joiner/Dockerfile -t "q3_joiner:latest" .
+docker build -f ./src/node/joiners/q4_joiner/Dockerfile -t "q4_joiner:latest" .
+docker build -f ./src/node/joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
+docker build -f ./src/replicas/os_counter_replica/Dockerfile -t "os_counter_replica:latest" .
+docker build -f ./src/replicas/avg_counter_replica/Dockerfile -t "avg_counter_replica:latest" .
+# Execute this command from time to time to clean up intermediate stages generated 
+# during client build (your hard drive will like this :) ). Don't left uncommented if you 
+# want to avoid rebuilding client image every time the docker-compose-up command 
+# is executed, even when client code has not changed
+# docker rmi `docker images --filter label=intermediateStageToBeDeleted=true -q`
+docker compose -f docker-compose-dev.yaml up -d --build
+docker compose -f docker-compose-dev.yaml logs -f
+server                 | 2024-11-21 00:02:22 INFO     action: start | result: success
+server                 | 2024-11-21 00:02:22 INFO     action: accept_connections | result: in progress...
+server                 | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: genre-q4-joiner
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: score-q4_joiner
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: query_result_4
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+q4_joiner_1            | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+q3_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q3_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: genre-q3-joiner
+q3_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+q3_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: score-q3-joiner
+q5_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q5_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: genre-q5-joiner
+q5_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+q5_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: score-q5-joiner
+q5_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+q5_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_5
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: replica_main_avg_counter
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: replica_response_avg_counter
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     AvgCounterReplica 1 iniciada. Esperando mensajes...
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     Voy a mandar la data
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     AvgCounterReplica: Respondiendo a solicitud de PullData
+avg_counter_replica_1  | 2024-11-21 00:02:22 INFO     AvgCounterReplica: Estado enviado exitosamente a Q_REPLICA_RESPONSE.
+q3_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+q3_joiner_1            | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_3
+english_1              | 2024-11-21 00:02:20 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1              | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1              | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+release_date_1         | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+release_date_1         | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: genre-release_date
+release_date_1         | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+release_date_1         | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: release_date-avg_counter
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: replica_main
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: replica_main_os_counter_3
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: from-os-counter-push
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: replica_response
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     OsCounterReplica 3 iniciada. Esperando mensajes...
+os_counter_replica_3   | 2024-11-21 00:02:21 INFO     Replica 3: Escuchando en el puerto 12345.
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: replica_main
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: replica_main_os_counter_1
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     action: middleware declare_exchange | result: success | exchange: from-os-counter-push
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: replica_response
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     OsCounterReplica 1 iniciada. Esperando mensajes...
+os_counter_replica_1   | 2024-11-21 00:02:20 INFO     Replica 1: Escuchando en el puerto 12345.
+os_counter_replica_1   | 2024-11-21 00:02:21 INFO     Voy a mandar la data
+os_counter_replica_1   | 2024-11-21 00:02:21 INFO     OsCounterReplica: Respondiendo a solicitud de PullDataMessage
+os_counter_replica_1   | 2024-11-21 00:02:21 INFO     OsCounterReplica: Estado enviado exitosamente a Q_REPLICA_RESPONSE.
+trimmer_1              | 2024-11-21 00:02:21 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+trimmer_1              | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: gateway-trimmer
+trimmer_1              | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+avg_counter_1          | 2024-11-21 00:02:20 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+avg_counter_1          | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: release_date-avg_counter
+avg_counter_1          | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: query_result_2
+avg_counter_1          | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: replica_main_avg_counter
+avg_counter_1          | 2024-11-21 00:02:20 INFO     action: middleware declare_queue | result: success | queue_name: replica_response_avg_counter
+avg_counter_1          | 2024-11-21 00:02:22 INFO     AvgCounter: Sincronizado con réplica. Datos recibidos: {}
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: replica_main
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: replica_main_os_counter_2
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from-os-counter-push
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: replica_response
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     OsCounterReplica 2 iniciada. Esperando mensajes...
+os_counter_replica_2   | 2024-11-21 00:02:22 INFO     Replica 2: Escuchando en el puerto 12345.
+genre_1                | 2024-11-21 00:02:21 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+genre_1                | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-genre_filter
+genre_1                | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+genre_1                | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-os_counter
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: query_result_1
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware declare_exchange | result: success | exchange: from-os-counter-push
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: replica_main
+os_counter_1           | 2024-11-21 00:02:21 INFO     action: middleware declare_queue | result: success | queue_name: replica_response
+os_counter_1           | 2024-11-21 00:02:21 INFO     Intento 1 de sincronizar con la réplica.
+os_counter_1           | 2024-11-21 00:02:21 INFO     OsCounter: Sincronizado con réplica. Datos recibidos: {}
+server                 | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server                 | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_2
+server                 | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server                 | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_1
+server                 | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server                 | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server                 | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_4
+server                 | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_3
+server                 | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: query_result_5
+score_1                | 2024-11-21 00:02:22 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+score_1                | 2024-11-21 00:02:22 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-score_filter
+client_1               | 2024-11-21 00:02:23 INFO     action: send_handshake | result: success | message: Handshake
+score_1                | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+score_1                | 2024-11-21 00:02:22 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+server                 | 2024-11-21 00:02:23 INFO     action: accept_connections | result: success | ip: 172.25.125.18
+server                 | 2024-11-21 00:02:23 INFO     action: accept_connections | result: in progress...
+server                 | 2024-11-21 00:02:23 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server                 | 2024-11-21 00:02:23 INFO     action: middleware declare_queue | result: success | queue_name: gateway-trimmer
+os_counter_1           | 2024-11-21 00:02:24 INFO     Tiempo de inactividad excedido: 3 segundos.
+os_counter_replica_3   | 2024-11-21 00:02:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:02:26 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:02:26 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:02:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:02:26 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:02:26 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:02:27 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:02:27 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:02:27 INFO     me conecte, MASTER vivo
+client_1               | 2024-11-21 00:02:31 INFO     action: send_data | result: success | dataset: Dataset.GAME
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: Received SIGTERM | shutting down gracefully.
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: shutdown_node | result: in progress...
+os_counter_1           | 2024-11-21 00:02:35 ERROR    action: listen_to_queue | result: fail | error: [Errno 9] Bad file descriptor
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | status: start | message: Starting close process
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | step: stop_consuming | status: in_progress
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | step: stop_consuming | status: success
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | step: close_channel | status: in_progress
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | step: close_channel | status: success
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | step: close_connection | status: in_progress
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | step: close_connection | status: success
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware close | status: completed
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: shutdown_node | result: success
+os_counter_1           | 2024-11-21 00:02:35 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+client_1               | 2024-11-21 00:02:35 INFO     action: send_data | result: success | dataset: Dataset.REVIEW
+client_1               | 2024-11-21 00:02:35 INFO     action: send_fin | result: success | message: Fin
+client_1               | 2024-11-21 00:02:35 INFO     action: recv_results | result: in progress...
+os_counter_1 exited with code 0
+os_counter_1 exited with code 0
+os_counter_replica_3   | 2024-11-21 00:02:40 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:02:40 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:02:40 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:02:40 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:02:40 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:02:40 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:02:48 ERROR    Conexión rechazada: [Errno -3] Temporary failure in name resolution
+os_counter_replica_2   | 2024-11-21 00:02:48 INFO     Replica 2: Iniciando elección.
+os_counter_replica_2   | 2024-11-21 00:02:48 INFO     Replica 2: Mensaje de elección enviado a Replica 3.
+os_counter_replica_2   | 2024-11-21 00:02:48 INFO     Replica 2: llego un mensaje Election
+os_counter_replica_3   | 2024-11-21 00:02:48 ERROR    Conexión rechazada: [Errno -3] Temporary failure in name resolution
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: Iniciando elección.
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: Soy el nuevo líder.
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: llego un mensaje Election
+os_counter_replica_2   | 2024-11-21 00:02:48 INFO     Replica 2: llego un mensaje Ok
+os_counter_replica_1   | 2024-11-21 00:02:48 ERROR    Conexión rechazada: [Errno -3] Temporary failure in name resolution
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: llego un mensaje Election
+os_counter_replica_1   | 2024-11-21 00:02:48 INFO     Replica 1: Iniciando elección.
+os_counter_replica_1   | 2024-11-21 00:02:48 INFO     Replica 1: Mensaje de elección enviado a Replica 2.
+os_counter_replica_1   | 2024-11-21 00:02:48 INFO     Replica 1: Mensaje de elección enviado a Replica 3.
+os_counter_replica_1   | 2024-11-21 00:02:48 INFO     Replica 1: llego un mensaje Ok
+os_counter_replica_1   | 2024-11-21 00:02:48 INFO     Replica 1: llego un mensaje Ok
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Docker start executed. Result: 0. Output: os_counter_1. Error: 
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: Elección finalizada, election_in_progress=False.
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: Notificación de liderazgo enviada a Replica 1.
+os_counter_replica_1   | 2024-11-21 00:02:48 INFO     Replica 1: Llego un mensaje Leader
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Replica 3: Notificación de liderazgo enviada a Replica 2.
+os_counter_replica_2   | 2024-11-21 00:02:48 INFO     Replica 2: Llego un mensaje Leader
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-os_counter
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware declare_queue | result: success | queue_name: query_result_1
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware declare_exchange | result: success | exchange: from-os-counter-push
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware declare_queue | result: success | queue_name: replica_main
+os_counter_1           | 2024-11-21 00:02:48 INFO     action: middleware declare_queue | result: success | queue_name: replica_response
+os_counter_1           | 2024-11-21 00:02:48 INFO     Intento 1 de sincronizar con la réplica.
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     Voy a mandar la data
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     OsCounterReplica: Respondiendo a solicitud de PullDataMessage
+os_counter_replica_3   | 2024-11-21 00:02:48 INFO     OsCounterReplica: Estado enviado exitosamente a Q_REPLICA_RESPONSE.
+os_counter_1           | 2024-11-21 00:02:48 INFO     OsCounter: Sincronizado con réplica. Datos recibidos: {'1': [39473, 8881, 5940]}
+english_1              | 2024-11-21 00:02:50 INFO     initializing identifier
+os_counter_1           | 2024-11-21 00:02:51 INFO     Tiempo de inactividad excedido: 3 segundos.
+os_counter_replica_3   | 2024-11-21 00:02:53 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:02:53 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:02:53 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:02:58 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:02:58 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:02:58 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:02:58 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:02:58 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:02:58 INFO     me conecte, MASTER vivo
+client_1               | 2024-11-21 00:02:59 INFO     Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:
+client_1               | - Relive: 68357 average playtime
+client_1               | - 拯救大魔王2 Rescue the Great Demon 2: 49555 average playtime
+client_1               | - Out of the Park Baseball 20: 34798 average playtime
+client_1               | - 时之回廊/Corridor of time: 33343 average playtime
+client_1               | - Clicker Heroes 2: 31708 average playtime
+client_1               | - Time of Dragons: 27080 average playtime
+client_1               | - Project AURA: 26827 average playtime
+client_1               | - Midas Gold Plus: 19196 average playtime
+client_1               | - Beasts of Bermuda: 17147 average playtime
+client_1               | - Rust: 16623 average playtime
+client_1               | 
+client_1               | 
+client_1               | 2024-11-21 00:02:59 INFO     Q3: Top 5 Indie Games with Most Positive Reviews:
+client_1               | 1. Undertale: 42284 positive reviews
+client_1               | 2. FTL: Faster Than Light: 21302 positive reviews
+client_1               | 3. Insurgency: 20666 positive reviews
+client_1               | 4. Path of Exile: 17058 positive reviews
+client_1               | 5. Super Meat Boy: 7926 positive reviews
+client_1               | 
+client_1               | 
+client_1               | 2024-11-21 00:02:59 INFO     Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):
+client_1               | - Left 4 Dead: 249 negative reviews
+client_1               | - Portal 2: 410 negative reviews
+client_1               | - Kane and Lynch: Dead Men™: 218 negative reviews
+client_1               | - EVE Online: 524 negative reviews
+client_1               | - Mirror's Edge™: 761 negative reviews
+client_1               | - F.E.A.R. 3: 680 negative reviews
+client_1               | - Hydrophobia: Prophecy: 383 negative reviews
+client_1               | - Guardians of Middle-earth: 437 negative reviews
+client_1               | - Awesomenauts - the 2D moba: 1198 negative reviews
+client_1               | - Call of Juarez: Gunslinger: 203 negative reviews
+client_1               | 
+client_1               | 
+client_1               | 2024-11-21 00:03:06 INFO     Q1: OS Count Summary:
+client_1               | - Windows: 92534
+client_1               | - Linux: 12307
+client_1               | - Mac: 17703
+client_1               | 
+client_1               | 
+client_1               | 2024-11-21 00:03:07 INFO     Q4: Action games with more than 5,000 negative reviews in English:
+client_1               | - Insurgency: 1683 negative reviews
+client_1               | - Call of Duty®: Infinite Warfare: 1549 negative reviews
+client_1               | 
+client_1               | 
+client_1 exited with code 0
+os_counter_replica_1   | 2024-11-21 00:03:11 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:11 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:11 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:11 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:11 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:11 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:11 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:11 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:11 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:16 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:16 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:16 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:16 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:16 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:16 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:16 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:16 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:16 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:21 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:21 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:21 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:21 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:21 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:21 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:21 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:21 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:21 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:26 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:26 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:26 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:26 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:26 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:26 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:31 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:31 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:31 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:31 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:31 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:31 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:31 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:31 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:31 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:36 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:36 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:36 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:36 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:36 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:36 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:36 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:36 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:36 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:41 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:41 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:41 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:41 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:41 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:41 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:41 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:41 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:41 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:46 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:46 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:46 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:46 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:46 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:46 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:46 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:46 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:46 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:51 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:51 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:51 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:51 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:51 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:51 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:51 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:51 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:51 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:03:56 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:03:56 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:03:56 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:03:56 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:03:56 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:03:56 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:03:56 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:03:56 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:03:56 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:01 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:01 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:01 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:01 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:01 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:01 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:01 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:01 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:01 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:06 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:06 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:06 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:06 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:06 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:06 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:06 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:06 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:06 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:11 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:11 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:11 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:11 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:11 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:11 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:11 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:11 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:11 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:16 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:16 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:16 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:16 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:16 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:16 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:16 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:16 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:16 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:21 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:21 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:21 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:21 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:21 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:21 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:21 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:21 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:21 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:26 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:26 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:26 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:26 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:26 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:26 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:26 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:31 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:31 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:31 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:31 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:31 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:31 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:31 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:31 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:31 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:36 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:36 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:36 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:36 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:36 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:36 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:36 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:36 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:36 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:41 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:41 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:41 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:41 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:41 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:41 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:41 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:41 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:41 INFO     me conecte, MASTER vivo
+os_counter_replica_3   | 2024-11-21 00:04:46 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_3   | 2024-11-21 00:04:46 INFO     Intento conectarme
+os_counter_replica_3   | 2024-11-21 00:04:46 INFO     me conecte, MASTER vivo
+os_counter_replica_2   | 2024-11-21 00:04:46 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_2   | 2024-11-21 00:04:46 INFO     Intento conectarme
+os_counter_replica_2   | 2024-11-21 00:04:46 INFO     me conecte, MASTER vivo
+os_counter_replica_1   | 2024-11-21 00:04:46 INFO     Tiempo de inactividad excedido: 5 segundos.
+os_counter_replica_1   | 2024-11-21 00:04:46 INFO     Intento conectarme
+os_counter_replica_1   | 2024-11-21 00:04:46 INFO     me conecte, MASTER vivo
