@@ -11,11 +11,15 @@ def main():
 
     config_params = initialize_config(required_keys)
     initialize_log(config_params["logging_level"])
+
+    # Extraer parámetros de configuración
+    instance_id = config_params["instance_id"]
+    q5_joiner_instances = config_params["q5_joiner_instances"]
     # Crear una instancia de ReleaseDateFilter
     q5_joiner = Q5Joiner(
-        config_params["instance_id"],
-        config_params["q5_joiner_instances"],
-        []
+        id = instance_id,
+        n_nodes = q5_joiner_instances,
+        container_name = f"q5_joiner_{instance_id}"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

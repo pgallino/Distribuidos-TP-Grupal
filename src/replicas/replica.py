@@ -1,7 +1,7 @@
 import logging
 import signal
 import socket
-from messages.messages import MsgType, decode_msg
+from messages.messages import MsgType, PushDataMessage, decode_msg
 from middleware.middleware import Middleware
 from election.election_manager import ElectionManager
 from utils.constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER
@@ -18,6 +18,7 @@ class Replica:
         self.replica_ids = list(range(1, n_instances + 1))
         self.container_name = container_name
         self.container_to_restart = container_to_restart
+        self.state = None
 
         self.timeout = timeout
         self._initialize_storage()
@@ -64,8 +65,16 @@ class Replica:
         pass
 
     def _process_pull_data(self):
-        """Codifica el estado actual en un formato que pueda ser enviado en una respuesta."""
-        pass
+        """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
+
+        # Crear el mensaje de respuesta con el estado actual
+        response_data = PushDataMessage(data=dict(self.state))
+
+        # Enviar el mensaje a Q_REPLICA_RESPONSE
+        self._middleware.send_to_queue(
+            self.send_queue,  # Cola de respuesta
+            response_data.encode()
+        )
 
     def _shutdown(self):
         """Cierra la réplica de forma segura."""

@@ -27,7 +27,8 @@ def main():
         q4_joiner_instances,
         [('ENGLISH', english_instances)],
         batch,
-        n_reviews
+        n_reviews,
+        container_name = f"q4_joiner_{instance_id}"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

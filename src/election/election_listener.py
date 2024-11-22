@@ -9,9 +9,9 @@ from utils.utils import recv_msg
 PORT = 12345
 
 class ElectionListener:
-    def __init__(self, id, replica_ids, container_name, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart):
+    def __init__(self, id, node_ids, container_name, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart):
         self.id = id
-        self.replica_ids = replica_ids
+        self.node_ids = node_ids
         self.container_name = container_name
         self.election_in_progress = election_in_progress
         self.condition = condition
@@ -31,9 +31,9 @@ class ElectionListener:
         self.listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         try:
-            self.listener_socket.bind(('', self.port))
-            self.listener_socket.listen(len(self.replica_ids))
-            logging.info(f"Replica {self.id}: Escuchando en el puerto {self.port}.")
+            self.listener_socket.bind((f'{self.container_name}_{self.id}', self.port))
+            self.listener_socket.listen(len(self.node_ids))
+            logging.info(f"node {self.id}: Escuchando en el puerto {self.port}.")
 
             while True:
                 try:
@@ -53,26 +53,26 @@ class ElectionListener:
                     conn.close()
 
                 except socket.error as e:
-                    logging.error(f"Replica {self.id}: Error en el socket de escucha: {e}")
+                    logging.error(f"node {self.id}: Error en el socket de escucha: {e}")
         except Exception as e:
-            logging.error(f"Replica {self.id}: Error iniciando el servidor socket: {e}")
+            logging.error(f"node {self.id}: Error iniciando el servidor socket: {e}")
         finally:
             self.listener_socket.close()
 
 
     def _handle_election_message(self, msg):
         """Procesa un mensaje de tipo ELECTION."""
-        logging.info(f"Replica {self.id}: Llego un mensaje Election")
+        logging.info(f"node {self.id}: Llego un mensaje Election")
         try:
-            with socket.create_connection((f'{self.container_name}_{msg.id}', self.port)) as response_socket:
+            with socket.create_connection((f'{self.container_name}_{msg.id}', self.port), timeout=3) as response_socket:
                 response_socket.sendall(OkElectionMessage(id=self.id).encode())
-                logging.info(f"Replica {self.id}: Enviado OK a {msg.id}")
+                logging.info(f"node {self.id}: Enviado OK a {msg.id}")
         except socket.gaierror as e:
-            logging.error(f"Replica {self.id}: Error en resolución de nombre al responder a {msg.id}: {e}")
+            logging.warning(f"node {self.id}: Error en resolución de nombre al responder a {msg.id}: {e}")
         except (socket.timeout, ConnectionRefusedError) as e:
-            logging.warning(f"Replica {self.id}: Nodo {msg.id} no está disponible: {e}")
+            logging.warning(f"node {self.id}: Nodo {msg.id} no está disponible: {e}")
         except Exception as e:
-            logging.error(f"Replica {self.id}: Error inesperado al manejar mensaje Election: {e}")
+            logging.error(f"node {self.id}: Error inesperado al manejar mensaje Election: {e}")
 
         start_election = False
 
@@ -89,7 +89,7 @@ class ElectionListener:
 
     def _handle_leader_election_message(self):
         """Procesa un mensaje de tipo LEADER_ELECTION."""
-        logging.info(f"Replica {self.id}: Llego un mensaje Leader")
+        logging.info(f"node {self.id}: Llego un mensaje Leader")
         with self.condition:
             self.election_in_progress.value = False
             self.condition.notify_all()
@@ -99,16 +99,16 @@ class ElectionListener:
 
     def _handle_ok_election_message(self):
         """Procesa un mensaje de tipo OK_ELECTION."""
-        logging.info(f"Replica {self.id}: Llego un mensaje Ok")
+        logging.info(f"node {self.id}: Llego un mensaje Ok")
         with self.condition_ok:
             self.waiting_ok_election.value = False
             self.condition_ok.notify_all()
         
-        logging.info(f"Replica {self.id}: notifiqué el ok")
+        logging.info(f"node {self.id}: notifiqué el ok")
 
     def _initiate_election(self):
         """Inicia el proceso de elección llamando a la lógica principal."""
-        initiate_election(self.id, self.replica_ids, self.container_name, self.election_in_progress, self.condition,
+        initiate_election(self.id, self.node_ids, self.container_name, self.election_in_progress, self.condition,
                           self.waiting_ok_election, self.condition_ok, self.on_leader_selected, self.container_to_restart)
         
     def stop(self):

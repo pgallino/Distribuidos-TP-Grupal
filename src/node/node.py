@@ -3,13 +3,15 @@ import logging
 import signal
 import os
 from multiprocessing import Process, Value, Condition
+import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
-from messages.messages import CoordFin
+from messages.messages import CoordFin, PullData, PushDataMessage, decode_msg
+from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
 
 
 class Node:
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: list):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: list = [], container_name: str = None):
         """
         Base class for nodes to avoid code repetition.
 
@@ -21,6 +23,7 @@ class Node:
         self.id = id
         self.n_nodes = n_nodes
         self.n_next_nodes = n_next_nodes
+        self.container_name = container_name
         self.shutting_down = False
         self._middleware = Middleware()
         self.coordination_process = None
@@ -80,6 +83,71 @@ class Node:
             args=(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, self.processing_client, self.condition))
         process.start()
         self.coordination_process = process
+
+    def load_state(self, msg: PushDataMessage):
+        raise NotImplementedError("Debe implementarse en las subclases")
+
+    def _synchronize_with_replica(self):
+        # Declarar las colas necesarias
+        self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}'
+        self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}'
+        self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
+        self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
+        self._middleware.channel.queue_purge(queue=self.replica_queue) # -> limpio la cola para que no haya nada viejo
+
+        self.connected = False
+
+        # Función de callback para procesar la respuesta
+        def on_replica_response(ch, method, properties, body):
+            msg = decode_msg(body)
+            if isinstance(msg, PushDataMessage):
+                self.load_state(msg)
+                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
+                self.connected = True
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self._middleware.channel.stop_consuming()
+
+        # Intentar recibir con timeout y reintentar en caso de no recibir respuesta
+        retries = 3  # Número de intentos de reintento
+        for attempt in range(retries):
+        # Enviar un mensaje `PullDataMessage`
+            pull_msg = PullData()
+            self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
+            logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
+            self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
+            if self.connected:  # Si se recibieron datos, salir del bucle de reintentos
+                break
+            else:
+                logging.warning("No se recibió respuesta de la réplica. Reintentando...")
+
+        if not self.connected:
+            logging.error("No se pudo sincronizar con la réplica después de varios intentos.")
+
+    def init_ka(self, container_name):
+        process = Process(
+            target=_handle_keep_alive, args=(container_name,))
+        process.start()
+        self.ka_process = process
+
+def _handle_keep_alive(container_name):
+    """Proceso dedicado a manejar mensajes de Keep Alive."""
+
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((container_name, 12345))
+        sock.listen(5)
+
+        def handle_sigterm_ka(sig, frame):
+            sock.close()
+
+        signal.signal(signal.SIGTERM, handle_sigterm_ka)
+        while True:
+            sock.accept()
+    except Exception as e:
+        logging.error(f"action: listen_to_queue | result: fail | error: {e}")
+    # =============================
+    finally:
+        sock.close()
 
 def create_coordinator(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition):
     coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition)

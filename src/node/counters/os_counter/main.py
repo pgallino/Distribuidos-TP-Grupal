@@ -19,9 +19,9 @@ def main():
 
     # Crear una instancia de OsCounter con los parámetros configurados
     os_counter = OsCounter(
-        instance_id,
-        os_counter_instances,
-        []  # Lista vacía para next_nodes
+        id = instance_id,
+        n_nodes = os_counter_instances,
+        container_name = f"os_counter_{instance_id}"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

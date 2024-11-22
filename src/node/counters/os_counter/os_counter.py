@@ -1,18 +1,15 @@
 import logging
-import signal
-import socket
-from multiprocessing import Process
 from typing import List, Tuple
-from messages.messages import PullData, PushDataMessage, ResultMessage, decode_msg, MsgType
+from messages.messages import PushDataMessage, ResultMessage, decode_msg, MsgType
 from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
-from utils.constants import E_FROM_MASTER_PUSH, E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_REPLICA_MASTER, Q_TRIMMER_OS_COUNTER
+from utils.constants import E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
-        super().__init__(id, n_nodes, n_next_nodes)
+    def __init__(self, id: int, n_nodes: int, container_name: str):
+        super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
 
         self._middleware.declare_queue(Q_TRIMMER_OS_COUNTER)
         self._middleware.declare_exchange(E_FROM_TRIMMER)
@@ -26,7 +23,7 @@ class OsCounter(Node):
 
         try:
 
-            self.init_ka()
+            self.init_ka(self.container_name)
             self._synchronize_with_replica()  # Sincronizar con la réplica al inicio
             
             # Ejecuta el consumo de mensajes con el callback `process_message`
@@ -69,7 +66,7 @@ class OsCounter(Node):
         # Enviar los datos actualizados a la réplica
         data = {msg.id: self.counters[msg.id]}
         push_msg = PushDataMessage(data=data)
-        self._middleware.send_to_queue(self.exchange_name, push_msg.encode())
+        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
 
     def _process_fin_message(self, msg):
@@ -85,66 +82,6 @@ class OsCounter(Node):
             # Enviar el mensaje codificado a la cola de resultados
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
-    def _synchronize_with_replica(self):
-        # Declarar las colas necesarias
-        self.exchange_name = E_FROM_MASTER_PUSH + "_os_counter_1" #TODO poner el nombre dinamicamente por config
-        self.replica_queue = Q_REPLICA_MASTER + "_os_counter_1"
-        self._middleware.declare_exchange(self.exchange_name, type="fanout") # -> exchange para broadcast de push y pull
-        self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
-        self._middleware.channel.queue_purge(queue=self.replica_queue) # -> limpio la cola para que no haya nada viejo
-
-        self.connected = False
-
-        # Función de callback para procesar la respuesta
-        def on_replica_response(ch, method, properties, body):
-            msg = decode_msg(body)
-            if isinstance(msg, PushDataMessage):
-                for client_id, (windows, mac, linux) in msg.data.items():
-                    # Reemplazar directamente los campos en self.counters
-                    self.counters[int(client_id)] = (windows, mac, linux)
-                logging.info(f"OsCounter: Sincronizado con réplica. Datos recibidos: {msg.data}")
-                self.connected = True
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            self._middleware.channel.stop_consuming()
-
-        # Intentar recibir con timeout y reintentar en caso de no recibir respuesta
-        retries = 3  # Número de intentos de reintento
-        for attempt in range(retries):
-        # Enviar un mensaje `PullDataMessage`
-            pull_msg = PullData()
-            self._middleware.send_to_queue(self.exchange_name, pull_msg.encode())
-            logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
-            self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
-            if self.connected:  # Si se recibieron datos, salir del bucle de reintentos
-                break
-            else:
-                logging.warning("No se recibió respuesta de la réplica. Reintentando...")
-
-        if not self.connected:
-            logging.error("No se pudo sincronizar con la réplica después de varios intentos.")
-
-    def init_ka(self):
-        process = Process(
-            target=_handle_keep_alive)
-        process.start()
-        self.ka_process = process
-
-def _handle_keep_alive():
-    """Proceso dedicado a manejar mensajes de Keep Alive."""
-
-    try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind(('', 12345))
-        sock.listen(5)
-
-        def handle_sigterm_ka(sig, frame):
-            sock.close()
-
-        signal.signal(signal.SIGTERM, handle_sigterm_ka)
-        while True:
-            sock.accept()
-    except Exception as e:
-        logging.error(f"action: listen_to_queue | result: fail | error: {e}")
-    # =============================
-    finally:
-        sock.close()
+    def load_state(self, msg: PushDataMessage):
+        for client_id, (windows, mac, linux) in msg.data.items():
+            self.counters[int(client_id)] = (windows, mac, linux)

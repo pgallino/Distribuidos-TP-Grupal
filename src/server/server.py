@@ -27,7 +27,7 @@ class Server:
         self.n_next_nodes = n_next_nodes
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._server_socket.bind(('', port))
+        self._server_socket.bind(("server", port))
         self._server_socket.listen(5)
 
 

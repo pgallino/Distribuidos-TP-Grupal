@@ -10,8 +10,8 @@ from utils.constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_
 
 class Q4Joiner(Node):
 
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], batch_size: int, n_reviews: int):
-        super().__init__(id, n_nodes, n_next_nodes)
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], batch_size: int, n_reviews: int, container_name: str):
+        super().__init__(id, n_nodes, n_next_nodes, container_name)
 
         self.batch_size = batch_size * 1024
         self.n_reviews = n_reviews

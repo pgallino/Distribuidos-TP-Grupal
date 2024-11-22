@@ -9,8 +9,8 @@ import heapq
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 
 class Q3Joiner(Node):
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
-        super().__init__(id, n_nodes, n_next_nodes)
+    def __init__(self, id: int, n_nodes: int, container_name: str):
+        super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
 
         # Declarar colas y binders
         self._middleware.declare_queue(Q_GENRE_Q3_JOINER)

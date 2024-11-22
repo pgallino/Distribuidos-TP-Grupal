@@ -15,7 +15,7 @@ source "$CONFIG_FILE"
 set +a
 
 # Verificar que todas las variables estén presentes
-for nodo in trimmer genre score release_date english client os_counter_replica; do
+for nodo in trimmer genre score release_date english client os_counter_replica avg_counter_replica; do
     if [[ -z "${!nodo}" ]]; then
         echo "Error: Falta la configuración para $nodo en '$CONFIG_FILE'."
         exit 1
@@ -23,4 +23,4 @@ for nodo in trimmer genre score release_date english client os_counter_replica; 
 done
 
 # Ejecuta el script de Python con los parámetros
-python3 "$SCRIPT_DIR/script-generar-compose.py" "$trimmer" "$genre" "$score" "$release_date" "$english" "$client" "$os_counter_replica"
+python3 "$SCRIPT_DIR/script-generar-compose.py" "$trimmer" "$genre" "$score" "$release_date" "$english" "$client" "$os_counter_replica" "$avg_counter_replica"

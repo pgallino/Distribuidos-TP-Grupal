@@ -1,7 +1,7 @@
 from collections import defaultdict
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, ResultMessage, decode_msg
+from messages.messages import MsgType, PushDataMessage, ResultMessage, decode_msg
 from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
@@ -10,8 +10,8 @@ from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 
 class AvgCounter(Node):
 
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
-        super().__init__(id, n_nodes, n_next_nodes)
+    def __init__(self, id: int, n_nodes: int, container_name: str):
+        super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
 
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
@@ -22,6 +22,10 @@ class AvgCounter(Node):
     def run(self):
 
         try:
+
+            self.init_ka(self.container_name)
+            self._synchronize_with_replica()  # Sincronizar con la réplica al inicio
+
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_RELEASE_DATE_AVG_COUNTER, self._process_message, auto_ack=False)
 
@@ -53,6 +57,11 @@ class AvgCounter(Node):
                 heapq.heappush(client_heap, (game.avg_playtime, game.app_id, game.name))
             elif game.avg_playtime > client_heap[0][0]:  # 0 es el índice de avg_playtime
                 heapq.heapreplace(client_heap, (game.avg_playtime, game.app_id, game.name))
+
+        # Enviar los datos actualizados a la réplica
+        data = {client_id: client_heap}
+        push_msg = PushDataMessage(data=data)
+        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
     
     def _process_fin_message(self, msg):
 
@@ -72,3 +81,7 @@ class AvgCounter(Node):
 
             # Limpiar el heap para este cliente
             del self.client_heaps[client_id]
+
+    def load_state(self, msg: PushDataMessage):
+        for client_id, heap_data in msg.data.items():
+            self.client_heaps[int(client_id)] = [tuple(item) for item in heap_data]
