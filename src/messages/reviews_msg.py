@@ -13,6 +13,15 @@ class ReviewsType(Enum):
     BASICREVIEW = 1
     TEXTREVIEW = 2
 
+    @classmethod
+    def get_class(cls, item_type: int):
+        mapping = {
+            cls.FULLREVIEW.value: Review,
+            cls.BASICREVIEW.value: BasicReview,
+            cls.TEXTREVIEW.value: TextReview,
+        }
+        return mapping.get(item_type)
+
 class Review:
     """
     Representa una reseña individual con sus atributos.

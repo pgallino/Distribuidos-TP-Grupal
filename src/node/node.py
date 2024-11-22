@@ -6,7 +6,7 @@ from multiprocessing import Process, Value, Condition
 import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
-from messages.messages import CoordFin, PullData, PushDataMessage, decode_msg
+from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
 
 
@@ -75,7 +75,8 @@ class Node:
             if node_id != self.id:
                 # Se reenvia el CoordFin del Fin del cliente a cada otra instancia del nodo
                 key = f"{node_id}"
-                self._middleware.send_to_queue(coord_exchange_name, CoordFin(id=msg.id, node_id=self.id).encode(), key=key)
+                coord_msg = SimpleMessage(type=MsgType.COORDFIN, id=msg.id, node_id=self.id)
+                self._middleware.send_to_queue(coord_exchange_name, coord_msg.encode(), key=key)
 
     def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
         process = Process(
@@ -111,7 +112,7 @@ class Node:
         retries = 3  # Número de intentos de reintento
         for attempt in range(retries):
         # Enviar un mensaje `PullDataMessage`
-            pull_msg = PullData()
+            pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
             self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
             logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
             self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)

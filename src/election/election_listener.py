@@ -3,7 +3,7 @@ import signal
 import socket
 from multiprocessing import Process
 from election.election_logic import initiate_election
-from messages.messages import MsgType, OkElectionMessage, decode_msg
+from messages.messages import MsgType, SimpleMessage, decode_msg
 from utils.utils import recv_msg
 
 PORT = 12345
@@ -65,7 +65,8 @@ class ElectionListener:
         logging.info(f"node {self.id}: Llego un mensaje Election")
         try:
             with socket.create_connection((f'{self.container_name}_{msg.id}', self.port), timeout=3) as response_socket:
-                response_socket.sendall(OkElectionMessage(id=self.id).encode())
+                ok_msg = SimpleMessage(type=MsgType.OK_ELECTION, socket_compatible=True, id=self.id)
+                response_socket.sendall(ok_msg.encode())
                 logging.info(f"node {self.id}: Enviado OK a {msg.id}")
         except socket.gaierror as e:
             logging.warning(f"node {self.id}: Error en resolución de nombre al responder a {msg.id}: {e}")

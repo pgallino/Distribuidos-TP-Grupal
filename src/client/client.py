@@ -3,7 +3,7 @@ import os
 import signal
 import socket
 
-from messages.messages import ClientData, ClientFin, Dataset, Handshake, MsgType, decode_msg
+from messages.messages import ClientData, Dataset, MsgType, SimpleMessage, decode_msg
 from messages.results_msg import QueryNumber
 from utils.utils import recv_msg
 
@@ -25,7 +25,7 @@ class Client:
         try:
             self.client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
-            handshake_msg = Handshake()  # Creamos el mensaje de tipo Handshake
+            handshake_msg = SimpleMessage(type=MsgType.HANDSHAKE, socket_compatible=True)  # Creamos el mensaje de tipo Handshake
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_handshake | result: success | message: Handshake")
             
@@ -33,7 +33,7 @@ class Client:
             self.send_dataset(self.reviews, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
-            fin_msg = ClientFin()  # Creamos el mensaje Fin
+            fin_msg = SimpleMessage(type=MsgType.CLIENT_FIN, socket_compatible=True)  # Creamos el mensaje Fin
             self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_fin | result: success | message: Fin")
 
