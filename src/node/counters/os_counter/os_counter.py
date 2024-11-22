@@ -84,4 +84,4 @@ class OsCounter(Node):
 
     def load_state(self, msg: PushDataMessage):
         for client_id, (windows, mac, linux) in msg.data.items():
-            self.counters[int(client_id)] = (windows, mac, linux)
+            self.counters[client_id] = (windows, mac, linux)

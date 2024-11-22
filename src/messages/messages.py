@@ -302,6 +302,19 @@ class CoordFin(BaseMessage):
         return f"CoordFin(id={self.id}, node_id={self.node_id})"
 
 # ===================================================================================================================== #
+
+def convert_keys_to_int(obj):
+    """
+    Convierte las claves que son cadenas numéricas a enteros en un diccionario anidado.
+    """
+    if isinstance(obj, dict):
+        return {
+            int(k) if k.isdigit() else k: convert_keys_to_int(v)
+            for k, v in obj.items()
+        }
+    elif isinstance(obj, list):
+        return [convert_keys_to_int(item) for item in obj]
+    return obj
     
 import json
 
@@ -340,6 +353,8 @@ class PushDataMessage(BaseMessage):
             raise DecodeError(f"Insufficient data to decode PushDataMessage: expected {5 + data_len}, got {len(data)}")
         data_json = data[5:5 + data_len].decode()
         parsed_data = json.loads(data_json)
+
+        parsed_data = convert_keys_to_int(parsed_data)
         return cls(data=parsed_data)
 
     def __str__(self):

@@ -40,40 +40,46 @@ class Q3JoinerReplica(Replica):
         """Procesa los datos de un mensaje `PushDataMessage`."""
         state = msg.data
 
-        # Actualizar o borrar un cliente
-        if "delete" in state:
-            client_id = state["delete"]
-            # Borrar todas las referencias al cliente
+        # Identificar el tipo de actualización
+        update_type = state.get("type")
+        client_id = state.get("id")
+
+        if update_type == "games":
+            self._update_games(client_id, state.get("update", {}))
+        elif update_type == "reviews":
+            self._update_reviews(client_id, state.get("update", {}))
+        elif update_type == "fins":
+            self._update_fins(client_id, state.get("update", []))
+        elif update_type == "delete":
             self._delete_client_state(client_id)
+        else:
+            logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
+
+    def _update_games(self, client_id: int, updates: dict):
+        """Actualiza los juegos de un cliente en la réplica."""
+        client_games = self.games_per_client[client_id]
+        for app_id, name in updates.items():
+            client_games[app_id] = name
+        # logging.info(f"Replica: Juegos actualizados para client_id: {client_id} | updates: {updates}")
+
+    def _update_reviews(self, client_id: int, updates: dict):
+        """Actualiza las reseñas de un cliente en la réplica."""
+        client_reviews = self.review_counts_per_client[client_id]
+        for app_id, count in updates.items():
+            client_reviews[app_id] = count
+        # logging.info(f"Replica: Reseñas actualizadas para client_id: {client_id} | updates: {updates}")
+
+    def _update_fins(self, client_id: int, updates: list):
+        """Actualiza los estados de FIN de un cliente en la réplica."""
+        if len(updates) != 2:
+            logging.warning(f"Replica: Formato inválido para actualización de fins: {updates}")
             return
-
-        client_id = state.get("client_id")
-        if client_id is None:
-            logging.warning("Replica: Mensaje recibido sin 'client_id', no se puede procesar.")
-            return
-
-        # Actualizar juegos si están presentes
-        if "games" in state:
-            self.games_per_client[client_id] = state["games"]
-            # logging.info(f"Replica: Juegos actualizados para client_id: {client_id} | games: {state['games']}")
-
-        # Actualizar reseñas si están presentes
-        if "reviews" in state:
-            if client_id not in self.review_counts_per_client:
-                self.review_counts_per_client[client_id] = defaultdict(int)
-            self.review_counts_per_client[client_id].update(state["reviews"])
-            # logging.info(f"Replica: Reseñas actualizadas para client_id: {client_id} | reviews: {state['reviews']}")
-
-        # Actualizar fins si están presentes
-        if "fins" in state:
-            self.fins_per_client[client_id] = state["fins"]
-            # logging.info(f"Replica: Estado de FIN actualizado para client_id: {client_id} | fins: {state['fins']}")
-
-        # logging.info(f"action: Update state | client_id: {client_id} | updated fields: {list(state.keys())}")
+        self.fins_per_client[client_id] = updates
+        # # logging.info(f"Replica: Estado de FIN actualizado para client_id: {client_id} | fins: {updates}")
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
         self.games_per_client.pop(client_id, None)
         self.review_counts_per_client.pop(client_id, None)
         self.fins_per_client.pop(client_id, None)
-        logging.info(f"Replica: Estado borrado para client_id: {client_id}")
+        # logging.info(f"Replica: Estado borrado para client_id: {client_id}")

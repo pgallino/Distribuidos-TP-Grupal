@@ -53,21 +53,25 @@ class Q3Joiner(Node):
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.GAMES:
+
+            # Inicializar diccionario de actualizaciones
+            update = {}
             client_games = self.games_per_client[msg.id]
             for game in msg.items:
                 client_games[game.app_id] = game.name
+                # Registrar el cambio en el diccionario de actualizaciones
+                update[game.app_id] = game.name
 
-            # Enviar solo el estado de juegos actualizado
-            self.push_games_state(msg.id)
+            self.push_update('games', msg.id, update)
 
         elif msg.type == MsgType.FIN:
             client_fins = self.fins_per_client[msg.id]
             client_fins[0] = True
+
+            self.push_update('fins', msg.id, client_fins)
+
             if client_fins[0] and client_fins[1]:
                 self.join_results(msg.id)
-
-            # Enviar solo el estado de FIN actualizado
-            self.push_fin_state(msg.id)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -76,22 +80,24 @@ class Q3Joiner(Node):
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.REVIEWS:
+
+            # Inicializar diccionario de actualizaciones
+            update = {}
             client_reviews = self.review_counts_per_client[msg.id]
             client_games = self.games_per_client[msg.id]
             games_fin_received = self.fins_per_client[msg.id][0]
             for review in msg.items:
                 if (not games_fin_received) or review.app_id in client_games:
                     client_reviews[review.app_id] += 1
+                    update[review.app_id] = client_reviews[review.app_id]
 
-            # Enviar solo el estado de reseñas actualizado
-            self.push_reviews_state(msg.id)
+            self.push_update('reviews', msg.id, update)
 
         elif msg.type == MsgType.FIN:
             client_fins = self.fins_per_client[msg.id]
             client_fins[1] = True
 
-            # Enviar solo el estado de FIN actualizado
-            self.push_fin_state(msg.id)
+            self.push_update('fins', msg.id, client_fins)
 
             if client_fins[0] and client_fins[1]:
                 self.join_results(msg.id)
@@ -127,47 +133,19 @@ class Q3Joiner(Node):
         del self.review_counts_per_client[client_id]
         del self.fins_per_client[client_id]
 
-        self.push_delete_client_state(client_id)
+        self.push_update('delete', client_id)
 
-    def push_games_state(self, client_id):
-        """Envía el estado de los juegos para un cliente específico a la réplica."""
-        state = {
-            "client_id": client_id,
-            "games": self.games_per_client.get(client_id, {})
-        }
-        push_msg = PushDataMessage(data=state)
+
+    def push_update(self, type: str, client_id: int, update = None):
+
+        if update:
+            data = {'type': type, 'id': client_id, 'update': update}
+        else:
+            data = {'type': type, 'id': client_id}
+
+        push_msg = PushDataMessage(data=data)
         self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
-        # logging.info(f"action: Push games state | client_id: {client_id} | state: {state}")
-
-
-    def push_reviews_state(self, client_id):
-        """Envía el estado de las reseñas para un cliente específico a la réplica."""
-        state = {
-            "client_id": client_id,
-            "reviews": dict(self.review_counts_per_client.get(client_id, {}))
-        }
-        push_msg = PushDataMessage(data=state)
-        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
-        # logging.info(f"action: Push reviews state | client_id: {client_id} | state: {state}")
-
-    def push_fin_state(self, client_id):
-        """Envía el estado de fin para un cliente específico a la réplica."""
-        state = {
-            "client_id": client_id,
-            "fins": self.fins_per_client.get(client_id, [False, False])
-        }
-        push_msg = PushDataMessage(data=state)
-        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
-        # logging.info(f"action: Push FIN state | client_id: {client_id} | state: {state}")
-
-    def push_delete_client_state(self, client_id: int):
-        """Envía un mensaje a la réplica para borrar el estado de un cliente."""
-        try:
-            push_msg = PushDataMessage(data={"delete": client_id})
-            self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
-            logging.info(f"Node: Enviado mensaje para borrar estado de client_id: {client_id}")
-        except Exception as e:
-            logging.error(f"Error al enviar delete_state para client_id: {client_id} | Error: {e}")
+            
 
 
     def load_state(self, msg: PushDataMessage):

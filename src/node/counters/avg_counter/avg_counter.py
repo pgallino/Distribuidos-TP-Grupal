@@ -84,4 +84,4 @@ class AvgCounter(Node):
 
     def load_state(self, msg: PushDataMessage):
         for client_id, heap_data in msg.data.items():
-            self.client_heaps[int(client_id)] = [tuple(item) for item in heap_data]
+            self.client_heaps[client_id] = [tuple(item) for item in heap_data]
