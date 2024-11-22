@@ -15,32 +15,48 @@ def initiate_election(node_id, node_ids, container_name, election_in_progress, c
         declare_leader(node_id, node_ids, container_name, election_in_progress, condition, on_leader_selected, container_to_restart)
         return
 
+    with condition_ok:
+        waiting_ok_election.value = True
     # Enviar mensajes de elección a nodos con ID mayor
     for nid in higher_node_ids:
         try:
-            with socket.create_connection((f'{container_name}_{nid}', PORT), timeout=TIMEOUT) as sock:
+            with socket.create_connection((f'{container_name}_{nid}', PORT), timeout=3) as sock:
                 sock.sendall(ElectionMessage(node_id).encode())
                 logging.info(f"Node {node_id}: Mensaje de elección enviado a Node {nid}.")
+        except socket.gaierror as e:
+            logging.error(f"Node {node_id}: Error en resolución de nombre para Node en INITIATE ELECTION {nid}: {e}")
+            node_ids.remove(nid)  # Eliminar nodo inactivo TODO: pensar si es bueno o malo hacer esto -> me ahorro avisar que termino la eleccion despues
         except (ConnectionRefusedError, socket.timeout):
-            logging.warning(f"Node {node_id}: No se pudo contactar a Node {nid}.")
+            logging.warning(f"Node {node_id}: No se pudo contactar a Node {nid} (timeout o conexión rechazada).")
+            node_ids.remove(nid)  # Eliminar nodo inactivo
+        except Exception as e:
+            logging.error(f"Node {node_id}: Error inesperado al contactar a Node {nid}: {e}")
+            node_ids.remove(nid)  # Eliminar nodo inactivo
 
     # Esperar OK o Timeout
-    _wait_for_ok_or_leader(node_id, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart)
+    _wait_for_ok_or_leader(node_id, node_ids, container_name, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart)
 
 
-def _wait_for_ok_or_leader(node_id, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart):
+def _wait_for_ok_or_leader(node_id, node_ids, container_name, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart):
     """Espera una confirmación OK o una notificación de liderazgo."""
+    logging.info(f"Node {node_id}: Entre a esperar los Oks")
     with condition_ok:
-        waiting_ok_election.value = True
-        if not condition_ok.wait_for(lambda: not waiting_ok_election.value, timeout=TIMEOUT):
-            logging.info(f"Node {node_id}: Timeout esperando OK. Declarándose líder.")
-            declare_leader(node_id, election_in_progress, condition, on_leader_selected, container_to_restart)
-            return
+        # Validar si el OK ya fue recibido antes de esperar
+        if not waiting_ok_election.value:
+            logging.info(f"Node {node_id}: OK ya recibido antes de esperar. Continuando.")
+        else:
+            # Esperar por el OK con timeout
+            if not condition_ok.wait_for(lambda: not waiting_ok_election.value, timeout=10):
+                logging.info(f"Node {node_id}: Timeout esperando OK. Declarándose líder.")
+                declare_leader(node_id, node_ids, container_name, election_in_progress, condition, on_leader_selected, container_to_restart)
+                return
 
+    # Si se recibe el OK, continuar con la lógica de esperar el anuncio del líder
     with condition:
-        # Esperar el anuncio del líder
-        logging.info(f"Node {node_id}: Esperando anuncio de líder.")
+        logging.info(f"Node {node_id}: OK recibido. Esperando anuncio de líder.")
         condition.wait_for(lambda: not election_in_progress.value)
+        logging.info(f"Node {node_id}: Anuncio de líder recibido. Continuando ejecución.")
+
 
 
 def declare_leader(node_id, node_ids, container_name, election_in_progress, condition, on_leader_selected, container_to_restart):
@@ -65,8 +81,12 @@ def _notify_leader_selected(node_id, node_ids, container_name, election_in_progr
                 with socket.create_connection((f'{container_name}_{nid}', PORT), timeout=TIMEOUT) as sock:
                     sock.sendall(LeaderElectionMessage(node_id).encode())
                     logging.info(f"Node {node_id}: Notificación de liderazgo enviada a Node {nid}.")
+            except socket.gaierror as e:
+                logging.error(f"Node {node_id}: Error en resolución de nombre para Node {nid}: {e}")
             except (ConnectionRefusedError, socket.timeout):
-                logging.warning(f"Node {node_id}: No se pudo contactar a Node {nid}.")
+                logging.warning(f"Node {node_id}: No se pudo contactar a Node {nid} (timeout o conexión rechazada).")
+            except Exception as e:
+                logging.error(f"Node {node_id}: Error inesperado al contactar a Node {nid}: {e}")
 
     with condition:
         election_in_progress.value = False

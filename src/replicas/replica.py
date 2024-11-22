@@ -16,10 +16,17 @@ class Replica:
         self.shutting_down = False
         self._middleware = Middleware()
         self.replica_ids = list(range(1, n_instances + 1))
+        self.container_name = container_name
         self.container_to_restart = container_to_restart
 
         self.timeout = timeout
         self._initialize_storage()
+
+        if not container_name:
+            raise ValueError("container_name no puede ser None o vacío.")
+        if not container_to_restart:
+            raise ValueError("container_to_restart no puede ser None o vacío.")
+
 
         self.recv_queue = Q_MASTER_REPLICA + f"_{container_name}_{self.id}"
         self.send_queue = Q_REPLICA_MASTER + f"_{container_to_restart}"
@@ -104,21 +111,33 @@ class Replica:
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def ask_keepalive(self):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        """Verifica si el nodo maestro está vivo."""
+        sock = None
         signal.signal(signal.SIGTERM, self._handle_sigterm)
-        try: 
-            logging.info("Intento conectarme")
-            sock.connect((self.container_to_restart, 12345))
-            logging.info("me conecte, MASTER vivo")
-        except (OSError) as e:
-
-            logging.info(f"DETECCIÓN DE MASTER INACTIVO")
+        try:
+            logging.info("Intento conectarme al nodo maestro...")
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.connect((self.container_to_restart, PORT))
+            logging.info("Conexión exitosa. MASTER está vivo.")
+        except socket.gaierror as e:
+            logging.error(f"Error en resolución de nombre del nodo maestro: {e}")
+            logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro no encontrado.")
             self.election_manager.manage_leadership()
-
+        except socket.timeout:
+            logging.error("Timeout al intentar conectarse al nodo maestro.")
+            logging.info("DETECCIÓN DE MASTER INACTIVO: Tiempo de espera agotado.")
+            self.election_manager.manage_leadership()
+        except OSError as e:
+            logging.error(f"Error de sistema al intentar conectarse: {e}")
+            logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro inalcanzable.")
+            self.election_manager.manage_leadership()
         except Exception as e:
-            logging.error(f"Error inesperado durante la conexión del socket: {e}")
+            logging.error(f"Error inesperado durante la conexión: {e}")
             if not self.shutting_down:
                 logging.error(f"Error inesperado en run: {e}")
-        sock.close()
+        finally:
+            if sock:
+                sock.close()
+                logging.info("Socket cerrado correctamente.")
 
 

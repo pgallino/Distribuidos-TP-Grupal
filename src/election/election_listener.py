@@ -59,15 +59,20 @@ class ElectionListener:
         finally:
             self.listener_socket.close()
 
+
     def _handle_election_message(self, msg):
         """Procesa un mensaje de tipo ELECTION."""
         logging.info(f"Replica {self.id}: Llego un mensaje Election")
-        response_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            response_socket.connect((f'{self.container_name}_{msg.id}', self.port))
-            response_socket.sendall(OkElectionMessage(id=self.id).encode())
-        finally:
-            response_socket.close()
+            with socket.create_connection((f'{self.container_name}_{msg.id}', self.port)) as response_socket:
+                response_socket.sendall(OkElectionMessage(id=self.id).encode())
+                logging.info(f"Replica {self.id}: Enviado OK a {msg.id}")
+        except socket.gaierror as e:
+            logging.error(f"Replica {self.id}: Error en resolución de nombre al responder a {msg.id}: {e}")
+        except (socket.timeout, ConnectionRefusedError) as e:
+            logging.warning(f"Replica {self.id}: Nodo {msg.id} no está disponible: {e}")
+        except Exception as e:
+            logging.error(f"Replica {self.id}: Error inesperado al manejar mensaje Election: {e}")
 
         start_election = False
 
@@ -80,6 +85,7 @@ class ElectionListener:
         if start_election:
             self.process = Process(target=self._initiate_election)
             self.process.start()
+
 
     def _handle_leader_election_message(self):
         """Procesa un mensaje de tipo LEADER_ELECTION."""
@@ -96,6 +102,9 @@ class ElectionListener:
         logging.info(f"Replica {self.id}: Llego un mensaje Ok")
         with self.condition_ok:
             self.waiting_ok_election.value = False
+            self.condition_ok.notify_all()
+        
+        logging.info(f"Replica {self.id}: notifiqué el ok")
 
     def _initiate_election(self):
         """Inicia el proceso de elección llamando a la lógica principal."""
