@@ -102,9 +102,8 @@ class Server:
                 # Solo bloquear si alcanzamos el límite de conexiones
                 with self.space_available:
                     if len(self.active_connections) >= self.max_connections:                        
-                        logging.info("Se alcanzó el límite de conexiones, esperando espacio...")
+                        logging.info("action: waiting | result: in_progress... | Se alcanzó el límite de conexiones")
                         self.space_available.wait()  # Espera hasta recibir una señal de espacio libre
-                        logging.info("Conseguí espacioooooo")
             
                 client_socket = self._accept_new_connection()
                 self.client_id_counter += 1 # TODO me parece más logico que el server sea el que decida los ids, no que le llegue

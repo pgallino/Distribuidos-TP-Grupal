@@ -134,15 +134,12 @@ class Replica:
             sock.connect((self.container_to_restart, PORT))
             logging.info("Conexión exitosa. MASTER está vivo.")
         except socket.gaierror as e:
-            logging.error(f"Error en resolución de nombre del nodo maestro: {e}")
             logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro no encontrado.")
             self.election_manager.manage_leadership()
         except socket.timeout:
-            logging.error("Timeout al intentar conectarse al nodo maestro.")
             logging.info("DETECCIÓN DE MASTER INACTIVO: Tiempo de espera agotado.")
             self.election_manager.manage_leadership()
         except OSError as e:
-            logging.error(f"Error de sistema al intentar conectarse: {e}")
             logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro inalcanzable.")
             self.election_manager.manage_leadership()
         except Exception as e:
