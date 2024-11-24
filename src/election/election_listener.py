@@ -22,6 +22,7 @@ class ElectionListener:
         self.port = PORT
         self.listener_socket = None
         self.process = None
+        self.shutting_down = False
 
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -36,28 +37,26 @@ class ElectionListener:
             logging.info(f"node {self.id}: Escuchando en el puerto {self.port}.")
 
             while True:
-                try:
-                    conn, _ = self.listener_socket.accept()
-                    raw_msg = recv_msg(conn)
-                    msg = decode_msg(raw_msg)
+                conn, _ = self.listener_socket.accept()
+                raw_msg = recv_msg(conn)
+                msg = decode_msg(raw_msg)
 
-                    if msg.type == MsgType.ELECTION:
-                        self._handle_election_message(msg)
+                if msg.type == MsgType.ELECTION:
+                    self._handle_election_message(msg)
 
-                    elif msg.type == MsgType.LEADER_ELECTION:
-                        self._handle_leader_election_message()
+                elif msg.type == MsgType.LEADER_ELECTION:
+                    self._handle_leader_election_message()
 
-                    elif msg.type == MsgType.OK_ELECTION:
-                        self._handle_ok_election_message()
+                elif msg.type == MsgType.OK_ELECTION:
+                    self._handle_ok_election_message()
 
-                    conn.close()
-
-                except socket.error as e:
-                    logging.error(f"node {self.id}: Error en el socket de escucha: {e}")
+                conn.close()
         except Exception as e:
-            logging.error(f"node {self.id}: Error iniciando el servidor socket: {e}")
+            if not self.shutting_down:
+                logging.error(f"node {self.id}: Error iniciando el servidor socket: {e}")
+                self._shutdown()
         finally:
-            self.listener_socket.close()
+            self.stop()
 
 
     def _handle_election_message(self, msg):

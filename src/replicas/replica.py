@@ -52,9 +52,14 @@ class Replica:
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
 
-        while True:
-            self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
-            self.ask_keepalive()
+        try:
+            while True:
+                self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
+                self.ask_keepalive()
+        except Exception as e:
+            if not self.shutting_down:
+                logging.error(f"action: shutdown_replica | result: fail | error: {e}")
+                self._shutdown()
 
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas."""

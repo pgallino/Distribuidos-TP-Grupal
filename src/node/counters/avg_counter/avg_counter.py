@@ -31,7 +31,7 @@ class AvgCounter(Node):
 
         except Exception as e:
             if not self.shutting_down:
-                logging.error(f"action: listen_to_queue | result: fail | error: {e}")
+                logging.error(f"action: run | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):

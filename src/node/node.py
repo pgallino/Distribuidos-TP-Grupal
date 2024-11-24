@@ -132,23 +132,30 @@ class Node:
 
 def _handle_keep_alive(container_name):
     """Proceso dedicado a manejar mensajes de Keep Alive."""
+    sigterm_detected = False  # Flag para controlar si se detectó un SIGTERM
+    sock = None
+
+    def handle_sigterm_ka(sig, frame):
+        nonlocal sigterm_detected
+        sigterm_detected = True
+        if sock:
+            sock.close()
 
     try:
+        signal.signal(signal.SIGTERM, handle_sigterm_ka)  # Registrar el manejador después de su definición
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.bind((container_name, 12345))
         sock.listen(5)
 
-        def handle_sigterm_ka(sig, frame):
-            sock.close()
-
-        signal.signal(signal.SIGTERM, handle_sigterm_ka)
         while True:
             sock.accept()
     except Exception as e:
-        logging.error(f"action: listen_to_queue | result: fail | error: {e}")
-    # =============================
-    finally:
-        sock.close()
+        if not sigterm_detected:
+            logging.error(f"action: handle_keep_alive_process | result: fail | error: {e}")
+            if sock:
+                sock.close()
+
 
 def create_coordinator(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition):
     coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition)
