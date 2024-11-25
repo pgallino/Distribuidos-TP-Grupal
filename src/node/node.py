@@ -3,13 +3,15 @@ import logging
 import signal
 import os
 from multiprocessing import Process, Value, Condition
+import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
-from messages.messages import CoordFin
+from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
+from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
 
 
 class Node:
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: list):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: list = [], container_name: str = None):
         """
         Base class for nodes to avoid code repetition.
 
@@ -21,6 +23,7 @@ class Node:
         self.id = id
         self.n_nodes = n_nodes
         self.n_next_nodes = n_next_nodes
+        self.container_name = container_name
         self.shutting_down = False
         self._middleware = Middleware()
         self.coordination_process = None
@@ -72,7 +75,8 @@ class Node:
             if node_id != self.id:
                 # Se reenvia el CoordFin del Fin del cliente a cada otra instancia del nodo
                 key = f"{node_id}"
-                self._middleware.send_to_queue(coord_exchange_name, CoordFin(id=msg.id, node_id=self.id).encode(), key=key)
+                coord_msg = SimpleMessage(type=MsgType.COORDFIN, id=msg.id, node_id=self.id)
+                self._middleware.send_to_queue(coord_exchange_name, coord_msg.encode(), key=key)
 
     def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
         process = Process(
@@ -80,6 +84,80 @@ class Node:
             args=(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, self.processing_client, self.condition))
         process.start()
         self.coordination_process = process
+
+    def load_state(self, msg: PushDataMessage):
+        raise NotImplementedError("Debe implementarse en las subclases")
+
+    def _synchronize_with_replica(self):
+        # Declarar las colas necesarias
+        self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}'
+        self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}'
+        self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
+        self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
+        # TODO: No usar queue_purge -> Hacer que del lado de las replicas solo una responda el PULL
+        self._middleware.channel.queue_purge(queue=self.replica_queue) # -> limpio la cola para que no haya nada viejo
+
+        self.connected = False
+
+        # Función de callback para procesar la respuesta
+        def on_replica_response(ch, method, properties, body):
+            msg = decode_msg(body)
+            if isinstance(msg, PushDataMessage):
+                self.load_state(msg)
+                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
+                self.connected = True
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            self._middleware.channel.stop_consuming()
+
+        # Intentar recibir con timeout y reintentar en caso de no recibir respuesta
+        # TODO: Esta bien este sistema de retries pero mejorar el timeout
+        retries = 3  # Número de intentos de reintento
+        for attempt in range(retries):
+        # Enviar un mensaje `PullDataMessage`
+            pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
+            self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
+            logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
+            self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
+            if self.connected:  # Si se recibieron datos, salir del bucle de reintentos
+                break
+            else:
+                logging.warning("No se recibió respuesta de la réplica. Reintentando...")
+
+        if not self.connected:
+            logging.error("No se pudo sincronizar con la réplica después de varios intentos.")
+
+    def init_ka(self, container_name):
+        process = Process(
+            target=_handle_keep_alive, args=(container_name,))
+        process.start()
+        self.ka_process = process
+
+def _handle_keep_alive(container_name):
+    """Proceso dedicado a manejar mensajes de Keep Alive."""
+    sigterm_detected = False  # Flag para controlar si se detectó un SIGTERM
+    sock = None
+
+    def handle_sigterm_ka(sig, frame):
+        nonlocal sigterm_detected
+        sigterm_detected = True
+        if sock:
+            sock.close()
+
+    try:
+        signal.signal(signal.SIGTERM, handle_sigterm_ka)  # Registrar el manejador después de su definición
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind((container_name, 12345))
+        sock.listen(5)
+
+        while True:
+            sock.accept()
+    except Exception as e:
+        if not sigterm_detected:
+            logging.error(f"action: handle_keep_alive_process | result: fail | error: {e}")
+            if sock:
+                sock.close()
+
 
 def create_coordinator(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition):
     coordinator = CoordinatorNode(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition)

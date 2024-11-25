@@ -1,5 +1,5 @@
 import logging
-from avg_counter_replica import AvgCounterReplica
+from q3_joiner_replica import Q3JoinerReplica
 from utils.initilization import initialize_config, initialize_log
 
 def main():
@@ -7,7 +7,7 @@ def main():
 
         required_keys = {
             "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
-            "n_instances": ("AVG_COUNTER_REPLICA_INSTANCES", "AVG_COUNTER_REPLICA_INSTANCES"),
+            "n_instances": ("Q3_JOINER_REPLICA_INSTANCES", "Q3_JOINER_REPLICA_INSTANCES"),
             "id": ("INSTANCE_ID", "INSTANCE_ID"),
             "timeout": ("TIMEOUT", "TIMEOUT")
         }
@@ -15,20 +15,20 @@ def main():
         # Inicializar configuración y logging
         config_params = initialize_config(required_keys)
         initialize_log(config_params["logging_level"])
-        # Crear una instancia de AvgCounterReplica con un ID único
+        # Crear una instancia de Q3JoinerReplica con un ID único
         replica_id = config_params["id"]
         n_instances = config_params["n_instances"]
         timeout = config_params["timeout"]
-        replica = AvgCounterReplica(replica_id, n_instances, "avg_counter_replica", "avg_counter_1", timeout)
+        replica = Q3JoinerReplica(replica_id, n_instances, "q3_joiner_replica", "q3_joiner_1", timeout)
         
-        logging.info(f"AvgCounterReplica {replica_id} iniciada. Esperando mensajes...")
+        logging.info(f"Q3JoinerReplica {replica_id} iniciada. Esperando mensajes...")
         
         # Ejecutar la réplica
         replica.run()
     except KeyboardInterrupt:
-        logging.info("AvgCounterReplica: Interrumpida manualmente. Cerrando...")
+        logging.info("Q3JoinerReplica: Interrumpida manualmente. Cerrando...")
     except Exception as e:
-        logging.error(f"AvgCounterReplica: Error inesperado: {e}", exc_info=True)
+        logging.error(f"Q3JoinerReplica: Error inesperado: {e}", exc_info=True)
 
 if __name__ == "__main__":
     main()

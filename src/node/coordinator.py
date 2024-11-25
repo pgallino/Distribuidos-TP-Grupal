@@ -1,7 +1,7 @@
 from collections import defaultdict
 import logging
 import signal
-from messages.messages import MsgType, decode_msg, Fin
+from messages.messages import MsgType, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 
 
@@ -79,7 +79,8 @@ class CoordinatorNode:
             key = f"{msg.node_id}"
             with self.condition:
                 self.condition.wait_for(lambda: self.processing_client.value != msg.id)
-                self._middleware.send_to_queue(self.exchange_name, Fin(msg.id).encode(), key=key)
+                fin_msg = SimpleMessage(type=MsgType.FIN, id=msg.id)
+                self._middleware.send_to_queue(self.exchange_name, fin_msg.encode(), key=key)
                 self.condition.notify_all()
         ch.basic_ack(delivery_tag=method.delivery_tag)
     

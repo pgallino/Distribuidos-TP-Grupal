@@ -20,6 +20,15 @@ class GamesType(Enum):
     Q2GAMES = 2
     GENREGAMES = 3
 
+    @classmethod
+    def get_class(cls, item_type: int):
+        mapping = {
+            cls.BASICGAME.value: BasicGame,
+            cls.Q1GAMES.value: Q1Game,
+            cls.Q2GAMES.value: Q2Game,
+            cls.GENREGAMES.value: GenreGame,
+        }
+        return mapping.get(item_type)
 
 class Game:
     """

@@ -1,18 +1,19 @@
 from collections import defaultdict
 import logging
 from typing import List, Tuple
-from messages.messages import MsgType, PullData, PushDataMessage, ResultMessage, decode_msg
+from messages.messages import MsgType, PushDataMessage, ResultMessage, decode_msg
 from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
 from node import Node
-from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2, Q_REPLICA_MAIN, Q_REPLICA_RESPONSE
+from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 
 class AvgCounter(Node):
 
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
-        super().__init__(id, n_nodes, n_next_nodes)
+    def __init__(self, id: int, n_nodes: int, container_name: str):
+        super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
 
+        # TODO: Verificar si hay que enviarle el resultado a algun Client
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
 
@@ -22,13 +23,16 @@ class AvgCounter(Node):
     def run(self):
 
         try:
+
+            self.init_ka(self.container_name)
             self._synchronize_with_replica()  # Sincronizar con la réplica al inicio
+
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_RELEASE_DATE_AVG_COUNTER, self._process_message, auto_ack=False)
 
         except Exception as e:
             if not self.shutting_down:
-                logging.error(f"action: listen_to_queue | result: fail | error: {e}")
+                logging.error(f"action: run | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
@@ -58,11 +62,16 @@ class AvgCounter(Node):
         # Enviar los datos actualizados a la réplica
         data = {client_id: client_heap}
         push_msg = PushDataMessage(data=data)
-        self._middleware.send_to_queue(Q_REPLICA_MAIN + "_avg_counter", push_msg.encode())
+
+        # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
+        # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
+        # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
+        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
     
     def _process_fin_message(self, msg):
 
         client_id = msg.id  # Usar el client_id del mensaje FIN
+        # TODO: Hacer el push:Fin
 
         if client_id in self.client_heaps:
             # Obtener el heap del cliente y ordenarlo
@@ -77,25 +86,11 @@ class AvgCounter(Node):
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 
             # Limpiar el heap para este cliente
+            # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
+            # TODO: Descartar mensajes repetidos en el dispatcher
+            # TODO: Hacer el push:Delete
             del self.client_heaps[client_id]
 
-    def _synchronize_with_replica(self):
-        """Sincroniza los datos iniciales con la réplica."""
-        self._middleware.declare_queue(Q_REPLICA_MAIN + "_avg_counter")
-        self._middleware.declare_queue(Q_REPLICA_RESPONSE + "_avg_counter")
-
-        # Enviar un mensaje `PullDataMessage` a Q_REPLICA_MAIN
-        pull_msg = PullData()
-        self._middleware.send_to_queue(Q_REPLICA_MAIN + "_avg_counter", pull_msg.encode())
-
-        # Escuchar la respuesta en Q_REPLICA_RESPONSE
-        def on_replica_response(ch, method, properties, body):
-            msg = decode_msg(body)
-            if isinstance(msg, PushDataMessage):
-                for client_id, heap_data in msg.data.items():
-                    self.client_heaps[int(client_id)] = [tuple(item) for item in heap_data]
-                logging.info(f"AvgCounter: Sincronizado con réplica. Datos recibidos: {msg.data}")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            self._middleware.channel.stop_consuming()
-
-        self._middleware.receive_from_queue(Q_REPLICA_RESPONSE + "_avg_counter", on_replica_response, auto_ack=False)
+    def load_state(self, msg: PushDataMessage):
+        for client_id, heap_data in msg.data.items():
+            self.client_heaps[client_id] = [tuple(item) for item in heap_data]

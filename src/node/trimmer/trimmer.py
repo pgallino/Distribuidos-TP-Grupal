@@ -8,7 +8,7 @@ from typing import List, Tuple
 import csv
 import sys
 
-from utils.constants import E_COORD_TRIMMER, E_TRIMMER_FILTERS, K_GENREGAME, K_Q1GAME, K_REVIEW, Q_COORD_TRIMMER, Q_GATEWAY_TRIMMER
+from utils.constants import E_COORD_TRIMMER, E_FROM_TRIMMER, K_GENREGAME, K_Q1GAME, K_REVIEW, Q_COORD_TRIMMER, Q_GATEWAY_TRIMMER
 
 GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
                     'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 
@@ -36,7 +36,7 @@ class Trimmer(Node):
 
         # Configura las colas y los intercambios específicos para Trimmer
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
-        self._middleware.declare_exchange(E_TRIMMER_FILTERS)
+        self._middleware.declare_exchange(E_FROM_TRIMMER)
         if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_TRIMMER)
 
     def get_keys(self):
@@ -54,7 +54,7 @@ class Trimmer(Node):
 
         try:
             if self.n_nodes > 1:
-                self.init_coordinator(self.id, Q_COORD_TRIMMER, E_COORD_TRIMMER, self.n_nodes, self.get_keys(), E_TRIMMER_FILTERS)
+                self.init_coordinator(self.id, Q_COORD_TRIMMER, E_COORD_TRIMMER, self.n_nodes, self.get_keys(), E_FROM_TRIMMER)
             
             self._middleware.receive_from_queue(Q_GATEWAY_TRIMMER, self._process_message, auto_ack=False)
             
@@ -108,10 +108,10 @@ class Trimmer(Node):
         # Enviar lotes por separado para cada tipo de juego
         if q1_games_batch:
             q1_games_msg = ListMessage(MsgType.GAMES, GamesType.Q1GAMES, q1_games_batch, msg.id)
-            self._middleware.send_to_queue(E_TRIMMER_FILTERS, q1_games_msg.encode(), key=K_Q1GAME)
+            self._middleware.send_to_queue(E_FROM_TRIMMER, q1_games_msg.encode(), key=K_Q1GAME)
         if genre_games_batch:
             genre_games_msg = ListMessage(MsgType.GAMES, GamesType.GENREGAMES, genre_games_batch, msg.id)
-            self._middleware.send_to_queue(E_TRIMMER_FILTERS, genre_games_msg.encode(), key=K_GENREGAME)
+            self._middleware.send_to_queue(E_FROM_TRIMMER, genre_games_msg.encode(), key=K_GENREGAME)
 
     def _process_review_data(self, msg, reviews_batch):
         """Procesa datos del dataset REVIEW y envía a la cola correspondiente."""
@@ -123,7 +123,7 @@ class Trimmer(Node):
         
         if reviews_batch:
             reviews_msg = ListMessage(MsgType.REVIEWS, ReviewsType.FULLREVIEW, reviews_batch, msg.id)
-            self._middleware.send_to_queue(E_TRIMMER_FILTERS, reviews_msg.encode(), key=K_REVIEW)
+            self._middleware.send_to_queue(E_FROM_TRIMMER, reviews_msg.encode(), key=K_REVIEW)
 
     def _process_fin_message(self, msg):
         """Procesa mensajes de tipo FIN, coordinando con otros nodos si es necesario."""
@@ -135,11 +135,11 @@ class Trimmer(Node):
         else:
             for node, _ in self.n_next_nodes:
                 if node == 'GENRE':
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_GENREGAME)
+                    self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_GENREGAME)
                 elif node == 'SCORE':
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_REVIEW)
+                    self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_REVIEW)
                 elif node == 'OS_COUNTER':
-                    self._middleware.send_to_queue(E_TRIMMER_FILTERS, msg.encode(), key=K_Q1GAME)
+                    self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_Q1GAME)
 
     def _get_game(self, values):
         """

@@ -19,9 +19,9 @@ def main():
 
     # Crear una instancia de AvgCounter con los parámetros configurados
     avg_counter = AvgCounter(
-        instance_id,
-        avg_counter_instances,
-        []  # Lista vacía para next_nodes
+        id = instance_id,
+        n_nodes = avg_counter_instances,
+        container_name = f"avg_counter_{instance_id}"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

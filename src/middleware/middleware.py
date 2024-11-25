@@ -41,39 +41,41 @@ class Middleware:
         if exchange not in self.exchanges:
             self.channel.exchange_declare(exchange=exchange, exchange_type=type)
             self.exchanges.add(exchange)
-            logging.info(f"action: middleware declare_queue | result: success | exchange: {exchange}")
+            logging.info(f"action: middleware declare_exchange | result: success | exchange: {exchange}")
         else:
-            logging.error(f"action: middleware declare_queue | result: fail | exchange: {exchange} already exist")
+            logging.error(f"action: middleware declare_exchange | result: fail | exchange: {exchange} already exist")
         
     def bind_queue(self, queue_name, exchange, key=None):
         if queue_name not in self.queues or exchange not in self.exchanges:
             raise ValueError(f"No se encontro la cola {queue_name} o el exchange {exchange}.")
         self.channel.queue_bind(queue=queue_name, exchange=exchange, routing_key=key)
 
-    def send_to_queue(self, log, message, key=''):
+    def send_to_queue(self, destination, message, key=''):
         """
         Envía un mensaje a la cola especificada.
         """
-        if log in self.queues:
+        if destination in self.queues:
             try:
                 self.channel.basic_publish(
                     exchange='',
-                    routing_key=log,  # Cola a la que se envía el mensaje
+                    routing_key=destination,  # Cola a la que se envía el mensaje
                     body=message
                 )
+                # logging.info(f"action: send_to_queue | destination: {destination} | exchange: default | key: {key} | result: success")
             except Exception as e:
                 raise Exception(f"action: middleware send_to_queue | result: fail | error: {e}")
-        elif log in self.exchanges:
+        elif destination in self.exchanges:
             try:
                 self.channel.basic_publish(
-                    exchange=log,
+                    exchange=destination,
                     routing_key=key,
                     body=message
                 )
+                # logging.info(f"action: send_to_exchange | destination: {destination} | result: success")
             except Exception as e:
-                raise Exception(f"action: middleware send_to_queue | result: fail | error: {e}")
+                raise Exception(f"action: middleware send_to_exchange | result: fail | error: {e}")
         else:
-            raise ValueError(f"La cola '{log}' no está declarada.")
+            raise ValueError(f"La cola '{destination}' no está declarada.")
     
     def receive_from_queue(self, queue_name, callback, auto_ack=True, get_blocked=True):
         if queue_name not in self.queues:

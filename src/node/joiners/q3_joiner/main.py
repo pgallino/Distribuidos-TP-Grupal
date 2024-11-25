@@ -20,9 +20,9 @@ def main():
 
     # Crear una instancia de Q3Joiner con los parámetros configurados
     q3_joiner = Q3Joiner(
-        instance_id,
-        q3_joiner_instances,
-        []
+        id = instance_id,
+        n_nodes = q3_joiner_instances,
+        container_name = f"q3_joiner_{instance_id}"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

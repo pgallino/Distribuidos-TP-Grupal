@@ -3,7 +3,7 @@ from typing import List, Tuple
 from messages.messages import ListMessage, MsgType, decode_msg
 from messages.reviews_msg import BasicReview, ReviewsType, Score, TextReview
 from node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_TRIMMER_FILTERS, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
+from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_FROM_TRIMMER, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
 
 
 class ScoreFilter(Node):
@@ -13,8 +13,8 @@ class ScoreFilter(Node):
         
         # Configura las colas y los intercambios específicos para ScoreFilter
         self._middleware.declare_queue(Q_TRIMMER_SCORE_FILTER)
-        self._middleware.declare_exchange(E_TRIMMER_FILTERS)
-        self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_TRIMMER_FILTERS, K_REVIEW)
+        self._middleware.declare_exchange(E_FROM_TRIMMER)
+        self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_FROM_TRIMMER, K_REVIEW)
         self._middleware.declare_exchange(E_FROM_SCORE)
         if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_SCORE)
     

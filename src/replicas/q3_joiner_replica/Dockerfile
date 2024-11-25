@@ -9,8 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN pip install --no-cache-dir pika==1.2.0
 
 # Copiamos los archivos necesarios
-COPY src/replicas/avg_counter_replica/main.py /
-COPY src/replicas/avg_counter_replica/avg_counter_replica.py /
+COPY src/replicas/q3_joiner_replica/main.py /
+COPY src/replicas/q3_joiner_replica/q3_joiner_replica.py /
 COPY src/replicas/replica.py /
 COPY src/replicas/config.ini /
 

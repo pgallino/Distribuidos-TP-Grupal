@@ -17,6 +17,7 @@ def parse_args():
             'client': int(args[5]),
             'os_counter_replica': int(args[6]),
             'avg_counter_replica': int(args[7]),
+            'q3_joiner_replica': int(args[8]),
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
@@ -31,6 +32,8 @@ def parse_args():
 # Generar el archivo YAML de Docker Compose basado en las instancias proporcionadas
 def generate_docker_compose(instances):
     services = {}
+    # Lista de nodos que requieren el volumen del socket de Docker
+    replica_nodes = {'os_counter_replica', 'avg_counter_replica', 'q3_joiner_replica'}
 
     # Definición del servicio RabbitMQ
     services['rabbitmq'] = {
@@ -106,6 +109,10 @@ def generate_docker_compose(instances):
                     'condition': 'service_started'
                 }
                 services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
+
+            # Si es una réplica, añadir el volumen para el socket de Docker
+            if node in replica_nodes:
+                services[service_name].setdefault('volumes', []).append('/var/run/docker.sock:/var/run/docker.sock')
                 
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {

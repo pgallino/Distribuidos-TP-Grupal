@@ -8,8 +8,8 @@ import numpy as np # genera 7 pids en docker stats
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
 class Q5Joiner(Node):
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]]):
-        super().__init__(id, n_nodes, n_next_nodes)
+    def __init__(self, id: int, n_nodes: int, container_name: str):
+        super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
 
         # Configurar colas y enlaces
         self._middleware.declare_queue(Q_GENRE_Q5_JOINER)

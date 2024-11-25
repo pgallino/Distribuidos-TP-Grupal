@@ -3,7 +3,7 @@ import os
 import signal
 import socket
 
-from messages.messages import ClientData, ClientFin, Dataset, Handshake, MsgType, decode_msg
+from messages.messages import ClientData, Dataset, MsgType, SimpleMessage, decode_msg
 from messages.results_msg import QueryNumber
 from utils.utils import recv_msg
 
@@ -25,7 +25,7 @@ class Client:
         try:
             self.client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
-            handshake_msg = Handshake()  # Creamos el mensaje de tipo Handshake
+            handshake_msg = SimpleMessage(type=MsgType.HANDSHAKE, socket_compatible=True)  # Creamos el mensaje de tipo Handshake
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_handshake | result: success | message: Handshake")
             
@@ -33,7 +33,7 @@ class Client:
             self.send_dataset(self.reviews, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
-            fin_msg = ClientFin()  # Creamos el mensaje Fin
+            fin_msg = SimpleMessage(type=MsgType.CLIENT_FIN, socket_compatible=True)  # Creamos el mensaje Fin
             self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_fin | result: success | message: Fin")
 
@@ -135,7 +135,7 @@ class Client:
     def process_q1_result(self, msg):
         """Processes and prints Q1 result."""
         output = (
-            f"Q1: OS Count Summary:\n"
+            f"\nQ1: OS Count Summary:\n"
             f"- Windows: {msg.result.windows_count}\n"
             f"- Linux: {msg.result.linux_count}\n"
             f"- Mac: {msg.result.mac_count}\n"
@@ -147,7 +147,7 @@ class Client:
         """Processes and prints Q2 result."""
         top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.result.top_games)
         output = (
-            f"Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
+            f"\nQ2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
             f"{top_games_str}\n"
         )
         logging.info(output)
@@ -159,7 +159,7 @@ class Client:
             f"{rank}. {name}: {reviews} positive reviews" for rank, (name, reviews) in enumerate(msg.result.top_indie_games, start=1)
         )
         output = (
-            f"Q3: Top 5 Indie Games with Most Positive Reviews:\n"
+            f"\nQ3: Top 5 Indie Games with Most Positive Reviews:\n"
             f"{indie_games_str}\n"
         )
         logging.info(output)
@@ -169,7 +169,7 @@ class Client:
         """Processes and prints Q4 result."""
         negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.result.negative_reviews)
         output = (
-            f"Q4: Action games with more than 5,000 negative reviews in English:\n"
+            f"\nQ4: Action games with more than 5,000 negative reviews in English:\n"
             f"{negative_reviews_str}\n"
         )
         logging.info(output)
@@ -179,7 +179,7 @@ class Client:
         """Processes and prints Q5 result."""
         top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.result.top_negative_reviews)
         output = (
-            f"Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
+            f"\nQ5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"
             f"{top_negative_str}\n"
         )
         logging.info(output)
