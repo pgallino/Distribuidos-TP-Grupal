@@ -9,7 +9,8 @@ def main():
         "n_reviews": ("N_REVIEWS", "N_REVIEWS"),
         "batch": ("MAX_BATCH_SIZE", "MAX_BATCH_SIZE"),
         "english_instances": ("ENGLISH_INSTANCES", "ENGLISH_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
+        "n_replicas": ("Q4_JOINER_REPLICA_INSTANCES", "Q4_JOINER_REPLICA_INSTANCES")
     }
     
     config_params = initialize_config(required_keys)
@@ -21,6 +22,7 @@ def main():
     n_reviews = config_params["n_reviews"]
     batch = config_params["batch"]
     english_instances = config_params["english_instances"]
+    n_replicas = config_params["n_replicas"]
 
     joiner = Q4Joiner(
         instance_id,
@@ -28,7 +30,8 @@ def main():
         [('ENGLISH', english_instances)],
         batch,
         n_reviews,
-        container_name = f"q4_joiner_{instance_id}"
+        container_name = f"q4_joiner_{instance_id}",
+        n_replicas = n_replicas
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

@@ -88,7 +88,7 @@ class Node:
     def load_state(self, msg: PushDataMessage):
         raise NotImplementedError("Debe implementarse en las subclases")
 
-    def _synchronize_with_replica(self):
+    def _synchronize_with_replicas(self):
         # Declarar las colas necesarias
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}'
         self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}'
@@ -104,7 +104,7 @@ class Node:
             msg = decode_msg(body)
             if isinstance(msg, PushDataMessage):
                 self.load_state(msg)
-                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
+                # logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
                 self.connected = True
             ch.basic_ack(delivery_tag=method.delivery_tag)
             self._middleware.channel.stop_consuming()
@@ -131,6 +131,17 @@ class Node:
             target=_handle_keep_alive, args=(container_name,))
         process.start()
         self.ka_process = process
+
+    def push_update(self, type: str, client_id: int, update = None):
+
+        if self.n_replicas > 0:
+            if update:
+                data = {'type': type, 'id': client_id, 'update': update}
+            else:
+                data = {'type': type, 'id': client_id}
+
+            push_msg = PushDataMessage(data=data)
+            self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
 def _handle_keep_alive(container_name):
     """Proceso dedicado a manejar mensajes de Keep Alive."""

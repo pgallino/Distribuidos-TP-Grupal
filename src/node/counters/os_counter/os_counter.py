@@ -8,8 +8,10 @@ from utils.constants import E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMME
 
 class OsCounter(Node):
 
-    def __init__(self, id: int, n_nodes: int, container_name: str):
+    def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
         super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
+
+        self.n_replicas = n_replicas
 
         self._middleware.declare_queue(Q_TRIMMER_OS_COUNTER)
         self._middleware.declare_exchange(E_FROM_TRIMMER)
@@ -22,10 +24,10 @@ class OsCounter(Node):
     def run(self):
 
         try:
-
-            # TODO: Verificar si hay que enviarle el resultado a algun Client
-            self.init_ka(self.container_name)
-            self._synchronize_with_replica()  # Sincronizar con la réplica al inicio
+            
+            if self.n_replicas > 0:
+                self.init_ka(self.container_name)
+                self._synchronize_with_replicas()  # Sincronizar con la réplica al inicio
             
             # Ejecuta el consumo de mensajes con el callback `process_message`
             self._middleware.receive_from_queue(Q_TRIMMER_OS_COUNTER, self._process_message, auto_ack=False)
@@ -66,18 +68,15 @@ class OsCounter(Node):
         self.counters[msg.id] = (windows, mac, linux)
 
         # Enviar los datos actualizados a la réplica
-        data = {msg.id: self.counters[msg.id]}
-        push_msg = PushDataMessage(data=data)
+
+        self.push_update('os_count', msg.id, self.counters[msg.id])
 
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
         # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
-        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
 
     def _process_fin_message(self, msg):
-
-        # TODO: Hacer el push:Fin
 
         # Obtener el contador final para el id del mensaje
         if msg.id in self.counters:
@@ -92,8 +91,8 @@ class OsCounter(Node):
             # TODO: Descartar mensajes repetidos en el dispatcher
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
-        # TODO: Hacer el push:Delete
         del self.counters[msg.id]
+        self.push_update('delete', msg.id)
 
     def load_state(self, msg: PushDataMessage):
         for client_id, (windows, mac, linux) in msg.data.items():
