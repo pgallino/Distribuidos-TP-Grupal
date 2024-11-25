@@ -37,6 +37,11 @@ class Replica:
         self._middleware.bind_queue(self.recv_queue, exchange_name) # -> bindeo al fanout de los push y pull
         self._middleware.declare_queue(self.send_queue) # -> cola para enviar
 
+        # TODO: Que solo una replica responda el pull
+        # TODO: Posible solucion: Tener un lider fijo -> cuando llega un pull responde solo lider (de pedro no del profe)
+        # TODO: Ademas el Lider fijo se puede aprovechar para reanimar el master muerto y reanimar replicas muertas
+        # TODO: Es deseable que se revivan replicas muertas
+        
         # Inicializa el ElectionManager
         self.election_manager = ElectionManager(
             id=self.id,
@@ -117,12 +122,12 @@ class Replica:
 
             elif msg.type == MsgType.PULL_DATA:
                 # Responder con toda la data replicada
+                # TODO: Mandar de a batches?
                 self._process_pull_data()
 
+            ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
             logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
-        finally:
-            ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def ask_keepalive(self):
         """Verifica si el nodo maestro está vivo."""

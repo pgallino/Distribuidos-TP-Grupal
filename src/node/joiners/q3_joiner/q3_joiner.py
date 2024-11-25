@@ -73,6 +73,9 @@ class Q3Joiner(Node):
             if client_fins[0] and client_fins[1]:
                 self.join_results(msg.id)
         
+        # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
+        # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
+        # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def process_review_message(self, ch, method, properties, raw_message):

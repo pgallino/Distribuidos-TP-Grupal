@@ -23,6 +23,7 @@ class OsCounter(Node):
 
         try:
 
+            # TODO: Verificar si hay que enviarle el resultado a algun Client
             self.init_ka(self.container_name)
             self._synchronize_with_replica()  # Sincronizar con la réplica al inicio
             
@@ -46,6 +47,7 @@ class OsCounter(Node):
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
     
     def _process_game_message(self, msg):
         # Actualizar los contadores
@@ -66,10 +68,16 @@ class OsCounter(Node):
         # Enviar los datos actualizados a la réplica
         data = {msg.id: self.counters[msg.id]}
         push_msg = PushDataMessage(data=data)
+
+        # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
+        # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
+        # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
         self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
 
     def _process_fin_message(self, msg):
+
+        # TODO: Hacer el push:Fin
 
         # Obtener el contador final para el id del mensaje
         if msg.id in self.counters:
@@ -79,8 +87,13 @@ class OsCounter(Node):
             q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
             result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q1, result=q1_result)
 
-            # Enviar el mensaje codificado a la cola de resultados
+            # Enviar el mensaje codificado a la cola de resultados}
+            # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
+            # TODO: Descartar mensajes repetidos en el dispatcher
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
+
+        # TODO: Hacer el push:Delete
+        del self.counters[msg.id]
 
     def load_state(self, msg: PushDataMessage):
         for client_id, (windows, mac, linux) in msg.data.items():
