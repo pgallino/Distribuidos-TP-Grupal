@@ -8,8 +8,10 @@ import heapq
 from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 
 class Q3Joiner(Node):
-    def __init__(self, id: int, n_nodes: int, container_name: str):
+    def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
         super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
+
+        self.n_replicas = n_replicas
 
         # Declarar colas y binders
         self._middleware.declare_queue(Q_GENRE_Q3_JOINER)
@@ -31,14 +33,9 @@ class Q3Joiner(Node):
 
         try:
 
-            self.init_ka(self.container_name)
-            self._synchronize_with_replica()
-
-            # Verificar clientes con ambos FIN y procesar joins pendientes
-            for client_id, fins in list(self.fins_per_client.items()):
-                if fins[0] and fins[1]:
-                    logging.info(f"Node: Procesando join pendiente para client_id: {client_id}")
-                    self.join_results(client_id)
+            if self.n_replicas > 0: # verifico si se instanciaron replicas
+                self.init_ka(self.container_name)
+                self._synchronize_with_replicas()
 
             # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo
             self._middleware.receive_from_queues([(Q_GENRE_Q3_JOINER, self.process_game_message), (Q_SCORE_Q3_JOINER, self.process_review_message)], auto_ack=False)
@@ -109,7 +106,6 @@ class Q3Joiner(Node):
     
     def join_results(self, client_id: int):
 
-        self.client_id_while_joining = client_id
         # Seleccionar los 5 juegos indie con más reseñas positivas
         client_games = self.games_per_client[client_id]
         client_reviews = self.review_counts_per_client[client_id]
@@ -137,18 +133,8 @@ class Q3Joiner(Node):
         del self.fins_per_client[client_id]
 
         self.push_update('delete', client_id)
-
-
-    def push_update(self, type: str, client_id: int, update = None):
-
-        if update:
-            data = {'type': type, 'id': client_id, 'update': update}
-        else:
-            data = {'type': type, 'id': client_id}
-
-        push_msg = PushDataMessage(data=data)
-        self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
-            
+        #TODO: SI SE CAE DESPUES DEL DELETE Y NO HABER HECHO EL ACK PODES PERDER EL CLIENTE PARA SIEMPRE
+        # PERO SI LLEGASTE HASTA ACA ES PORQUE YA ENVIASTE LA RESPUESTA AL CLIENTE POR LO QUE NO TE IMPORTA PERDERLO
 
 
     def load_state(self, msg: PushDataMessage):

@@ -6,7 +6,8 @@ def main():
     required_keys = {
         "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
         "os_counter_instances": ("OS_COUNTER_INSTANCES", "OS_COUNTER_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
+        "n_replicas": ("OS_COUNTER_REPLICA_INSTANCES", "OS_COUNTER_REPLICA_INSTANCES")
     }
 
     # Inicializar configuración y logging
@@ -16,12 +17,14 @@ def main():
     # Extraer parámetros de configuración
     instance_id = config_params["instance_id"]
     os_counter_instances = config_params["os_counter_instances"]
+    n_replicas = config_params["n_replicas"]
 
     # Crear una instancia de OsCounter con los parámetros configurados
     os_counter = OsCounter(
         id = instance_id,
         n_nodes = os_counter_instances,
-        container_name = f"os_counter_{instance_id}"
+        container_name = f"os_counter_{instance_id}",
+        n_replicas = n_replicas
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola
