@@ -16,6 +16,7 @@ class GenreFilter(Node):
         self._middleware.declare_exchange(E_FROM_TRIMMER)
         self._middleware.bind_queue(Q_TRIMMER_GENRE_FILTER, E_FROM_TRIMMER, K_GENREGAME)
         self._middleware.declare_exchange(E_FROM_GENRE)
+        self.i = 0
 
         if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_GENRE)
 
@@ -46,6 +47,9 @@ class GenreFilter(Node):
 
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_TRIMMER_GENRE_FILTER."""
+        # if self.id == 2 and self.i >= 10:
+        #     self._shutdown()
+        #     return
         msg = decode_msg(raw_message)
 
         with self.condition:
@@ -58,6 +62,8 @@ class GenreFilter(Node):
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # self.i += 1
 
         with self.condition:
             self.processing_client.value = -1 # SETEO EL -1 EN EL processing_client -> TERMINE DE PROCESAR

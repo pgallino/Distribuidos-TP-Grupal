@@ -73,7 +73,7 @@ def handle_encode_error(func):
             raise EncodeError(f"Error in {func.__name__}: {e}")
     return wrapper
 
-def reanimate_container(container_name, sleep_seconds=5):
+def reanimate_container(container_name, sleep_seconds=1):
     """Reanima un contenedor Docker específico.
     
     Verifica si el contenedor está activo, lo detiene si es necesario y luego lo reinicia.
@@ -143,8 +143,10 @@ def reanimate_container(container_name, sleep_seconds=5):
 
         if start_result.returncode != 0:
             logging.error(f"Failed to start container {container_name}.")
+            return False
         else:
             logging.info(f"Container {container_name} reanimated successfully.")
+            return True
 
     except Exception as e:
         logging.error(f"Unexpected error while handling container {container_name}: {e}")
