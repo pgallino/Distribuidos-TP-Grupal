@@ -121,7 +121,7 @@ class Q5Joiner(Node):
 
         # Crear y enviar el mensaje Q5Result
         q5_result = Q5Result(top_negative_reviews=top_games_sorted)
-        result_message = ResultMessage(msg_id=0, client_id=client_id, result_type=QueryNumber.Q5, result=q5_result)
+        result_message = ResultMessage( client_id=client_id, result_type=QueryNumber.Q5, result=q5_result)
         self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
         # Borro los diccionarios de clientes ya resueltos

@@ -84,7 +84,7 @@ class OsCounter(Node):
 
             # Crear el mensaje de resultado
             q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
-            result_message = ResultMessage(msg_id=0, client_id=msg.client_id, result_type=QueryNumber.Q1, result=q1_result)
+            result_message = ResultMessage(client_id=msg.client_id, result_type=QueryNumber.Q1, result=q1_result)
 
             # Enviar el mensaje codificado a la cola de resultados}
             # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher

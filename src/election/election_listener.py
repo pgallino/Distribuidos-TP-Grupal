@@ -64,7 +64,7 @@ class ElectionListener:
         logging.info(f"node {self.id}: Llego un mensaje Election")
         try:
             with socket.create_connection((f'{self.container_name}_{msg.client_id}', self.port), timeout=3) as response_socket:
-                ok_msg = SimpleMessage(type=MsgType.OK_ELECTION, msg_id=0, socket_compatible=True, id=self.id)
+                ok_msg = SimpleMessage(type=MsgType.OK_ELECTION, socket_compatible=True, node_id=self.id)
                 response_socket.sendall(ok_msg.encode())
                 logging.info(f"node {self.id}: Enviado OK a {msg.client_id}")
         except socket.gaierror as e:

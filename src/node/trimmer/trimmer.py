@@ -107,10 +107,10 @@ class Trimmer(Node):
 
         # Enviar lotes por separado para cada tipo de juego
         if q1_games_batch:
-            q1_games_msg = ListMessage(type=MsgType.GAMES, msg_id=0, item_type=GamesType.Q1GAMES, items=q1_games_batch, client_id=msg.client_id)
+            q1_games_msg = ListMessage(type=MsgType.GAMES, item_type=GamesType.Q1GAMES, items=q1_games_batch, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_TRIMMER, q1_games_msg.encode(), key=K_Q1GAME)
         if genre_games_batch:
-            genre_games_msg = ListMessage(type=MsgType.GAMES, msg_id=0, item_type=GamesType.GENREGAMES, items=genre_games_batch, client_id=msg.client_id)
+            genre_games_msg = ListMessage(type=MsgType.GAMES, item_type=GamesType.GENREGAMES, items=genre_games_batch, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_TRIMMER, genre_games_msg.encode(), key=K_GENREGAME)
 
     def _process_review_data(self, msg, reviews_batch):
@@ -122,7 +122,7 @@ class Trimmer(Node):
                 reviews_batch.append(review)
         
         if reviews_batch:
-            reviews_msg = ListMessage(type=MsgType.REVIEWS, msg_id=0, item_type=ReviewsType.FULLREVIEW, items=reviews_batch, client_id=msg.client_id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.FULLREVIEW, items=reviews_batch, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_TRIMMER, reviews_msg.encode(), key=K_REVIEW)
 
     def _process_fin_message(self, msg):

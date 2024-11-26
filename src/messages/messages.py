@@ -63,7 +63,7 @@ RESULT_CLASSES = {
 # IMPORTANTE ⚠️
 
 class BaseMessage:
-    def __init__(self, type: MsgType, msg_id: int, **kwargs):
+    def __init__(self, type: MsgType = 0, msg_id: int = 0, **kwargs):
         """
         Clase base para todos los mensajes.
 
@@ -149,7 +149,7 @@ class BaseMessage:
 
 """ MENSAJE SIMPLE (atributos de un solo byte) CON FLAG PARA INDICAR SI ES PARA SOCKET O NO (incluye el largo o no del body)"""
 class SimpleMessage(BaseMessage):
-    def __init__(self, type: MsgType, msg_id: int, socket_compatible: bool = False, **kwargs):
+    def __init__(self, type: MsgType, socket_compatible: bool = False, msg_id: int = 0, **kwargs):
         """
         Mensaje simple con campos adicionales.
 
@@ -233,7 +233,7 @@ class SimpleMessage(BaseMessage):
 # ===================================================================================================================== #
 
 class ClientData(BaseMessage):
-    def __init__(self, msg_id: int, rows: List[str], dataset: Dataset):
+    def __init__(self, rows: List[str], dataset: Dataset, msg_id: int = 0):
         """
         Mensaje que contiene datos del cliente.
 
@@ -293,7 +293,7 @@ class ClientData(BaseMessage):
         # Decodificar filas
         rows_data = remaining_data[5:5 + data_length].decode()
         rows = rows_data.split("\n")
-        return cls(msg_id=msg_id, rows=rows, dataset=Dataset(dataset_value))
+        return cls(rows=rows, dataset=Dataset(dataset_value), msg_id=msg_id)
 
     def __str__(self):
         """Representación legible del mensaje."""
@@ -302,7 +302,7 @@ class ClientData(BaseMessage):
 # ===================================================================================================================== #
 
 class Data(BaseMessage):
-    def __init__(self, msg_id: int, client_id: int, rows: List[str], dataset: Dataset):
+    def __init__(self, client_id: int, rows: List[str], dataset: Dataset, msg_id: int = 0):
         """
         Mensaje de datos con información del cliente.
 
@@ -362,7 +362,7 @@ class Data(BaseMessage):
         rows_data = remaining_data[6:6 + data_length].decode()
         rows = rows_data.split("\n")
 
-        return cls(msg_id=msg_id, client_id=client_id, rows=rows, dataset=Dataset(dataset_value))
+        return cls(client_id=client_id, rows=rows, dataset=Dataset(dataset_value), msg_id=msg_id)
 
     def __str__(self):
         """Representación legible del mensaje."""
@@ -386,7 +386,7 @@ def convert_keys_to_int(obj):
 import json
 
 class PushDataMessage(BaseMessage):
-    def __init__(self, msg_id: int, data: dict):
+    def __init__(self, data: dict, msg_id: int = 0):
         """
         Mensaje genérico para enviar datos arbitrarios entre nodos y réplicas.
 
@@ -441,7 +441,7 @@ class PushDataMessage(BaseMessage):
         parsed_data = json.loads(data_json)
 
         parsed_data = convert_keys_to_int(parsed_data)
-        return cls(msg_id=msg_id, data=parsed_data)
+        return cls(data=parsed_data, msg_id=msg_id)
 
     def __str__(self):
         """
@@ -461,7 +461,7 @@ class ResultMessage(BaseMessage):
         5: Q5Result,
     }
 
-    def __init__(self, msg_id: int, client_id: int, result_type: QueryNumber, result: Result):
+    def __init__(self, client_id: int, result_type: QueryNumber, result: Result, msg_id: int = 0):
         """
         Mensaje que encapsula un resultado.
 
@@ -522,10 +522,10 @@ class ResultMessage(BaseMessage):
         result = result_cls.decode(remaining_data[2:])
 
         return cls(
-            msg_id=msg_id,
             client_id=client_id,
             result_type=QueryNumber(result_type_value),
             result=result,
+            msg_id=msg_id
         )
     
     def __str__(self):
@@ -553,7 +553,7 @@ class ListMessage(BaseMessage):
         },
     }
 
-    def __init__(self, type: MsgType, msg_id: int, item_type: Enum, items: List[T], client_id: int):
+    def __init__(self, type: MsgType, item_type: Enum, items: List[T], client_id: int, msg_id: int = 0):
         """
         Mensaje genérico para listas de elementos.
         :param msg_id: Identificador único del mensaje.
@@ -650,10 +650,10 @@ class ListMessage(BaseMessage):
 
         return cls(
             type=MsgType(msg_type.value),
-            msg_id=msg_id,
             item_type=item_type_value,
             items=items,
             client_id=client_id,
+            msg_id=msg_id
         )
 
     def __str__(self):

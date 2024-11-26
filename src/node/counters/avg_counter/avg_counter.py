@@ -80,7 +80,7 @@ class AvgCounter(Node):
 
             # Crear y enviar el mensaje de resultado
             q2_result = Q2Result(top_games=top_games)
-            result_message = ResultMessage(msg_id=0, client_id=msg.client_id, result_type=QueryNumber.Q2, result=q2_result)
+            result_message = ResultMessage(client_id=msg.client_id, result_type=QueryNumber.Q2, result=q2_result)
 
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 

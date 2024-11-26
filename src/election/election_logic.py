@@ -22,7 +22,7 @@ def initiate_election(node_id, node_ids, container_name, election_in_progress, c
     for nid in higher_node_ids:
         try:
             with socket.create_connection((f'{container_name}_{nid}', PORT), timeout=3) as sock:
-                e_msg = SimpleMessage(type=MsgType.ELECTION, msg_id=0, socket_compatible=True, id=node_id)
+                e_msg = SimpleMessage(type=MsgType.ELECTION, socket_compatible=True, node_id=node_id)
                 sock.sendall(e_msg.encode())
                 logging.info(f"Node {node_id}: Mensaje de elección enviado a Node {nid}.")
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
@@ -78,7 +78,7 @@ def _notify_leader_selected(node_id, node_ids, container_name, election_in_progr
         if nid != node_id:
             try:
                 with socket.create_connection((f'{container_name}_{nid}', PORT), timeout=TIMEOUT) as sock:
-                    leader_msg = SimpleMessage(type=MsgType.LEADER_ELECTION, msg_id=0, socket_compatible=True, id=node_id)
+                    leader_msg = SimpleMessage(type=MsgType.LEADER_ELECTION, socket_compatible=True, id=node_id)
                     sock.sendall(leader_msg.encode())
                     logging.info(f"Node {node_id}: Notificación de liderazgo enviada a Node {nid}.")
             except (ConnectionRefusedError, socket.timeout, socket.gaierror):

@@ -27,7 +27,7 @@ class Q3JoinerReplica(Replica):
                 "review_counts_per_client": {},
                 "fins_per_client": {}
             }
-        response_data = PushDataMessage(msg_id=0, data={
+        response_data = PushDataMessage( data={
             "games_per_client": dict(self.games_per_client),
             "review_counts_per_client": {k: dict(v) for k, v in self.review_counts_per_client.items()},
             "fins_per_client": dict(self.fins_per_client),

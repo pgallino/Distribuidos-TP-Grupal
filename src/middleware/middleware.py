@@ -58,7 +58,7 @@ class Middleware:
             try:
                 self.channel.basic_publish(
                     exchange='',
-                    routing_key=destination,  # Cola a la que se envía el mensaje
+                    routing_key=destination, # Cola a la que se envía el mensaje
                     body=message
                 )
                 # logging.info(f"action: send_to_queue | destination: {destination} | exchange: default | key: {key} | result: success")

@@ -25,7 +25,7 @@ class Client:
         try:
             self.client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
-            handshake_msg = SimpleMessage(type=MsgType.HANDSHAKE, msg_id=0, socket_compatible=True)  # Creamos el mensaje de tipo Handshake
+            handshake_msg = SimpleMessage(type=MsgType.HANDSHAKE, socket_compatible=True)  # Creamos el mensaje de tipo Handshake
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_handshake | result: success | message: Handshake")
             
@@ -33,7 +33,7 @@ class Client:
             self.send_dataset(self.reviews, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
-            fin_msg = SimpleMessage(type=MsgType.CLIENT_FIN, msg_id=0, socket_compatible=True)  # Creamos el mensaje Fin
+            fin_msg = SimpleMessage(type=MsgType.CLIENT_FIN, socket_compatible=True)  # Creamos el mensaje Fin
             self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_fin | result: success | message: Fin")
 
@@ -60,7 +60,7 @@ class Client:
                 # Verifica si agregar esta línea excedería el tamaño del batch
                 if current_batch_size + line_size > self.max_batch_size:
                     # Envía el batch actual y reinicia
-                    data = ClientData(msg_id=0, rows=batch, dataset=dataset_type)  # Usa el batch completo
+                    data = ClientData(rows=batch, dataset=dataset_type)  # Usa el batch completo
                     self.client_socket.sendall(data.encode())  # Envía el batch codificado
                     # logging.info(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
@@ -74,7 +74,7 @@ class Client:
 
             # Enviar el último batch si contiene líneas restantes
             if batch:
-                data = ClientData(msg_id=0, rows=batch, dataset=dataset_type)
+                data = ClientData(rows=batch, dataset=dataset_type)
                 self.client_socket.sendall(data.encode())
                 # logging.info(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes")
             
