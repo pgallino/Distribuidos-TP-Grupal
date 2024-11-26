@@ -20,6 +20,7 @@ def parse_args():
             'q3_joiner_replica': int(args[8]),
             'q4_joiner_replica': int(args[9]),
             'q5_joiner_replica': int(args[10]),
+            'watchdog': int(args[11]),
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
