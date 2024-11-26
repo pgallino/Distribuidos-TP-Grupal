@@ -1,6 +1,7 @@
 import logging
 import struct
 import subprocess
+import time
 
 BYTES_HEADER = 4
 
@@ -72,13 +73,62 @@ def handle_encode_error(func):
             raise EncodeError(f"Error in {func.__name__}: {e}")
     return wrapper
 
-def reanimate_container(container_to_restart):
-    """Reanima el contenedor maestro."""
+def reanimate_container(container_name, sleep_seconds=5):
+    """Reanima un contenedor Docker específico.
+    
+    Verifica si el contenedor está activo, lo detiene si es necesario y luego lo reinicia.
+    
+    :param container_name: Nombre del contenedor a reiniciar.
+    :param sleep_seconds: Tiempo en segundos entre detener y reiniciar el contenedor.
+    """
     try:
+        # Verificar si el contenedor está corriendo
+        ps_result = subprocess.run(
+            ['docker', 'ps', '--filter', f'name={container_name}', '--format', '{{.Names}}'],
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        running_containers = ps_result.stdout.decode().strip().splitlines()
+
+        logging.info(
+            'Docker ps executed. Result: {}. Output: {}. Error: {}'.format(
+                ps_result.returncode,
+                ps_result.stdout.decode().strip(),
+                ps_result.stderr.decode().strip()
+            )
+        )
+
+        if container_name in running_containers:
+            logging.info(f"Container {container_name} is running. Attempting to stop it.")
+            
+            # Detener el contenedor
+            stop_result = subprocess.run(
+                ['docker', 'stop', container_name],
+                check=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            logging.info(
+                'Docker stop executed. Result: {}. Output: {}. Error: {}'.format(
+                    stop_result.returncode,
+                    stop_result.stdout.decode().strip(),
+                    stop_result.stderr.decode().strip()
+                )
+            )
+
+            if stop_result.returncode != 0:
+                logging.error(f"Failed to stop container {container_name}. Aborting reanimation.")
+                return
+        else:
+            logging.info(f"Container {container_name} is not running. No need to stop.")
+
+        # Esperar antes de intentar reiniciar
+        time.sleep(sleep_seconds)
 
         # Intentar reiniciar el contenedor
         start_result = subprocess.run(
-            ['docker', 'start', container_to_restart],
+            ['docker', 'start', container_name],
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
@@ -91,5 +141,10 @@ def reanimate_container(container_to_restart):
             )
         )
 
+        if start_result.returncode != 0:
+            logging.error(f"Failed to start container {container_name}.")
+        else:
+            logging.info(f"Container {container_name} reanimated successfully.")
+
     except Exception as e:
-        logging.error(f"Unexpected error while handling inactive container: {e}")
+        logging.error(f"Unexpected error while handling container {container_name}: {e}")
