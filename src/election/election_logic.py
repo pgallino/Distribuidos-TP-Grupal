@@ -22,7 +22,7 @@ def initiate_election(node_id, node_ids, container_name, election_in_progress, c
     for nid in higher_node_ids:
         try:
             with socket.create_connection((f'{container_name}_{nid}', PORT), timeout=3) as sock:
-                e_msg = SimpleMessage(type=MsgType.ELECTION, socket_compatible=True, id=node_id)
+                e_msg = SimpleMessage(type=MsgType.ELECTION, socket_compatible=True, node_id=node_id)
                 sock.sendall(e_msg.encode())
                 logging.info(f"Node {node_id}: Mensaje de elección enviado a Node {nid}.")
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):

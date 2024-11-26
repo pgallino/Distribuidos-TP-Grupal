@@ -39,7 +39,7 @@ class EnglishFilter(Node):
         msg = decode_msg(raw_message)
 
         with self.condition:
-            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.processing_client.value = msg.client_id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
             self.condition.notify_all()
         
         if msg.type == MsgType.REVIEWS:
@@ -61,7 +61,7 @@ class EnglishFilter(Node):
         ]
 
         if en_reviews:
-            english_reviews_msg = ListMessage(MsgType.REVIEWS, ReviewsType.BASICREVIEW, en_reviews, msg.id)
+            english_reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type= ReviewsType.BASICREVIEW, items=en_reviews, client_id=msg.client_id)
             self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
 
     def _process_fin_message(self, msg):

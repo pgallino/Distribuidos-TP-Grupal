@@ -38,7 +38,7 @@ class ReleaseDateFilter(Node):
         msg = decode_msg(raw_message)
 
         with self.condition:
-            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.processing_client.value = msg.client_id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
             self.condition.notify_all()
         
         if msg.type == MsgType.GAMES:
@@ -56,7 +56,7 @@ class ReleaseDateFilter(Node):
         """Filtra y envía juegos lanzados en 2010 o después."""
         batch = [game for game in msg.items if "201" in game.release_date]
         if batch:
-            games_msg = ListMessage(MsgType.GAMES, GamesType.Q2GAMES, batch, msg.id)
+            games_msg = ListMessage(type=MsgType.GAMES, item_type=GamesType.Q2GAMES, items=batch, client_id=msg.client_id)
             self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, games_msg.encode())
 
     def _process_fin_message(self, msg):

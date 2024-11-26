@@ -46,7 +46,7 @@ class ScoreFilter(Node):
         msg = decode_msg(raw_message)
 
         with self.condition:
-            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.processing_client.value = msg.client_id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
             self.condition.notify_all()
         
         if msg.type == MsgType.REVIEWS:
@@ -72,15 +72,15 @@ class ScoreFilter(Node):
                 negative_reviews.append(BasicReview(review.app_id))
 
         if positive_reviews:
-            reviews_msg = ListMessage(MsgType.REVIEWS, ReviewsType.BASICREVIEW, positive_reviews, msg.id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.BASICREVIEW, items=positive_reviews, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_POSITIVE)
 
         if negative_textreviews:
-            reviews_msg = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, negative_textreviews, msg.id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=negative_textreviews, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE_TEXT)
 
         if negative_reviews:
-            reviews_msg = ListMessage(MsgType.REVIEWS, ReviewsType.BASICREVIEW, negative_reviews, msg.id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.BASICREVIEW, items=negative_reviews, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)
 
     def _process_fin_message(self, msg):

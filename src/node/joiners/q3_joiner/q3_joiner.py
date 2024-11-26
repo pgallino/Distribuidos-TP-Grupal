@@ -53,22 +53,22 @@ class Q3Joiner(Node):
 
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_games = self.games_per_client[msg.id]
+            client_games = self.games_per_client[msg.client_id]
             for game in msg.items:
                 client_games[game.app_id] = game.name
                 # Registrar el cambio en el diccionario de actualizaciones
                 update[game.app_id] = game.name
 
-            self.push_update('games', msg.id, update)
+            self.push_update('games', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
-            client_fins = self.fins_per_client[msg.id]
+            client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
-            self.push_update('fins', msg.id, client_fins)
+            self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
-                self.join_results(msg.id)
+                self.join_results(msg.client_id)
         
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
@@ -83,24 +83,24 @@ class Q3Joiner(Node):
 
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_reviews = self.review_counts_per_client[msg.id]
-            client_games = self.games_per_client[msg.id]
-            games_fin_received = self.fins_per_client[msg.id][0]
+            client_reviews = self.review_counts_per_client[msg.client_id]
+            client_games = self.games_per_client[msg.client_id]
+            games_fin_received = self.fins_per_client[msg.client_id][0]
             for review in msg.items:
                 if (not games_fin_received) or review.app_id in client_games:
                     client_reviews[review.app_id] += 1
                     update[review.app_id] = client_reviews[review.app_id]
 
-            self.push_update('reviews', msg.id, update)
+            self.push_update('reviews', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
-            client_fins = self.fins_per_client[msg.id]
+            client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
-            self.push_update('fins', msg.id, client_fins)
+            self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
-                self.join_results(msg.id)
+                self.join_results(msg.client_id)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
@@ -124,7 +124,7 @@ class Q3Joiner(Node):
 
         # Crear y enviar el mensaje Q3Result
         q3_result = Q3Result(top_indie_games=top_5_sorted)
-        result_message = ResultMessage(id=client_id, result_type=QueryNumber.Q3, result=q3_result)
+        result_message = ResultMessage(client_id=client_id, result_type=QueryNumber.Q3, result=q3_result)
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
         # Borro los diccionarios de clientes ya resueltos

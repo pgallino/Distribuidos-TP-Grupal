@@ -11,7 +11,7 @@ class OsCounterReplica(Replica):
 
     def _process_push_data(self, msg: PushDataMessage):
         """Procesa los datos de un mensaje `PushDataMessage`."""
-        # logging.info(f"OsCounterReplica: Recibiendo PushDataMessage del cliente {msg.id}")
+        # logging.info(f"OsCounterReplica: Recibiendo PushDataMessage del cliente {msg.client_id}")
 
         # Actualizar los contadores con los datos recibidos
         for client_id, (windows, mac, linux) in msg.data.items():

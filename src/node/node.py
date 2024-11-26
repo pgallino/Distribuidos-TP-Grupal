@@ -75,7 +75,7 @@ class Node:
             if node_id != self.id:
                 # Se reenvia el CoordFin del Fin del cliente a cada otra instancia del nodo
                 key = f"{node_id}"
-                coord_msg = SimpleMessage(type=MsgType.COORDFIN, id=msg.id, node_id=self.id)
+                coord_msg = SimpleMessage(type=MsgType.COORDFIN, client_id=msg.client_id, node_id=self.id)
                 self._middleware.send_to_queue(coord_exchange_name, coord_msg.encode(), key=key)
 
     def init_coordinator(self, id: int, queue_name: str, exchange_name: str, n_nodes: int, keys, keys_exchange: str):
@@ -104,7 +104,7 @@ class Node:
             msg = decode_msg(body)
             if isinstance(msg, PushDataMessage):
                 self.load_state(msg)
-                # logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
+                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
                 self.connected = True
             ch.basic_ack(delivery_tag=method.delivery_tag)
             self._middleware.channel.stop_consuming()

@@ -53,22 +53,22 @@ class Q5Joiner(Node):
             
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_games = self.games_per_client[msg.id]
+            client_games = self.games_per_client[msg.client_id]
             for game in msg.items:
                 client_games[game.app_id] = game.name
                 # Registrar el cambio en el diccionario de actualizaciones
                 update[game.app_id] = game.name
 
-            self.push_update('games', msg.id, update)
+            self.push_update('games', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
-            client_fins = self.fins_per_client[msg.id]
+            client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
-            self.push_update('fins', msg.id, client_fins)
+            self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
-                self.join_results(msg.id)
+                self.join_results(msg.client_id)
             
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -80,24 +80,24 @@ class Q5Joiner(Node):
 
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_reviews = self.negative_review_counts_per_client[msg.id]
-            client_games = self.games_per_client[msg.id]
-            games_fin_received = self.fins_per_client[msg.id][0]
+            client_reviews = self.negative_review_counts_per_client[msg.client_id]
+            client_games = self.games_per_client[msg.client_id]
+            games_fin_received = self.fins_per_client[msg.client_id][0]
             for review in msg.items:
                 if (not games_fin_received) or review.app_id in client_games:
                     client_reviews[review.app_id] += 1
                     update[review.app_id] = client_reviews[review.app_id]
             
-            self.push_update('reviews', msg.id, update)
+            self.push_update('reviews', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
-            client_fins = self.fins_per_client[msg.id]
+            client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
-            self.push_update('fins', msg.id, client_fins)
+            self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
-                self.join_results(msg.id)
+                self.join_results(msg.client_id)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -109,22 +109,19 @@ class Q5Joiner(Node):
         counts = np.array(list(client_reviews.values()))
         threshold = np.percentile(counts, 90)
 
-        logging.info(f"THRESHOLD ES: {threshold}")
-
         # Seleccionar juegos que superan el umbral del percentil 90
         top_games = [
             (app_id, client_games[app_id], count)
             for app_id, count in client_reviews.items()
             if app_id in client_games and count >= threshold
         ]
-        for app_id, game_name, count in top_games:
-            logging.info(f"- App ID: {app_id}, Nombre: {game_name}, Reseñas: {count}")
+
         # Ordenar por `app_id` y tomar los primeros 10 resultados
         top_games_sorted = sorted(top_games, key=lambda x: x[0])[:10]
 
         # Crear y enviar el mensaje Q5Result
         q5_result = Q5Result(top_negative_reviews=top_games_sorted)
-        result_message = ResultMessage(id=client_id, result_type=QueryNumber.Q5, result=q5_result)
+        result_message = ResultMessage( client_id=client_id, result_type=QueryNumber.Q5, result=q5_result)
         self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
         # Borro los diccionarios de clientes ya resueltos

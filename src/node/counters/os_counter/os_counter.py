@@ -53,7 +53,7 @@ class OsCounter(Node):
     
     def _process_game_message(self, msg):
         # Actualizar los contadores
-        client_counters = self.counters.get(msg.id, (0, 0, 0))
+        client_counters = self.counters.get(msg.client_id, (0, 0, 0))
         windows, mac, linux = client_counters
 
         for game in msg.items:
@@ -65,11 +65,11 @@ class OsCounter(Node):
                 linux += 1
 
         # Guardar los contadores actualizados
-        self.counters[msg.id] = (windows, mac, linux)
+        self.counters[msg.client_id] = (windows, mac, linux)
 
         # Enviar los datos actualizados a la réplica
 
-        self.push_update('os_count', msg.id, self.counters[msg.id])
+        self.push_update('os_count', msg.client_id, self.counters[msg.client_id])
 
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
@@ -79,20 +79,20 @@ class OsCounter(Node):
     def _process_fin_message(self, msg):
 
         # Obtener el contador final para el id del mensaje
-        if msg.id in self.counters:
-            windows_count, mac_count, linux_count = self.counters[msg.id]
+        if msg.client_id in self.counters:
+            windows_count, mac_count, linux_count = self.counters[msg.client_id]
 
             # Crear el mensaje de resultado
             q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
-            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q1, result=q1_result)
+            result_message = ResultMessage(client_id=msg.client_id, result_type=QueryNumber.Q1, result=q1_result)
 
             # Enviar el mensaje codificado a la cola de resultados}
             # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
             # TODO: Descartar mensajes repetidos en el dispatcher
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
-        del self.counters[msg.id]
-        self.push_update('delete', msg.id)
+        del self.counters[msg.client_id]
+        self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
         for client_id, (windows, mac, linux) in msg.data.items():

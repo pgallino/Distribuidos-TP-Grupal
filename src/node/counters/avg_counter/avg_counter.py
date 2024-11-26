@@ -49,7 +49,7 @@ class AvgCounter(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def _process_game_message(self, msg):
-        client_id = msg.id  # Asumo que cada mensaje tiene un client_id
+        client_id = msg.client_id  # Asumo que cada mensaje tiene un client_id
 
         # Obtener el heap para este cliente
         client_heap = self.client_heaps[client_id]
@@ -69,7 +69,7 @@ class AvgCounter(Node):
     
     def _process_fin_message(self, msg):
 
-        client_id = msg.id  # Usar el client_id del mensaje FIN
+        client_id = msg.client_id  # Usar el client_id del mensaje FIN
         # TODO: Hacer el push:Fin
 
         if client_id in self.client_heaps:
@@ -80,7 +80,7 @@ class AvgCounter(Node):
 
             # Crear y enviar el mensaje de resultado
             q2_result = Q2Result(top_games=top_games)
-            result_message = ResultMessage(id=msg.id, result_type=QueryNumber.Q2, result=q2_result)
+            result_message = ResultMessage(client_id=msg.client_id, result_type=QueryNumber.Q2, result=q2_result)
 
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 
@@ -90,7 +90,7 @@ class AvgCounter(Node):
             # TODO: Hacer el push:Delete
             del self.client_heaps[client_id]
 
-            self.push_update('delete', msg.id)
+            self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
         for client_id, heap_data in msg.data.items():
