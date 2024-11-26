@@ -25,7 +25,7 @@ class Client:
         try:
             self.client_socket.connect(self.server_addr)
             # Envía el mensaje Handshake
-            handshake_msg = SimpleMessage(type=MsgType.HANDSHAKE, socket_compatible=True)  # Creamos el mensaje de tipo Handshake
+            handshake_msg = SimpleMessage(type=MsgType.HANDSHAKE, msg_id=0, socket_compatible=True)  # Creamos el mensaje de tipo Handshake
             self.client_socket.send(handshake_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_handshake | result: success | message: Handshake")
             
@@ -33,7 +33,7 @@ class Client:
             self.send_dataset(self.reviews, Dataset(Dataset.REVIEW))
             
             # Envía el mensaje Fin
-            fin_msg = SimpleMessage(type=MsgType.CLIENT_FIN, socket_compatible=True)  # Creamos el mensaje Fin
+            fin_msg = SimpleMessage(type=MsgType.CLIENT_FIN, msg_id=0, socket_compatible=True)  # Creamos el mensaje Fin
             self.client_socket.send(fin_msg.encode())  # Codificamos y enviamos el mensaje
             logging.info("action: send_fin | result: success | message: Fin")
 
@@ -60,7 +60,7 @@ class Client:
                 # Verifica si agregar esta línea excedería el tamaño del batch
                 if current_batch_size + line_size > self.max_batch_size:
                     # Envía el batch actual y reinicia
-                    data = ClientData(batch, dataset_type)  # Usa el batch completo
+                    data = ClientData(msg_id=0, rows=batch, dataset=dataset_type)  # Usa el batch completo
                     self.client_socket.sendall(data.encode())  # Envía el batch codificado
                     # logging.info(f"action: send_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes | lines: {len(batch)}")
                     
@@ -74,7 +74,7 @@ class Client:
 
             # Enviar el último batch si contiene líneas restantes
             if batch:
-                data = ClientData(batch, dataset_type)
+                data = ClientData(msg_id=0, rows=batch, dataset=dataset_type)
                 self.client_socket.sendall(data.encode())
                 # logging.info(f"action: send_last_batch | result: success | dataset: {dataset} | batch_size: {current_batch_size} bytes")
             
@@ -141,7 +141,7 @@ class Client:
             f"- Mac: {msg.result.mac_count}\n"
         )
         logging.info(output)
-        self.save_to_file("Q1.txt", output, msg.id)
+        self.save_to_file("Q1.txt", output, msg.client_id)
 
     def process_q2_result(self, msg):
         """Processes and prints Q2 result."""
@@ -151,7 +151,7 @@ class Client:
             f"{top_games_str}\n"
         )
         logging.info(output)
-        self.save_to_file("Q2.txt", output, msg.id)
+        self.save_to_file("Q2.txt", output, msg.client_id)
 
     def process_q3_result(self, msg):
         """Processes and prints Q3 result."""
@@ -163,7 +163,7 @@ class Client:
             f"{indie_games_str}\n"
         )
         logging.info(output)
-        self.save_to_file("Q3.txt", output, msg.id)
+        self.save_to_file("Q3.txt", output, msg.client_id)
 
     def process_q4_result(self, msg):
         """Processes and prints Q4 result."""
@@ -173,7 +173,7 @@ class Client:
             f"{negative_reviews_str}\n"
         )
         logging.info(output)
-        self.save_to_file("Q4.txt", output, msg.id)
+        self.save_to_file("Q4.txt", output, msg.client_id)
 
     def process_q5_result(self, msg):
         """Processes and prints Q5 result."""
@@ -183,4 +183,4 @@ class Client:
             f"{top_negative_str}\n"
         )
         logging.info(output)
-        self.save_to_file("Q5.txt", output, msg.id)
+        self.save_to_file("Q5.txt", output, msg.client_id)

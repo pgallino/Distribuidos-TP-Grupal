@@ -78,7 +78,7 @@ class Replica:
         """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
 
         # Crear el mensaje de respuesta con el estado actual
-        response_data = PushDataMessage(data=dict(self.state))
+        response_data = PushDataMessage(msg_id=0, data=dict(self.state))
 
         # Enviar el mensaje a Q_REPLICA_RESPONSE
         self._middleware.send_to_queue(

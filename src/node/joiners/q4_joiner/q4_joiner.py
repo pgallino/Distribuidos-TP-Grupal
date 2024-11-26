@@ -56,22 +56,22 @@ class Q4Joiner(Node):
 
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_games = self.games_per_client[msg.id]
+            client_games = self.games_per_client[msg.client_id]
             for game in msg.items:
                 client_games[game.app_id] = game.name
                 # Registrar el cambio en el diccionario de actualizaciones
                 update[game.app_id] = game.name
 
-            self.push_update('games', msg.id, update)
+            self.push_update('games', msg.client_id, update)
                 
         elif msg.type == MsgType.FIN:
-            client_fins = self.fins_per_client[msg.id]
+            client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
-            self.push_update('fins', msg.id, client_fins)
+            self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
-                self.send_reviews(msg.id)
+                self.send_reviews(msg.client_id)
                 # Manda el fin a los english filters
                 self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
         
@@ -88,30 +88,30 @@ class Q4Joiner(Node):
             
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_reviews = self.negative_reviews_per_client[msg.id]
-            client_games = self.games_per_client[msg.id]
-            games_fin_received = self.fins_per_client[msg.id][0]
+            client_reviews = self.negative_reviews_per_client[msg.client_id]
+            client_games = self.games_per_client[msg.client_id]
+            games_fin_received = self.fins_per_client[msg.client_id][0]
             for review in msg.items: # para un TextReview en TextReviews
                 if (not games_fin_received) or review.app_id in client_games:
                     # Debe funcionar appendiendo el elemento directamente de esta manera
                     game_reviews, _ = client_reviews[review.app_id]
                     game_reviews.append(review.text)
                     if len(game_reviews) > self.n_reviews:
-                        self.send_reviews_v2(msg.id, review.app_id, game_reviews)
+                        self.send_reviews_v2(msg.client_id, review.app_id, game_reviews)
                         client_reviews[review.app_id] = ([], True)
                     update[review.app_id] = client_reviews[review.app_id]
 
-            self.push_update('reviews', msg.id, update)
+            self.push_update('reviews', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
-            client_fins = self.fins_per_client[msg.id]
+            client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
-            self.push_update('fins', msg.id, client_fins)
+            self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
                 # Se termina de mandar las reviews que superan las 5000
-                self.send_reviews(msg.id)
+                self.send_reviews(msg.client_id)
                 # Manda el fin a los english filters
                 self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
 
@@ -126,7 +126,7 @@ class Q4Joiner(Node):
             text_review = TextReview(app_id, review)
             text_review_size = len(text_review.encode())
             if text_review_size + curr_reviews_batch_size > self.batch_size:
-                text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
+                text_reviews = ListMessage(type=MsgType.REVIEWS, msg_id=0, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
                 self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
                 curr_reviews_batch_size = 0
                 reviews_batch = []
@@ -135,7 +135,7 @@ class Q4Joiner(Node):
 
         # si me quedaron afuera    
         if reviews_batch:
-            text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
+            text_reviews = ListMessage(type=MsgType.REVIEWS, msg_id=0, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
             self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
     def send_reviews(self, client_id):
@@ -151,7 +151,7 @@ class Q4Joiner(Node):
                     text_review = TextReview(app_id, review)
                     text_review_size = len(text_review.encode())
                     if text_review_size + curr_reviews_batch_size > self.batch_size:
-                        text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
+                        text_reviews = ListMessage(type=MsgType.REVIEWS, msg_id=0, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
                         self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
                         curr_reviews_batch_size = 0
                         reviews_batch = []
@@ -160,7 +160,7 @@ class Q4Joiner(Node):
 
                 # si me quedaron afuera    
                 if reviews_batch:
-                    text_reviews = ListMessage(MsgType.REVIEWS, ReviewsType.TEXTREVIEW, reviews_batch, client_id)
+                    text_reviews = ListMessage(type=MsgType.REVIEWS, msg_id=0, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
                     self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
         # Borro el diccionario de textos de reviews del cliente
@@ -177,18 +177,18 @@ class Q4Joiner(Node):
 
             # Inicializar diccionario de actualizaciones
             update = {}
-            client_reviews_count = self.negative_reviews_count_per_client[msg.id]
-            client_games = self.games_per_client[msg.id]
+            client_reviews_count = self.negative_reviews_count_per_client[msg.client_id]
+            client_games = self.games_per_client[msg.client_id]
             for review in msg.items: # para un TextReview en TextReviews
                 if review.app_id in client_games:
                     client_reviews_count[review.app_id] += 1
                     update[review.app_id] = client_reviews_count[review.app_id]
 
-            self.push_update('reviews_count', msg.id, update)
+            self.push_update('reviews_count', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
             # TODO: Enviar a las replicas la recepcion de este FIN.
-            self.join_results(msg.id)
+            self.join_results(msg.client_id)
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -211,7 +211,7 @@ class Q4Joiner(Node):
 
         # Crear y enviar el mensaje Q4Result
         q4_result = Q4Result(negative_reviews=negative_reviews)
-        result_message = ResultMessage(id=client_id, result_type=QueryNumber.Q4, result=q4_result)
+        result_message = ResultMessage(msg_id=0, client_id=client_id, result_type=QueryNumber.Q4, result=q4_result)
         self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
 
         # Borro los diccionarios de clientes ya resueltos

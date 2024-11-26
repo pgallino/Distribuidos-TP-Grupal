@@ -29,7 +29,7 @@ class Q4JoinerReplica(Replica):
                 "negative_reviews_per_client": {},
                 "fins_per_client": {}
             }
-        response_data = PushDataMessage(data={
+        response_data = PushDataMessage(msg_id=0, data={
             "negative_reviews_count_per_client": {
                 k: dict(v) for k, v in self.negative_reviews_count_per_client.items()
             },

@@ -50,7 +50,7 @@ class ResultDispatcher:
             # TODO: LLevar registro de los resultados recibidos para no procesar duplicados en caso de recibirlos.
             result_msg = decode_msg(body[4:])
 
-            client_id = result_msg.id
+            client_id = result_msg.client_id
 
             with self.lock:
                 if client_id in self.client_connections:

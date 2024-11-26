@@ -67,19 +67,20 @@ class CoordinatorNode:
     def process_fin(self, ch, method, properties, raw_message):
 
         msg = decode_msg(raw_message)
-        if msg.type == MsgType.FIN:
-            client_id = msg.id
+        if msg.type == MsgType.COORDFIN_ACK:
+            client_id = msg.client_id
             self.fins_counter[client_id] += 1  # Incrementa el contador para este client_id
             if self.fins_counter[client_id] == self.n_nodes - 1: # arranca en cero ahora
                 for key, _ in self.keys:
-                    self._middleware.send_to_queue(self.keys_exchange, msg.encode(), key=key)
+                    fin_msg = SimpleMessage(type=MsgType.FIN, msg_id=0, client_id=client_id)
+                    self._middleware.send_to_queue(self.keys_exchange, fin_msg.encode(), key=key)
                 del self.fins_counter[client_id]
 
         elif msg.type == MsgType.COORDFIN:
             key = f"{msg.node_id}"
             with self.condition:
-                self.condition.wait_for(lambda: self.processing_client.value != msg.id)
-                fin_msg = SimpleMessage(type=MsgType.FIN, id=msg.id)
+                self.condition.wait_for(lambda: self.processing_client.value != msg.client_id)
+                fin_msg = SimpleMessage(type=MsgType.COORDFIN_ACK, msg_id=0, client_id=msg.client_id)
                 self._middleware.send_to_queue(self.exchange_name, fin_msg.encode(), key=key)
                 self.condition.notify_all()
         ch.basic_ack(delivery_tag=method.delivery_tag)

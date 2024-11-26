@@ -48,7 +48,7 @@ class GenreFilter(Node):
         msg = decode_msg(raw_message)
 
         with self.condition:
-            self.processing_client.value = msg.id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
+            self.processing_client.value = msg.client_id # SETEO EL ID EN EL processing_client -> O SEA ESTOY PROCESANDO UN MENSAJE DE CLIENTE ID X
             self.condition.notify_all()
         
         if msg.type == MsgType.GAMES:
@@ -75,15 +75,15 @@ class GenreFilter(Node):
                     shooter_games.append(BasicGame(app_id=game.app_id, name=game.name))
 
         if indie_basic_games:
-            indie_basic_msg = ListMessage(MsgType.GAMES, GamesType.BASICGAME, indie_basic_games, msg.id)
+            indie_basic_msg = ListMessage(type=MsgType.GAMES, msg_id=0, item_type=GamesType.BASICGAME, items=indie_basic_games, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_GENRE, indie_basic_msg.encode(), key=K_INDIE_BASICGAMES)
 
         if indie_q2_games:
-            indie_q2_msg = ListMessage(MsgType.GAMES, GamesType.Q2GAMES, indie_q2_games, msg.id)
+            indie_q2_msg = ListMessage(type=MsgType.GAMES, msg_id=0, item_type=GamesType.Q2GAMES, items=indie_q2_games, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_GENRE, indie_q2_msg.encode(), key=K_INDIE_Q2GAMES)
         
         if shooter_games:
-            shooter_msg = ListMessage(MsgType.GAMES, GamesType.BASICGAME, shooter_games, msg.id)
+            shooter_msg = ListMessage(type=MsgType.GAMES, msg_id=0, item_type=GamesType.BASICGAME, items=shooter_games, client_id=msg.client_id)
             self._middleware.send_to_queue(E_FROM_GENRE, shooter_msg.encode(), key=K_SHOOTER_GAMES)
 
     def _process_fin_message(self, msg):

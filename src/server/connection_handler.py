@@ -43,10 +43,10 @@ class ConnectionHandler:
 
                 # Process the message based on its type
                 if msg.type == MsgType.CLIENT_DATA:
-                    data_msg = Data(self.id, msg.rows, msg.dataset)
+                    data_msg = Data(msg_id=0, client_id=self.id, rows=msg.rows, dataset=msg.dataset)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, data_msg.encode())
                 elif msg.type == MsgType.CLIENT_FIN:
-                    fin_msg = SimpleMessage(type=MsgType.FIN, id=self.id)
+                    fin_msg = SimpleMessage(type=MsgType.FIN, msg_id=0, cliet_id=self.id)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, fin_msg.encode())
                     break
 
