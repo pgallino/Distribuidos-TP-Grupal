@@ -20,7 +20,7 @@ class WatchDog:
         :param n_nodes_instances: Lista de tuplas con tipos de nodos y sus instancias.
         :param check_interval: Intervalo en segundos para verificar los nodos.
         """
-        time.sleep(10)
+        time.sleep(5) # para que levanten todos bien primero
         self.id = id
         self.n_watchdogs = n_watchdogs
         self.container_name = container_name
@@ -39,7 +39,7 @@ class WatchDog:
         - Inicia el listener en un proceso separado.
         - Periódicamente verifica si los nodos están vivos.
         """
-        self.init_listener_process()
+        # self.init_listener_process()
 
         # if leader == self.id:
         while not self.shutting_down:
@@ -138,42 +138,42 @@ class WatchDog:
             logging.warning(f"Node type {node_type} not found in nodes_state.")
 
 
-    def init_listener_process(self):
-        process = Process(
-            target=handle_listener_process,
-            args=['watchdog', self.id, 12345, self.n_watchdogs])
-        process.start()
-        self.listener_process = process
+#     def init_listener_process(self):
+#         process = Process(
+#             target=handle_listener_process,
+#             args=['watchdog', self.id, 12345, self.n_watchdogs])
+#         process.start()
+#         self.listener_process = process
 
-    def set_leader(self, leader_id):
-        self.leader = leader_id
+#     def set_leader(self, leader_id):
+#         self.leader = leader_id
 
 
-def handle_listener_process(container_name, id, port, node_ids):
+# def handle_listener_process(container_name, id, port, node_ids):
 
-    def handle_sigterm(sig, frame):
-        """Handle SIGTERM signal to close the node gracefully."""
-        logging.info("action: Received SIGTERM | shutting down gracefully.")
-        listener_socket.close()
-        shutting_down = True
+#     def handle_sigterm(sig, frame):
+#         """Handle SIGTERM signal to close the node gracefully."""
+#         logging.info("action: Received SIGTERM | shutting down gracefully.")
+#         listener_socket.close()
+#         shutting_down = True
 
-    shutting_down = False
-    signal.signal(signal.SIGTERM, handle_sigterm)
+#     shutting_down = False
+#     signal.signal(signal.SIGTERM, handle_sigterm)
 
-    try:
-        listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        listener_socket.bind((f'{container_name}_{id}', port))
-        listener_socket.listen(len(node_ids))
-        logging.info(f"node {id}: Escuchando en el puerto {port}.")
+#     try:
+#         listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#         listener_socket.bind((f'{container_name}_{id}', port))
+#         listener_socket.listen(len(node_ids))
+#         logging.info(f"node {id}: Escuchando en el puerto {port}.")
 
-        while True:
-            conn, _ = listener_socket.accept()
-            raw_msg = recv_msg(conn)
-            msg = decode_msg(raw_msg)
-            # procesar mensaje
+#         while True:
+#             conn, _ = listener_socket.accept()
+#             raw_msg = recv_msg(conn)
+#             msg = decode_msg(raw_msg)
+#             # procesar mensaje
 
-            conn.close()
-    except Exception as e:
-        if not shutting_down:
-            logging.error(f"node {id}: Error iniciando el servidor socket: {e}")
-            listener_socket.close()
+#             conn.close()
+#     except Exception as e:
+#         if not shutting_down:
+#             logging.error(f"node {id}: Error iniciando el servidor socket: {e}")
+#             listener_socket.close()
