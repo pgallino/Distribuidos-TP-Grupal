@@ -5,7 +5,8 @@ from multiprocessing import Process
 import socket
 import time
 from messages.messages import decode_msg
-from utils.utils import recv_msg
+from utils.utils import reanimate_container, recv_msg
+from election.election_manager import ElectionManager
 
 
 class WatchDog:
@@ -19,6 +20,7 @@ class WatchDog:
         :param n_nodes_instances: Lista de tuplas con tipos de nodos y sus instancias.
         :param check_interval: Intervalo en segundos para verificar los nodos.
         """
+        time.sleep(5) # para que levanten todos bien primero
         self.id = id
         self.n_watchdogs = n_watchdogs
         self.container_name = container_name
@@ -39,6 +41,7 @@ class WatchDog:
         """
         # self.init_listener_process()
 
+        # if leader == self.id:
         while not self.shutting_down:
             try:
                 for node_type, instances in self.nodes_state.items():
@@ -48,6 +51,17 @@ class WatchDog:
                 time.sleep(self.check_interval)  # Esperar antes de la próxima verificación
             except Exception as e:
                 logging.error(f"WatchDog {self.id}: Error en el proceso de verificación: {e}")
+        # TODO: Que haya varios watchdogs, si se cae el lider (el que vigila los nodos)
+        #       se inicia eleccion del lider, que se va a encargar de seguir vigilando
+        #       los nodos y de levantar el watchdog que origino la eleccion de lider.
+        # else:
+        #     while not self.shutting_down:
+        #         try:
+        #             self._check_node('watchdog', leader) # type: ignore
+        #             time.sleep(self.check_interval)  # Esperar antes de la próxima verificación
+        #         except Exception as e:
+        #             logging.error(f"WatchDog {self.id}: Error en el proceso de verificación: {e}")
+        #     pass
 
     def _check_node(self, node_type: str, instance_id: int):
         """
@@ -65,7 +79,10 @@ class WatchDog:
                 self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
             logging.warning(f"WatchDog {self.id}: Nodo {node_address}:{port} no responde.")
+            #TODO que reanimate retorne si lo logro o no
             self.update_node_state(node_type, instance_id, False)  # Nodo está muerto
+            if reanimate_container(node_address):
+                self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
         except Exception as e:
             logging.error(f"WatchDog {self.id}: Error inesperado al verificar nodo {node_address}:{port}: {e}")
             self.update_node_state(node_type, instance_id, False)
@@ -81,13 +98,7 @@ class WatchDog:
         if self.listener_process:
             self.listener_process.terminate()
             self.listener_process.join()
-        try:
-            self._middleware.close()
-            logging.info("action: shutdown_node | result: success")
-        except Exception as e:
-            logging.error(f"action: shutdown_node | result: fail | error: {e}")
-        
-        self._middleware.check_closed()
+        logging.info("action: shutdown_node | result: success")
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
@@ -127,13 +138,15 @@ class WatchDog:
             logging.warning(f"Node type {node_type} not found in nodes_state.")
 
 
-    # def init_listener_process(self):
-    #     process = Process(
-    #         target=handle_listener_process,
-    #         args=['watchdog', self.id, 12345, self.n_watchdogs])
-    #     process.start()
-    #     self.listener_process = process
+#     def init_listener_process(self):
+#         process = Process(
+#             target=handle_listener_process,
+#             args=['watchdog', self.id, 12345, self.n_watchdogs])
+#         process.start()
+#         self.listener_process = process
 
+#     def set_leader(self, leader_id):
+#         self.leader = leader_id
 
 
 # def handle_listener_process(container_name, id, port, node_ids):

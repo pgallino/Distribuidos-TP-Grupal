@@ -116,7 +116,7 @@ def generate_docker_compose(instances):
                 services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
 
             # Si es una réplica, añadir el volumen para el socket de Docker
-            if node in replica_nodes:
+            if node in replica_nodes or node == 'watchdog':
                 services[service_name].setdefault('volumes', []).append('/var/run/docker.sock:/var/run/docker.sock')
                 
     # Definición de la estructura completa de Docker Compose
