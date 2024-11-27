@@ -1,3 +1,4 @@
+from messages.messages import NodeType
 from utils.initilization import initialize_config, initialize_log
 import logging
 from watchdog import WatchDog
@@ -28,11 +29,11 @@ def main():
         n_nodes,
         container_name = f"watchdog_{instance_id}",
         n_nodes_instances = [
-            ("trimmer", config_params["trimmer_instances"]),
-            ("genre", config_params["genre_instances"]),
-            ("score", config_params["score_instances"]),
-            ("release_date", config_params["release_date_instances"]),
-            ("english", config_params["english_instances"]),
+            (NodeType.string_to_node_type("trimmer"), config_params["trimmer_instances"]),
+            (NodeType.string_to_node_type("genre"), config_params["genre_instances"]),
+            (NodeType.string_to_node_type("score"), config_params["score_instances"]),
+            (NodeType.string_to_node_type("release_date"), config_params["release_date_instances"]),
+            (NodeType.string_to_node_type("english"), config_params["english_instances"]),
             
         ]
     )

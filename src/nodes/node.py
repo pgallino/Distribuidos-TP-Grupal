@@ -1,13 +1,13 @@
 # Clase base Nodo
 import logging
 import signal
-import os
 from multiprocessing import Process, Value, Condition
 import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
+from utils.utils import recv_msg
 
 
 class Node:
@@ -67,11 +67,31 @@ class Node:
     def run(self):
         raise NotImplementedError("Debe implementarse en las subclases")
 
+    def get_type(self):
+        raise NotImplementedError("Debe implementarse en las subclases")
+
     def _receive_message(self, queue_name, callback):
         raise NotImplementedError("Debe implementarse en las subclases")
     
     def forward_coordfin(self, coord_exchange_name, msg):
-        for node_id in range(1, self.n_nodes + 1):
+        try:
+            with socket.create_connection(('watchdog_1', 12345), timeout=2) as watchdog_socket:
+                logging.info(f"Nodo {self.id}: Logro comunicarse con WatchDog 1 puerto {12345}.")
+                # consultar al watchdog que instancias estan activas
+                ask_msg = SimpleMessage(type=MsgType.ASK_ACTIVE_NODES, socket_compatible=True, node_type=self.get_type().value)
+                watchdog_socket.sendall(ask_msg.encode())
+                # recibir respuesta del watchdog con instancias activas
+                raw_w_msg = recv_msg(watchdog_socket)
+                if not raw_w_msg:
+                    logging.error("Connection closed by watchdog.")
+                w_msg = decode_msg(raw_w_msg)
+                if w_msg.type == MsgType.ACTIVE_NODES:
+                    active_nodes = w_msg.active_nodes
+                    logging.info(f"Recibi los nodos que estan activos: {active_nodes}")
+                    # setear las variables n_nodes y keys
+        except (ConnectionRefusedError, socket.timeout, socket.gaierror):
+            logging.warning(f"Nodo {self.id}: Watchdog 1 puerto 12345 no responde.")
+        for node_id in active_nodes:
             if node_id != self.id:
                 # Se reenvia el CoordFin del Fin del cliente a cada otra instancia del nodo
                 key = f"{node_id}"

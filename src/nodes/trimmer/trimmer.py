@@ -1,5 +1,5 @@
 import logging
-from messages.messages import Dataset, ListMessage, MsgType, decode_msg
+from messages.messages import Dataset, ListMessage, MsgType, decode_msg, NodeType
 from messages.games_msg import GamesType, Q1Game, GenreGame, Genre
 from messages.reviews_msg import Review, ReviewsType, Score
 from node import Node  # Importa la clase base Nodo
@@ -49,6 +49,9 @@ class Trimmer(Node):
             elif node == 'os_counter':
                 keys.append((K_Q1GAME, n_nodes))
         return keys
+    
+    def get_type(self):
+        return NodeType.TRIMMER
         
     def run(self):
 

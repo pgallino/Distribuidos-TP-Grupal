@@ -1,7 +1,7 @@
 import logging
 from typing import List, Tuple
 from messages.games_msg import GamesType
-from messages.messages import ListMessage, MsgType, decode_msg
+from messages.messages import ListMessage, MsgType, decode_msg, NodeType
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
@@ -20,6 +20,9 @@ class ReleaseDateFilter(Node):
     
     def get_keys(self):
         return [('', 1)]
+    
+    def get_type(self):
+        return NodeType.RELEASE_DATE
 
     def run(self):
         """Inicia la recepción de mensajes de la cola."""

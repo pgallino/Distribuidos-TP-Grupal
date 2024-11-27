@@ -1,6 +1,6 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, decode_msg
+from messages.messages import ListMessage, MsgType, decode_msg, NodeType
 from messages.reviews_msg import BasicReview, ReviewsType, Score, TextReview
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_FROM_TRIMMER, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
@@ -28,6 +28,9 @@ class ScoreFilter(Node):
             elif node == 'q5_joiner':
                 keys.append((K_NEGATIVE, n_nodes))
         return keys
+    
+    def get_type(self):
+        return NodeType.SCORE
     
     def run(self):
         """Inicia la recepción de mensajes de la cola."""

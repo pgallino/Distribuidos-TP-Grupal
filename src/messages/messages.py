@@ -27,6 +27,50 @@ class MsgType(Enum):
     OK_ELECTION = 14
     LEADER_ELECTION = 15
     COORDFIN_ACK = 16
+    ACTIVE_NODES = 17
+    ASK_ACTIVE_NODES = 18
+
+class NodeType(Enum):
+    TRIMMER = 0
+    GENRE = 1
+    SCORE = 2
+    ENGLISH = 3
+    RELEASE_DATE = 4
+
+    def string_to_node_type(node_type_str: str) -> 'NodeType':
+        """
+        Convierte una cadena a un miembro del enumerador NodeType.
+
+        :param node_type_str: La cadena que representa el nombre del NodeType.
+        :return: El miembro correspondiente de NodeType.
+        :raises ValueError: Si la cadena no corresponde a ningún miembro de NodeType.
+        """
+        node_type_str = node_type_str.lower()
+        if node_type_str in _STRING_TO_NODE_TYPE:
+            return _STRING_TO_NODE_TYPE[node_type_str]
+        raise ValueError(f"'{node_type_str}' no es un tipo de nodo válido en NodeType.")
+        
+    @staticmethod
+    def node_type_to_string(node_type: 'NodeType') -> str:
+        """
+        Convierte un miembro de NodeType a su representación en cadena.
+
+        :param node_type: Miembro de NodeType.
+        :return: La representación en cadena del miembro de NodeType.
+        :raises ValueError: Si el argumento no es un miembro de NodeType.
+        """
+        if not isinstance(node_type, NodeType):
+            raise ValueError(f"'{node_type}' no es un miembro válido de NodeType.")
+        return node_type.name.lower()
+
+# Diccionario para mapeo manual
+_STRING_TO_NODE_TYPE = {
+    "trimmer": NodeType.TRIMMER,
+    "genre": NodeType.GENRE,
+    "score": NodeType.SCORE,
+    "english": NodeType.ENGLISH,
+    "release_date": NodeType.RELEASE_DATE,
+}
 
 class Dataset(Enum):
     GAME = 0
@@ -205,7 +249,8 @@ class SimpleMessage(BaseMessage):
             MsgType.OK_ELECTION: ["client_id"],
             MsgType.LEADER_ELECTION: ["client_id"],
             MsgType.COORDFIN: ["client_id", "node_id"],
-            MsgType.COORDFIN_ACK: ["client_id"]
+            MsgType.COORDFIN_ACK: ["client_id"],
+            MsgType.ASK_ACTIVE_NODES: ["node_type"]
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -300,6 +345,59 @@ class ClientData(BaseMessage):
         return f"ClientData(msg_id={self.msg_id}, rows={self.rows}, dataset={self.dataset})"
 
 # ===================================================================================================================== #
+
+class ActiveNodesMessage(BaseMessage):
+    def __init__(self, active_nodes: List[int], msg_id: int = 0):
+        """
+        Mensaje que contiene nodos activos.
+
+        :param active_nodes: Lista de nodos activos (enteros de 1 byte cada uno).
+        :param msg_id: Identificador único del mensaje.
+        """
+        super().__init__(MsgType.ACTIVE_NODES, msg_id=msg_id, active_nodes = active_nodes)
+
+    @handle_encode_error
+    def encode(self) -> bytes:
+        """
+        Codifica el mensaje incluyendo la lista de nodos activos.
+
+        :return: El mensaje codificado en formato binario.
+        """
+        # Codificar los campos comunes (`type` y `msg_id`)
+        base_data = self.base_encode()
+
+        # Codificar la lista de nodos activos como enteros de 1 byte
+        node_count = len(self.active_nodes)
+        body = struct.pack(f'>B{node_count}B', node_count, *self.active_nodes)
+
+        # añadir longitud total al mensaje y retornar
+        body_with_len = self.add_msg_len(base_data + body)
+        return body_with_len
+    
+    @classmethod
+    def decode(cls, data: bytes) -> 'ActiveNodesMessage':
+        """
+        Decodifica un mensaje desde binario.
+
+        :param data: Los datos binarios que representan el mensaje.
+        :return: Una instancia de ActiveNodesMessage.
+        """
+        # Decodificar los campos comunes
+        msg_type, msg_id, remaining_data = cls.base_decode(data)
+
+        # Decodificar el número de nodos
+        if len(remaining_data) < 1:
+            raise DecodeError("Insufficient data to decode active_nodes count")
+        
+        node_count = struct.unpack('>B', remaining_data[:1])[0]
+        if len(remaining_data) < 1 + node_count:
+            raise DecodeError("Insufficient data to decode all active_nodes")
+
+        # Decodificar la lista de nodos activos
+        active_nodes = list(struct.unpack(f'>{node_count}B', remaining_data[1:1 + node_count]))
+
+        return cls(active_nodes=active_nodes, msg_id=msg_id)
+
 
 class Data(BaseMessage):
     def __init__(self, client_id: int, rows: List[str], dataset: Dataset, msg_id: int = 0):
@@ -671,6 +769,7 @@ MESSAGE_CLASSES = {
     MsgType.CLIENT_DATA: ClientData,
     MsgType.DATA: Data,
     MsgType.PUSH_DATA: PushDataMessage,
+    MsgType.ACTIVE_NODES: ActiveNodesMessage,
     #========== SimpleMessages ==========#
     MsgType.HANDSHAKE: SimpleMessage,
     MsgType.FIN: SimpleMessage,
@@ -680,7 +779,8 @@ MESSAGE_CLASSES = {
     MsgType.OK_ELECTION: SimpleMessage,
     MsgType.LEADER_ELECTION: SimpleMessage,
     MsgType.COORDFIN: SimpleMessage,
-    MsgType.COORDFIN_ACK: SimpleMessage
+    MsgType.COORDFIN_ACK: SimpleMessage,
+    MsgType.ASK_ACTIVE_NODES: SimpleMessage,
 }
 
 
