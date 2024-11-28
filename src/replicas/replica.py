@@ -11,25 +11,25 @@ PORT = 12345
 TIMEOUT = 5
 
 class Replica:
-    def __init__(self, id: int, n_instances: int, container_name: str, container_to_restart: str, timeout: int):
+    def __init__(self, id: int, n_instances: int, ip_prefix: str, port: int, container_to_restart: str, timeout: int):
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
         self.replica_ids = list(range(1, n_instances + 1))
-        self.container_name = container_name
         self.container_to_restart = container_to_restart
         self.state = None
+        self.port = port
 
         self.timeout = timeout
         self._initialize_storage()
 
-        if not container_name:
-            raise ValueError("container_name no puede ser None o vacío.")
+        if not ip_prefix:
+            raise ValueError("ip_prefix no puede ser None o vacío.")
         if not container_to_restart:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
 
-        self.recv_queue = Q_MASTER_REPLICA + f"_{container_name}_{self.id}"
+        self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
         self.send_queue = Q_REPLICA_MASTER + f"_{container_to_restart}"
         exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
         self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
@@ -46,10 +46,14 @@ class Replica:
         self.election_manager = ElectionManager(
             id=self.id,
             ids=self.replica_ids,
-            container_name=container_name,
-            on_leader_selected=reanimate_container,
-            container_to_restart=container_to_restart
+            ip_prefix=ip_prefix,
+            port=port
         )
+
+        # Determinar si esta réplica es el líder inicial
+        self.leader_id = max(self.replica_ids)  # El mayor ID es el líder inicial
+        if self.id == self.leader_id:
+            logging.info(f"Replica {self.id}: Soy el líder inicial.")
 
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -78,6 +82,8 @@ class Replica:
         """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
 
         # Crear el mensaje de respuesta con el estado actual
+
+        logging.info("Respondiendo solicitud de pull por master")
         response_data = PushDataMessage( data=dict(self.state))
 
         # Enviar el mensaje a Q_REPLICA_RESPONSE
@@ -123,7 +129,8 @@ class Replica:
             elif msg.type == MsgType.PULL_DATA:
                 # Responder con toda la data replicada
                 # TODO: Mandar de a batches?
-                self._process_pull_data()
+                if self.leader_id == self.id:
+                    self._process_pull_data()
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
@@ -136,17 +143,20 @@ class Replica:
         try:
             logging.info("Intento conectarme al nodo maestro...")
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((self.container_to_restart, PORT))
+            sock.connect((self.container_to_restart, self.port))
             logging.info("Conexión exitosa. MASTER está vivo.")
         except socket.gaierror as e:
             logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro no encontrado.")
-            self.election_manager.manage_leadership()
+            self.leader_id = self.election_manager.manage_leadership()
+            logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
         except socket.timeout:
             logging.info("DETECCIÓN DE MASTER INACTIVO: Tiempo de espera agotado.")
-            self.election_manager.manage_leadership()
+            self.leader_id = self.election_manager.manage_leadership()
+            logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
         except OSError as e:
             logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro inalcanzable.")
-            self.election_manager.manage_leadership()
+            self.leader_id = self.election_manager.manage_leadership()
+            logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
         except Exception as e:
             logging.error(f"Error inesperado durante la conexión: {e}")
             if not self.shutting_down:

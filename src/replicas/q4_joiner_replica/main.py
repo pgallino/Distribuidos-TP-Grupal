@@ -9,7 +9,8 @@ def main():
             "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
             "n_instances": ("Q4_JOINER_REPLICA_INSTANCES", "Q4_JOINER_REPLICA_INSTANCES"),
             "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT")
+            "timeout": ("TIMEOUT", "TIMEOUT"),
+            "port": ("PORT", "PORT")
         }
 
         # Inicializar configuración y logging
@@ -19,7 +20,8 @@ def main():
         replica_id = config_params["id"]
         n_instances = config_params["n_instances"]
         timeout = config_params["timeout"]
-        replica = Q4JoinerReplica(replica_id, n_instances, "q4_joiner_replica", "q4_joiner_1", timeout)
+        port = config_params["port"]
+        replica = Q4JoinerReplica(replica_id, n_instances, "q4_joiner_replica", port, "q4_joiner_1", timeout)
         
         logging.info(f"Q4JoinerReplica {replica_id} iniciada. Esperando mensajes...")
         

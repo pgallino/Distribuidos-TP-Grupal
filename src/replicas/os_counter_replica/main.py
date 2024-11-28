@@ -9,7 +9,8 @@ def main():
             "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
             "n_instances": ("OS_COUNTER_REPLICA_INSTANCES", "OS_COUNTER_REPLICA_INSTANCES"),
             "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT")
+            "timeout": ("TIMEOUT", "TIMEOUT"),
+            "port": ("PORT", "PORT")
         }
 
         # Inicializar configuración y logging
@@ -19,7 +20,8 @@ def main():
         replica_id = config_params["id"]
         n_instances = config_params["n_instances"]
         timeout = config_params["timeout"]
-        replica = OsCounterReplica(replica_id, n_instances, "os_counter_replica", "os_counter_1", timeout)
+        port = config_params["port"]
+        replica = OsCounterReplica(replica_id, n_instances, "os_counter_replica", port, "os_counter_1", timeout)
         
         logging.info(f"OsCounterReplica {replica_id} iniciada. Esperando mensajes...")
         

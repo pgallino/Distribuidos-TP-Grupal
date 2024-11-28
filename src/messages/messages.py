@@ -201,9 +201,9 @@ class SimpleMessage(BaseMessage):
         """
         ATTRIBUTE_MAPPING = {
             MsgType.FIN: ["client_id"],
-            MsgType.ELECTION: ["client_id"],
-            MsgType.OK_ELECTION: ["client_id"],
-            MsgType.LEADER_ELECTION: ["client_id"],
+            MsgType.ELECTION: ["node_id"],
+            MsgType.OK_ELECTION: ["node_id"],
+            MsgType.LEADER_ELECTION: ["node_id"],
             MsgType.COORDFIN: ["client_id", "node_id"],
             MsgType.COORDFIN_ACK: ["client_id"]
         }
