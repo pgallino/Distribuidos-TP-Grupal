@@ -27,6 +27,7 @@ class MsgType(Enum):
     OK_ELECTION = 14
     LEADER_ELECTION = 15
     COORDFIN_ACK = 16
+    MASTER_REANIMATED = 17
 
 class Dataset(Enum):
     GAME = 0
@@ -680,7 +681,8 @@ MESSAGE_CLASSES = {
     MsgType.OK_ELECTION: SimpleMessage,
     MsgType.LEADER_ELECTION: SimpleMessage,
     MsgType.COORDFIN: SimpleMessage,
-    MsgType.COORDFIN_ACK: SimpleMessage
+    MsgType.COORDFIN_ACK: SimpleMessage,
+    MsgType.MASTER_REANIMATED: SimpleMessage
 }
 
 

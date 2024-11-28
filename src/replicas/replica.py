@@ -1,13 +1,13 @@
 import logging
 import signal
 import socket
-from messages.messages import MsgType, PushDataMessage, decode_msg
+from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from election.election_manager import ElectionManager
 from utils.constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER
-from utils.utils import reanimate_container
+from utils.utils import reanimate_container, recv_msg
 
-PORT = 12345
+PORT_ENTRE_REPLICAS = 8080
 TIMEOUT = 5
 
 class Replica:
@@ -18,6 +18,7 @@ class Replica:
         self.replica_ids = list(range(1, n_instances + 1))
         self.container_to_restart = container_to_restart
         self.state = None
+        self.ip_prefix = ip_prefix
         self.port = port
 
         self.timeout = timeout
@@ -36,11 +37,6 @@ class Replica:
         self._middleware.declare_exchange(exchange_name, type = "fanout")
         self._middleware.bind_queue(self.recv_queue, exchange_name) # -> bindeo al fanout de los push y pull
         self._middleware.declare_queue(self.send_queue) # -> cola para enviar
-
-        # TODO: Que solo una replica responda el pull
-        # TODO: Posible solucion: Tener un lider fijo -> cuando llega un pull responde solo lider (de pedro no del profe)
-        # TODO: Ademas el Lider fijo se puede aprovechar para reanimar el master muerto y reanimar replicas muertas
-        # TODO: Es deseable que se revivan replicas muertas
         
         # Inicializa el ElectionManager
         self.election_manager = ElectionManager(
@@ -147,16 +143,13 @@ class Replica:
             logging.info("Conexión exitosa. MASTER está vivo.")
         except socket.gaierror as e:
             logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro no encontrado.")
-            self.leader_id = self.election_manager.manage_leadership()
-            logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
+            self.handle_master_down()
         except socket.timeout:
             logging.info("DETECCIÓN DE MASTER INACTIVO: Tiempo de espera agotado.")
-            self.leader_id = self.election_manager.manage_leadership()
-            logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
+            self.handle_master_down()
         except OSError as e:
             logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro inalcanzable.")
-            self.leader_id = self.election_manager.manage_leadership()
-            logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
+            self.handle_master_down()
         except Exception as e:
             logging.error(f"Error inesperado durante la conexión: {e}")
             if not self.shutting_down:
@@ -166,4 +159,40 @@ class Replica:
                 sock.close()
                 logging.info("Socket cerrado correctamente.")
 
+    def handle_master_down(self):
+        self.leader_id = self.election_manager.manage_leadership()
+        logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
+        if self.leader_id == self.id:
+            logging.info(f"Replica {self.id}: Soy el líder, ejecutando reanimate_container...")
+            reanimate_container(self.container_to_restart)  # Ejecuta la función como líder
+            self.notify_replicas()  # Notifica a los otros nodos
+        else:
+            self.wait_for_leader()
+
+    def notify_replicas(self):
+        """Envía un mensaje al resto de las réplicas notificando que se ha reanimado el contenedor."""
+        for replica_id in self.replica_ids:
+            if replica_id != self.id:  # No enviar a sí mismo
+                try:
+                    logging.info(f"Replica {self.id}: Notificando a réplica {replica_id}...")
+                    with socket.create_connection((f"{self.ip_prefix}_{replica_id}", PORT_ENTRE_REPLICAS), timeout=5) as sock:
+                        msg = SimpleMessage(type=MsgType.MASTER_REANIMATED, socket_compatible=True)
+                        sock.sendall(msg.encode())
+                        logging.info(f"Replica {self.id}: Notificación enviada a réplica {replica_id}.")
+                except socket.timeout:
+                    logging.error(f"Replica {self.id}: Timeout al notificar a réplica {replica_id}.")
+                except Exception as e:
+                    logging.error(f"Error al notificar a réplica {replica_id}: {e}")
+
+    def wait_for_leader(self):
+        """Espera a que el líder notifique que se ha ejecutado reanimate_container."""
+        logging.info(f"Replica {self.id}: Esperando notificación del líder...")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
+            server_socket.bind((f"{self.ip_prefix}_{self.id}", PORT_ENTRE_REPLICAS))
+            server_socket.listen(1)  # Solo se espera una conexión
+            conn, _ = server_socket.accept()
+            raw_msg = recv_msg(conn)
+            msg = decode_msg(raw_msg)
+            if msg.type == MsgType.MASTER_REANIMATED:
+                logging.info(f"Replica {self.id}: El lider me notifico que ya reanimo al master, continuo...")
 

@@ -94,8 +94,6 @@ class Node:
         self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
         self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
-        # TODO: No usar queue_purge -> Hacer que del lado de las replicas solo una responda el PULL
-        self._middleware.channel.queue_purge(queue=self.replica_queue) # -> limpio la cola para que no haya nada viejo
 
         self.connected = False
 
