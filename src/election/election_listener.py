@@ -34,7 +34,7 @@ class ElectionListener:
             self.listener_socket.listen(len(self.node_ids))
             logging.info(f"node {self.id}: Escuchando en la ip: {ip_address} puerto: {self.port}.")
 
-            while True:
+            while not self.shutting_down:
                 conn, addr = self.listener_socket.accept()
                 raw_msg = recv_msg(conn)
                 msg = decode_msg(raw_msg)
@@ -116,6 +116,8 @@ class ElectionListener:
             self.ok_condition,
         )
         # Actualiza el líder y los nodos vivos
+
+        logging.info(f"la eleccion terminó en listener y es: {leader_id}")
         with self.condition:
             self.leader_id.value = leader_id  # Variable compartida para el líder
             self.election_in_progress.value = False

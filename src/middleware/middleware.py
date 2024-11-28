@@ -118,23 +118,33 @@ class Middleware:
 
         # Inicializa last_message_time al iniciar el consumo
         last_message_time = time.time()
+        mensaje_procesado = False
 
         def wrapped_callback(ch, method, properties, body):
             nonlocal last_message_time
             last_message_time = time.time()  # Actualizar el tiempo del último mensaje
+            mensaje_procesado = True
             callback(ch, method, properties, body)
+            self.channel.stop_consuming()  # Detener el consumo al recibir un mensaje
 
         # Configura el consumidor en el canal con auto_ack
         self.channel.basic_consume(queue=queue_name, on_message_callback=wrapped_callback, auto_ack=auto_ack)
 
-        while True:
-            self.connection.process_data_events(time_limit=inactivity_time)  # Procesa eventos con un timeout corto
-            current_time = time.time()
-            
-            # Verifica si se excedió el tiempo de inactividad
-            if current_time - last_message_time > inactivity_time:
-                logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
-                break
+        try:
+            while True:
+                self.connection.process_data_events(time_limit=inactivity_time)  # Procesa eventos con un timeout corto
+                current_time = time.time()
+                
+                # Verifica si se procesó un mensaje dentro del timeout
+                if mensaje_procesado:
+                    return False #mensaje recibido no hubo timeout
+
+                # Verifica si se excedió el tiempo de inactividad
+                if current_time - last_message_time > inactivity_time:
+                    logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
+                    return True #hubo timeout
+        finally:
+            self.channel.stop_consuming()
 
     def close(self):
         """

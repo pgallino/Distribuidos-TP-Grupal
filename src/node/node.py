@@ -92,6 +92,7 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
+        # TODO: issue: EN CORRIDAS DONDE EL LIDER DE LAS REPLICAS SE MUERE DESPUES
         # Declarar las colas necesarias
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}_{self.id}'
@@ -99,30 +100,29 @@ class Node:
         self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
 
         self.connected = False
-
         # Función de callback para procesar la respuesta
         def on_replica_response(ch, method, properties, body):
             msg = decode_msg(body)
             if isinstance(msg, PushDataMessage):
                 self.load_state(msg)
                 logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
-                self.connected = True
             ch.basic_ack(delivery_tag=method.delivery_tag)
-            self._middleware.channel.stop_consuming()
+            logging.info("Callback terminado.")
 
         # Intentar recibir con timeout y reintentar en caso de no recibir respuesta
         # TODO: Esta bien este sistema de retries pero mejorar el timeout
-        retries = 3  # Número de intentos de reintento
+        retries = 10  # Número de intentos de reintento
         for attempt in range(retries):
         # Enviar un mensaje `PullDataMessage`
             pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
             self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
             logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
-            self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
-            if self.connected:  # Si se recibieron datos, salir del bucle de reintentos
+            time_out_occurred = self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
+            if not time_out_occurred:  # Si no hubo timeout, la sincronización fue exitosa
+                self.connected = True
                 break
             else:
-                logging.warning("No se recibió respuesta de la réplica. Reintentando...")
+                logging.warning(f"No se recibió respuesta de la réplica en el intento {attempt + 1}. Reintentando...")            
 
         if not self.connected:
             logging.error("No se pudo sincronizar con la réplica después de varios intentos.")

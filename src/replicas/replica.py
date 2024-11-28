@@ -2,6 +2,7 @@ import logging
 from multiprocessing import Condition, Value, Process
 import signal
 import socket
+import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from election.election_manager import ElectionManager
@@ -21,6 +22,9 @@ class Replica:
         self.state = None
         self.ip_prefix = ip_prefix
         self.port = port
+
+        # Manejo de señales
+        signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         self.timeout = timeout
         self._initialize_storage()
@@ -57,16 +61,13 @@ class Replica:
         if self.id == self.leader_id:
             logging.info(f"Replica {self.id}: Soy el líder inicial.")
 
-        # Manejo de señales
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
-
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
-
+        self.pull_procesado = False
         try:
-            while True:
-                self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
-                self.ask_keepalive()
+            while not self.shutting_down:
+                timeout = self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
+                if timeout: self.ask_keepalive()
         except Exception as e:
             if not self.shutting_down:
                 logging.error(f"action: shutdown_replica | result: fail | error: {e}")
@@ -133,51 +134,59 @@ class Replica:
                 self._process_push_data(msg)
 
             elif msg.type == MsgType.PULL_DATA:
+
+                if self.pull_procesado:
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    return
                 # Responder con toda la data replicada
                 # TODO: Mandar de a batches?
                 if self.leader_id == self.id:
+                    # TODO: si se cae aca antes de responder pull va a llegar más de un pull y el que no es leader va a responder repetido
+                    # self.simulate_failure(3)
                     self._process_pull_data()
+                else:
+                    # mando keepalive a lider
+                    time.sleep(2)
+                    self.ask_keepalive_leader()
+                    # TODO: ver que pasa si se cae aca el lider
+                    if self.leader_id == self.id:
+                        self._process_pull_data()
+                
+                self.pull_procesado = True
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
             logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
 
     def ask_keepalive(self):
-        """Verifica si el nodo maestro está vivo."""
-        sock = None
-        signal.signal(signal.SIGTERM, self._handle_sigterm)
-        try:
-            logging.info("Intento conectarme al nodo maestro...")
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.connect((self.container_to_restart, self.port))
-            logging.info("Conexión exitosa. MASTER está vivo.")
-        except socket.gaierror as e:
-            logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro no encontrado.")
+        """Verifica si el contenedor maestro está vivo."""
+        master_ip = self.container_to_restart  # Dirección IP del contenedor maestro
+
+        if not self.check_node_status(master_ip, self.port):
+            logging.info("Master inactivo, manejando el fallo.")
             self.handle_master_down()
-        except socket.timeout:
-            logging.info("DETECCIÓN DE MASTER INACTIVO: Tiempo de espera agotado.")
-            self.handle_master_down()
-        except OSError as e:
-            logging.info("DETECCIÓN DE MASTER INACTIVO: Nodo maestro inalcanzable.")
-            self.handle_master_down()
-        except Exception as e:
-            logging.error(f"Error inesperado durante la conexión: {e}")
-            if not self.shutting_down:
-                logging.error(f"Error inesperado en run: {e}")
-        finally:
-            if sock:
-                sock.close()
-                logging.info("Socket cerrado correctamente.")
+        else:
+            logging.info("Master activo y accesible.")
+
+    def ask_keepalive_leader(self):
+        leader_ip = f"{self.ip_prefix}_{self.leader_id}"
+        if not self.check_node_status(leader_ip, self.port):
+            logging.info("Leader no disponible, iniciando elección.")
+            self.leader_id = self.election_manager.manage_leadership()
+            logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id}")
+        else:
+            logging.info("Leader activo y accesible.")
 
     def handle_master_down(self):
-        self.leader_id = self.election_manager.manage_leadership()
-        logging.info(f"EL LEADER SELECCIONADO RETORNADO: {self.leader_id}")
+        if self.leader_id != self.id:
+            self.ask_keepalive_leader() # mando keep_alive -> detecto si se cayo el lider o no
         if self.leader_id == self.id:
             logging.info(f"Replica {self.id}: Soy el líder, ejecutando reanimate_container...")
             reanimate_container(self.container_to_restart)  # Ejecuta la función como líder
             self.notify_replicas()  # Notifica a los otros nodos
         else:
-            self.wait_for_leader()
+            self.wait_for_leader() # espera que el leader responda
+        self.pull_procesado = False
 
     def notify_replicas(self):
         """Envía un mensaje al resto de las réplicas notificando que se ha reanimado el contenedor."""
@@ -185,7 +194,7 @@ class Replica:
             if replica_id != self.id:  # No enviar a sí mismo
                 try:
                     logging.info(f"Replica {self.id}: Notificando a réplica {replica_id}...")
-                    with socket.create_connection((f"{self.ip_prefix}_{replica_id}", self.port), timeout=5) as sock:
+                    with socket.create_connection((f"{self.ip_prefix}_{replica_id}", self.port), timeout=1) as sock:
                         msg = SimpleMessage(type=MsgType.MASTER_REANIMATED, socket_compatible=True)
                         sock.sendall(msg.encode())
                         logging.info(f"Replica {self.id}: Notificación enviada a réplica {replica_id}.")
@@ -201,6 +210,28 @@ class Replica:
                 logging.info("Esperando a que reanimen al master...")
                 self.master_alive_condition.wait()  # Espera a que reanimen al master
         logging.info("Master reanimado, sigo")
+
+    def check_node_status(self, target_ip, target_port):
+        try:
+            with socket.create_connection((target_ip, target_port), timeout=self.timeout) as sock:
+                logging.info(f"Conexión exitosa a {target_ip}:{target_port}.")
+                msg = SimpleMessage(type=MsgType.KEEP_ALIVE, socket_compatible=True)
+                sock.sendall(msg.encode())
+                return True
+        except (socket.gaierror, socket.timeout, OSError) as e:
+            logging.info(f"Error conectando a {target_ip}:{target_port}: {e}")
+            return False
+        except Exception as e:
+            logging.error(f"Error inesperado conectando a {target_ip}:{target_port}: {e}")
+            return False
+        
+    def simulate_failure(self, id):
+        """Simula la caída del líder actual."""
+
+        if self.id == id:
+
+            self._shutdown()
+
 
 def init_listener(id, replica_ids, ip_prefix, port, master_coordination_vars):
     listener = ReplicaListener(id, replica_ids, ip_prefix, port, master_coordination_vars)

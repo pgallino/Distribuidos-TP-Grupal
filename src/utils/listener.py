@@ -18,12 +18,17 @@ class Listener:
         self.port = port
         self.backlog = backlog
         self.shutting_down = False
+        self.conn = None
+        self.socket = None
         signal.signal(signal.SIGTERM, self.handle_sigterm)
 
     def shutdown(self):
         self.shutting_down = True
         if self.sock:
             self.sock.close()
+
+        if self.conn:
+            self.conn.close()
 
     def handle_sigterm(self, sig, frame):
         """Manejador para SIGTERM."""
@@ -46,12 +51,12 @@ class Listener:
                 self.shutdown()
                 return
 
-        while True:
+        while not self.shutting_down:
             try:
-                conn, addr = self.sock.accept()
-                self.process_msg(conn)
+                self.conn, addr = self.sock.accept()
+                self.process_msg(self.conn)
                 logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
-                conn.close()
+                self.conn.close()
             except Exception as e:
                 if not self.shutting_down:
                     logging.error(f"KeepAliveHandler: Error manejando conexión: {e}")
@@ -71,7 +76,7 @@ class ReplicaListener(Listener):
 
         if msg.type == MsgType.KEEP_ALIVE:
             pass
-        if msg.type == MsgType.MASTER_REANIMATED:
+        elif msg.type == MsgType.MASTER_REANIMATED:
             logging.info(f"Replica {self.id}: Recibí mensaje MASTER_REANIMATED.")
             with self.master_alive_condition:  # Usar la condición para actualizar master_alive
                 self.master_alive.value = True
@@ -84,9 +89,8 @@ class NodeListener(Listener):
         super().__init__(id, ip_prefix, port, backlog)
 
     def process_msg(self, conn):
-        return 
-        # raw_msg = recv_msg(conn)
-        # msg = decode_msg(raw_msg)
+        raw_msg = recv_msg(conn)
+        msg = decode_msg(raw_msg)
 
-        # if msg.type == MsgType.KEEP_ALIVE:
-        #     pass
+        if msg.type == MsgType.KEEP_ALIVE:
+            pass

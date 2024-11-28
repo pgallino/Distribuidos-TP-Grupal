@@ -78,15 +78,8 @@ class ElectionManager:
             self.leader_id.value = leader
             self.election_in_progress.value = False
             self.condition.notify_all()  # Notifica a otros procesos que la elección terminó
-        
-        return leader
 
-    def get_leader(self):
-        """Retorna el líder actual o espera a que se seleccione uno."""
-        with self.condition:
-            if self.leader_id.value == -1:  # Si no hay líder, espera
-                self.condition.wait()  # Espera a que el listener o manager actualicen el líder
-            return self.leader_id.value
+        return leader
 
     def cleanup(self):
         """Limpia todos los recursos manejados por el ElectionManager."""
@@ -97,15 +90,6 @@ class ElectionManager:
             logging.info(f"ElectionManager {self.node_id}: Deteniendo listener de elecciones.")
             self.listener_process.terminate()
             self.listener_process.join()
-        
-        # Resetear el estado de las variables compartidas
-        with self.condition:
-            self.election_in_progress.value = False
-            self.condition.notify_all()  # Notificar a los hilos en espera
-
-        with self.ok_condition:
-            self.waiting_ok.value = False
-            self.ok_condition.notify_all()  # Notificar a los hilos en espera
 
         logging.info(f"ElectionManager {self.node_id}: Recursos limpiados exitosamente.")
 

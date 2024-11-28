@@ -682,7 +682,8 @@ MESSAGE_CLASSES = {
     MsgType.LEADER_ELECTION: SimpleMessage,
     MsgType.COORDFIN: SimpleMessage,
     MsgType.COORDFIN_ACK: SimpleMessage,
-    MsgType.MASTER_REANIMATED: SimpleMessage
+    MsgType.MASTER_REANIMATED: SimpleMessage,
+    MsgType.KEEP_ALIVE: SimpleMessage
 }
 
 
