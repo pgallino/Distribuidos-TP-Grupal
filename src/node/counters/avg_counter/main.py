@@ -23,7 +23,7 @@ def main():
     avg_counter = AvgCounter(
         id = instance_id,
         n_nodes = avg_counter_instances,
-        container_name = f"avg_counter_{instance_id}",
+        container_name = "avg_counter",
         n_replicas = n_replicas
 
     )

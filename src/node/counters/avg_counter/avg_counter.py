@@ -25,7 +25,6 @@ class AvgCounter(Node):
         try:
 
             if self.n_replicas > 0:
-                self.init_ka(self.container_name)
                 self._synchronize_with_replicas()  # Sincronizar con la réplica al inicio
 
             # Ejecuta el consumo de mensajes con el callback `process_message`

@@ -23,7 +23,7 @@ def main():
     os_counter = OsCounter(
         id = instance_id,
         n_nodes = os_counter_instances,
-        container_name = f"os_counter_{instance_id}",
+        container_name = "os_counter",
         n_replicas = n_replicas
     )
 

@@ -24,7 +24,7 @@ def main():
     q3_joiner = Q3Joiner(
         id = instance_id,
         n_nodes = q3_joiner_instances,
-        container_name = f"q3_joiner_{instance_id}",
+        container_name = "q3_joiner",
         n_replicas = n_replicas
     )
 

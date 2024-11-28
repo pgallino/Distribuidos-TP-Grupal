@@ -37,7 +37,6 @@ class Q4Joiner(Node):
 
         try:
             if self.n_replicas > 0: # verifico si se instanciaron replicas
-                self.init_ka(self.container_name)
                 self._synchronize_with_replicas()
 
             # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo

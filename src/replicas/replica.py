@@ -104,6 +104,10 @@ class Replica:
 
         self.election_manager.cleanup()
 
+        if self.listener:
+            self.listener.terminate()
+            self.listener.join()
+
         try:
             self._middleware.close()
             logging.info("action: shutdown_replica | result: success")

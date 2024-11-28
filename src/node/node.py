@@ -1,13 +1,12 @@
 # Clase base Nodo
 import logging
 import signal
-import os
 from multiprocessing import Process, Value, Condition
-import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
+from utils.listener import NodeListener
 
 
 class Node:
@@ -27,9 +26,13 @@ class Node:
         self.shutting_down = False
         self._middleware = Middleware()
         self.coordination_process = None
-        self.ka_process = None
         self.condition = Condition()
         self.processing_client = Value('i', -1)  # 'i' indica un entero
+
+        # TODO: POR AHORA SOLO TIENEN EL LISTENER LOS ULTIMOS DEL PIPELINE -> OK
+        if container_name:
+            self.listener = Process(target=init_listener, args=(id, container_name,))
+            self.listener.start()
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -45,9 +48,9 @@ class Node:
             self.coordination_process.terminate()
             self.coordination_process.join()
 
-        if self.ka_process:
-            self.ka_process.terminate()
-            self.ka_process.join()
+        if self.listener:
+            self.listener.terminate()
+            self.listener.join()
         try:
             self._middleware.close()
             logging.info("action: shutdown_node | result: success")
@@ -90,8 +93,8 @@ class Node:
 
     def _synchronize_with_replicas(self):
         # Declarar las colas necesarias
-        self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}'
-        self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}'
+        self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
+        self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
         self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
 
@@ -124,12 +127,6 @@ class Node:
         if not self.connected:
             logging.error("No se pudo sincronizar con la réplica después de varios intentos.")
 
-    def init_ka(self, container_name):
-        process = Process(
-            target=_handle_keep_alive, args=(container_name,))
-        process.start()
-        self.ka_process = process
-
     def push_update(self, type: str, client_id: int, update = None):
 
         if self.n_replicas > 0:
@@ -141,31 +138,10 @@ class Node:
             push_msg = PushDataMessage(data=data)
             self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
-def _handle_keep_alive(container_name):
-    """Proceso dedicado a manejar mensajes de Keep Alive."""
-    sigterm_detected = False  # Flag para controlar si se detectó un SIGTERM
-    sock = None
 
-    def handle_sigterm_ka(sig, frame):
-        nonlocal sigterm_detected
-        sigterm_detected = True
-        if sock:
-            sock.close()
-
-    try:
-        signal.signal(signal.SIGTERM, handle_sigterm_ka)  # Registrar el manejador después de su definición
-
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.bind((container_name, 12345))
-        sock.listen(5)
-
-        while True:
-            sock.accept()
-    except Exception as e:
-        if not sigterm_detected:
-            logging.error(f"action: handle_keep_alive_process | result: fail | error: {e}")
-            if sock:
-                sock.close()
+def init_listener(id, ip_prefix):
+    listener = NodeListener(id, ip_prefix)
+    listener.run()
 
 
 def create_coordinator(id, queue_name, exchange_name, n_nodes, keys, keys_exchange, processing_client, condition):

@@ -1,10 +1,7 @@
 import logging
 import signal
 import socket
-from multiprocessing import Process
-
-from election.election_logic import initiate_election
-from messages.messages import MsgType, SimpleMessage, decode_msg
+from messages.messages import MsgType, decode_msg
 from utils.utils import recv_msg
 
 class Listener:
@@ -67,10 +64,6 @@ class ReplicaListener(Listener):
 
         self.master_alive, self.master_alive_condition = master_coordination_vars
         self.node_ids = ids
-        self.ip_prefix = ip_prefix
-        self.port = port
-        self.listener_socket = None
-        self.shutting_down = False
 
     def process_msg(self, conn):
         raw_msg = recv_msg(conn)
@@ -84,3 +77,16 @@ class ReplicaListener(Listener):
                 self.master_alive.value = True
                 self.master_alive_condition.notify_all()  # Notificar a los hilos en espera
                 logging.info(f"Replica {self.id}: master_alive cambiado a True.")
+
+            
+class NodeListener(Listener):
+    def __init__(self, id, ip_prefix, port=12345, backlog=5):
+        super().__init__(id, ip_prefix, port, backlog)
+
+    def process_msg(self, conn):
+        return 
+        # raw_msg = recv_msg(conn)
+        # msg = decode_msg(raw_msg)
+
+        # if msg.type == MsgType.KEEP_ALIVE:
+        #     pass

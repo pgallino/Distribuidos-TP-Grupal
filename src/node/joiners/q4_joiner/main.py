@@ -30,7 +30,7 @@ def main():
         [('ENGLISH', english_instances)],
         batch,
         n_reviews,
-        container_name = f"q4_joiner_{instance_id}",
+        container_name = "q4_joiner",
         n_replicas = n_replicas
     )
 

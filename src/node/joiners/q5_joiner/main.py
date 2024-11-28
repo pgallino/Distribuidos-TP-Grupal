@@ -21,7 +21,7 @@ def main():
     q5_joiner = Q5Joiner(
         id = instance_id,
         n_nodes = q5_joiner_instances,
-        container_name = f"q5_joiner_{instance_id}",
+        container_name = "q5_joiner",
         n_replicas = n_replicas
     )
 
