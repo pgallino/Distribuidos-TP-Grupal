@@ -45,8 +45,7 @@ def _wait_for_ok_or_leader(node_id, node_ids, ip_prefix, port, election_in_progr
             # Esperar por el OK con timeout
             if not ok_condition.wait_for(lambda: not waiting_ok.value, timeout=5):
                 logging.info(f"Node {node_id}: Timeout esperando OK. Declarándose líder.")
-                declare_leader(node_id, node_ids, ip_prefix, port, election_in_progress, condition)
-                return
+                return declare_leader(node_id, node_ids, ip_prefix, port, election_in_progress, condition)
             logging.info(f"Node {node_id}: OK recibido. Esperando anuncio de líder.")
 
     # Si se recibe el OK, continuar con la lógica de esperar el anuncio del líder

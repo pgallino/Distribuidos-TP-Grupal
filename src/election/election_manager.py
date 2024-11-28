@@ -103,9 +103,9 @@ class ElectionManager:
             self.election_in_progress.value = False
             self.condition.notify_all()  # Notificar a los hilos en espera
 
-        with self.condition_ok:
-            self.waiting_ok_election.value = False
-            self.condition_ok.notify_all()  # Notificar a los hilos en espera
+        with self.ok_condition:
+            self.waiting_ok.value = False
+            self.ok_condition.notify_all()  # Notificar a los hilos en espera
 
         logging.info(f"ElectionManager {self.node_id}: Recursos limpiados exitosamente.")
 

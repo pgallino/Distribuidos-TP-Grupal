@@ -1,13 +1,14 @@
 import logging
+from multiprocessing import Condition, Value, Process
 import signal
 import socket
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from election.election_manager import ElectionManager
-from utils.constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER
-from utils.utils import reanimate_container, recv_msg
+from utils.constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER, ELECTION_PORT
+from utils.listener import ReplicaListener
+from utils.utils import reanimate_container
 
-PORT_ENTRE_REPLICAS = 8080
 TIMEOUT = 5
 
 class Replica:
@@ -29,7 +30,6 @@ class Replica:
         if not container_to_restart:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
-
         self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
         self.send_queue = Q_REPLICA_MASTER + f"_{container_to_restart}"
         exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
@@ -43,8 +43,14 @@ class Replica:
             id=self.id,
             ids=self.replica_ids,
             ip_prefix=ip_prefix,
-            port=port
+            port=ELECTION_PORT
         )
+
+        self.master_alive = Value('i', False)  # 0 = No, 1 = Sí
+        self.master_alive_condition = Condition()
+        master_coordination_vars = (self.master_alive, self.master_alive_condition)
+        self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, port, master_coordination_vars,))
+        self.listener.start()
 
         # Determinar si esta réplica es el líder inicial
         self.leader_id = max(self.replica_ids)  # El mayor ID es el líder inicial
@@ -175,7 +181,7 @@ class Replica:
             if replica_id != self.id:  # No enviar a sí mismo
                 try:
                     logging.info(f"Replica {self.id}: Notificando a réplica {replica_id}...")
-                    with socket.create_connection((f"{self.ip_prefix}_{replica_id}", PORT_ENTRE_REPLICAS), timeout=5) as sock:
+                    with socket.create_connection((f"{self.ip_prefix}_{replica_id}", self.port), timeout=5) as sock:
                         msg = SimpleMessage(type=MsgType.MASTER_REANIMATED, socket_compatible=True)
                         sock.sendall(msg.encode())
                         logging.info(f"Replica {self.id}: Notificación enviada a réplica {replica_id}.")
@@ -186,13 +192,12 @@ class Replica:
 
     def wait_for_leader(self):
         """Espera a que el líder notifique que se ha ejecutado reanimate_container."""
-        logging.info(f"Replica {self.id}: Esperando notificación del líder...")
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-            server_socket.bind((f"{self.ip_prefix}_{self.id}", PORT_ENTRE_REPLICAS))
-            server_socket.listen(1)  # Solo se espera una conexión
-            conn, _ = server_socket.accept()
-            raw_msg = recv_msg(conn)
-            msg = decode_msg(raw_msg)
-            if msg.type == MsgType.MASTER_REANIMATED:
-                logging.info(f"Replica {self.id}: El lider me notifico que ya reanimo al master, continuo...")
+        with self.master_alive_condition:
+            if not self.master_alive.value:
+                logging.info("Esperando a que reanimen al master...")
+                self.master_alive_condition.wait()  # Espera a que reanimen al master
+        logging.info("Master reanimado, sigo")
 
+def init_listener(id, replica_ids, ip_prefix, port, master_coordination_vars):
+    listener = ReplicaListener(id, replica_ids, ip_prefix, port, master_coordination_vars)
+    listener.run()

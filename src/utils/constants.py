@@ -61,3 +61,5 @@ K_Q1GAME = 'q1game'
 K_POSITIVE = 'positive'
 K_REVIEW = 'review'
 K_NEGATIVE_TEXT = 'negative_text'
+
+ELECTION_PORT = 8080
