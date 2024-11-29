@@ -121,7 +121,7 @@ class Middleware:
         mensaje_procesado = False
 
         def wrapped_callback(ch, method, properties, body):
-            nonlocal last_message_time
+            nonlocal last_message_time, mensaje_procesado
             last_message_time = time.time()  # Actualizar el tiempo del último mensaje
             mensaje_procesado = True
             callback(ch, method, properties, body)

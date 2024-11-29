@@ -141,14 +141,20 @@ class Replica:
                 # Responder con toda la data replicada
                 # TODO: Mandar de a batches?
                 if self.leader_id == self.id:
-                    # TODO: si se cae aca antes de responder pull va a llegar más de un pull y el que no es leader va a responder repetido
                     # self.simulate_failure(3)
                     self._process_pull_data()
                 else:
                     # mando keepalive a lider
-                    time.sleep(2)
+                    time.sleep(2) 
+                    #TODO: esto averiguar como coordinarlo bien. 
+                    # Está porque si el lider se cae justo en la linea anterior a self._process_pull_data()
+                    # cuando le hacen el keepalive puede responder pero morir al instante y no se detecta
+                    # por lo que nunca se responde el pull
+                    # el sleep le da tiempo a morir del todo al lider y poder detectarlo
                     self.ask_keepalive_leader()
-                    # TODO: ver que pasa si se cae aca el lider
+                    # TODO: ver que pasa si se cae aca el lider.
+                    # Si se cae aca el lider despues de que ya me respondio que está vivo tengo un problema.
+                    # nadie responde el pull porque no se cambia el lider
                     if self.leader_id == self.id:
                         self._process_pull_data()
                 
@@ -183,6 +189,8 @@ class Replica:
         if self.leader_id == self.id:
             logging.info(f"Replica {self.id}: Soy el líder, ejecutando reanimate_container...")
             reanimate_container(self.container_to_restart)  # Ejecuta la función como líder
+            # TODO: Si se me cae aca el lider tengo que ver del lado de las replicas de realizar un timeout y ejecutar una elección.
+            # En caso de que se cae, el nuevo lider debe reanimar al master
             self.notify_replicas()  # Notifica a los otros nodos
         else:
             self.wait_for_leader() # espera que el leader responda
@@ -205,6 +213,7 @@ class Replica:
 
     def wait_for_leader(self):
         """Espera a que el líder notifique que se ha ejecutado reanimate_container."""
+        # TODO: si el lider se cayó, quedo trabado aca esperando
         with self.master_alive_condition:
             if not self.master_alive.value:
                 logging.info("Esperando a que reanimen al master...")
@@ -226,10 +235,9 @@ class Replica:
             return False
         
     def simulate_failure(self, id):
-        """Simula la caída del líder actual."""
+        """Simula la caída del id"""
 
         if self.id == id:
-
             self._shutdown()
 
 
