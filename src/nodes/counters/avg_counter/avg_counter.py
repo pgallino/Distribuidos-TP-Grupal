@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+from typing import List, Tuple
 from messages.messages import MsgType, PushDataMessage, ResultMessage, decode_msg
 from messages.results_msg import Q2Result, QueryNumber
 import heapq
@@ -10,7 +11,7 @@ from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 class AvgCounter(Node):
 
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
-        super().__init__(id=id, n_nodes=n_nodes, container_name=container_name)
+        super().__init__(id, n_nodes, container_name)
 
         self.n_replicas = n_replicas
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
@@ -24,7 +25,6 @@ class AvgCounter(Node):
         try:
 
             if self.n_replicas > 0:
-                self.init_ka(self.container_name)
                 self._synchronize_with_replicas()  # Sincronizar con la réplica al inicio
 
             # Ejecuta el consumo de mensajes con el callback `process_message`

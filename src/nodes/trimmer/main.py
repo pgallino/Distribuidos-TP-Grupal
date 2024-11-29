@@ -16,20 +16,19 @@ def main():
 
     # Inicializar la configuración
     config_params = initialize_config(required_keys)
-    instance_id = config_params["instance_id"]
-    n_nodes = config_params["trimmer_instances"]
+
     initialize_log(config_params["logging_level"])
 
     # Crear una instancia de Trimmer con los parámetros configurados
     trimmer = Trimmer(
-        instance_id,
-        n_nodes,
+        config_params["instance_id"],
+        config_params["trimmer_instances"],
         [
-            ("genre", config_params["genre_instances"]),
-            ("score", config_params["score_instances"]),
-            ("os_counter", config_params["os_counter_instances"])
+            ("GENRE", config_params["genre_instances"]),
+            ("SCORE", config_params["score_instances"]),
+            ("OS_COUNTER", config_params["os_counter_instances"])
         ],
-        container_name = f"trimmer_{instance_id}",
+        container_name = "trimmer"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

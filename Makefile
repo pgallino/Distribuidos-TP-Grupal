@@ -33,7 +33,6 @@ docker-image:
 	# docker rmi `docker images --filter label=intermediateStageToBeDeleted=true -q`
 .PHONY: docker-image
 
-
 generate-compose:
 	./scripts/generar-compose.sh
 .PHONY: generate-compose

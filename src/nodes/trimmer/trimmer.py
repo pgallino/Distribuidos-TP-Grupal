@@ -1,5 +1,5 @@
 import logging
-from messages.messages import Dataset, ListMessage, MsgType, decode_msg, NodeType
+from messages.messages import Dataset, ListMessage, MsgType, decode_msg
 from messages.games_msg import GamesType, Q1Game, GenreGame, Genre
 from messages.reviews_msg import Review, ReviewsType, Score
 from node import Node  # Importa la clase base Nodo
@@ -31,8 +31,8 @@ def get_genres(genres_string: str):
     return [genre for value in values if (genre := Genre.from_string(value)) != Genre.OTHER]
 
 class Trimmer(Node):
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name: str):
-        super().__init__(id, n_nodes, n_next_nodes, container_name=container_name)
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
+        super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
 
         # Configura las colas y los intercambios específicos para Trimmer
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
@@ -42,21 +42,17 @@ class Trimmer(Node):
     def get_keys(self):
         keys = []
         for node, n_nodes in self.n_next_nodes:
-            if node == 'genre':
+            if node == 'GENRE':
                 keys.append((K_GENREGAME, n_nodes))
-            elif node == 'score':
+            elif node == 'SCORE':
                 keys.append((K_REVIEW, n_nodes))
-            elif node == 'os_counter':
+            elif node == 'OS_COUNTER':
                 keys.append((K_Q1GAME, n_nodes))
         return keys
-    
-    def get_type(self):
-        return NodeType.TRIMMER
         
     def run(self):
 
         try:
-            self.init_ka(self.container_name)
             if self.n_nodes > 1:
                 self.init_coordinator(self.id, Q_COORD_TRIMMER, E_COORD_TRIMMER, self.n_nodes, self.get_keys(), E_FROM_TRIMMER)
             
@@ -138,11 +134,11 @@ class Trimmer(Node):
             self.forward_coordfin(E_COORD_TRIMMER, msg)
         else:
             for node, _ in self.n_next_nodes:
-                if node == 'genre':
+                if node == 'GENRE':
                     self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_GENREGAME)
-                elif node == 'score':
+                elif node == 'SCORE':
                     self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_REVIEW)
-                elif node == 'os_counter':
+                elif node == 'OS_COUNTER':
                     self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_Q1GAME)
 
     def _get_game(self, values):

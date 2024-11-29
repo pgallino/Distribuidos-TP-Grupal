@@ -19,8 +19,11 @@ class Listener:
         self.backlog = backlog
         self.shutting_down = False
         self.conn = None
-        self.socket = None
         signal.signal(signal.SIGTERM, self.handle_sigterm)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind((f'{self.ip_prefix}_{self.id}', self.port))
+        self.sock.listen(self.backlog)
+        logging.info(f"KeepAliveHandler: Escuchando mensajes en {f'{self.ip_prefix}_{self.id}'}:{self.port}")
 
     def shutdown(self):
         self.shutting_down = True
@@ -39,17 +42,6 @@ class Listener:
     
     def run(self):
         """Proceso dedicado a manejar mensajes de Keep Alive."""
-        
-        try:
-            self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.sock.bind((f'{self.ip_prefix}_{self.id}', self.port))
-            self.sock.listen(self.backlog)
-            logging.info(f"KeepAliveHandler: Escuchando mensajes en {f'{self.ip_prefix}_{self.id}'}:{self.port}")
-        except Exception as e:
-            if not self.shutting_down:
-                logging.error(f"KeepAliveHandler: Error en proceso: {e}")
-                self.shutdown()
-                return
 
         while not self.shutting_down:
             try:

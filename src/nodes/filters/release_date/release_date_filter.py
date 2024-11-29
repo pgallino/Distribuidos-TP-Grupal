@@ -1,14 +1,14 @@
 import logging
 from typing import List, Tuple
 from messages.games_msg import GamesType
-from messages.messages import ListMessage, MsgType, decode_msg, NodeType
+from messages.messages import ListMessage, MsgType, decode_msg
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
 
 class ReleaseDateFilter(Node):
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name: str):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
         # Inicializa la clase base Node
-        super().__init__(id, n_nodes, n_next_nodes, container_name=container_name)
+        super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
         
         # Configura las colas y los intercambios específicos para ReleaseDateFilter
         self._middleware.declare_queue(Q_GENRE_RELEASE_DATE)
@@ -20,14 +20,10 @@ class ReleaseDateFilter(Node):
     
     def get_keys(self):
         return [('', 1)]
-    
-    def get_type(self):
-        return NodeType.RELEASE_DATE
 
     def run(self):
         """Inicia la recepción de mensajes de la cola."""
         try:
-            self.init_ka(self.container_name)
             if self.n_nodes > 1:
                 self.init_coordinator(self.id, Q_COORD_RELEASE_DATE, E_COORD_RELEASE_DATE, self.n_nodes, self.get_keys(), Q_RELEASE_DATE_AVG_COUNTER)
             self._middleware.receive_from_queue(Q_GENRE_RELEASE_DATE, self._process_message, auto_ack=False)

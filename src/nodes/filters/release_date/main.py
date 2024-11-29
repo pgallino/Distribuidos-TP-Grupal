@@ -22,8 +22,8 @@ def main():
     release_date_filter = ReleaseDateFilter(
         instance_id,
         release_date_instances,
-        [("avg_counter", config_params["avg_counter_instances"])],
-        container_name = f"release_date_{instance_id}"
+        [("AVG_COUNTER", config_params["avg_counter_instances"])],
+        container_name = "release_date"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

@@ -4,7 +4,7 @@ import signal
 from multiprocessing import Manager, Process, Lock
 import socket
 import time
-from messages.messages import ActiveNodesMessage, MsgType, NodeType, decode_msg
+from messages.messages import ActiveNodesMessage, MsgType, NodeType, SimpleMessage, decode_msg
 from utils.utils import reanimate_container, recv_msg
 
 class WatchDog:
@@ -74,7 +74,8 @@ class WatchDog:
         port = 12345  # Con este puerto se puede aprovechar el KA que ya tienen los nodos para las replicas
         
         try:
-            with socket.create_connection((node_address, port), timeout=1):
+            with socket.create_connection((node_address, port), timeout=1) as sock:
+                sock.sendall(SimpleMessage(type=MsgType.KEEP_ALIVE, socket_compatible=True).encode())
                 logging.info(f"WatchDog {self.id}: KEEP_ALIVE enviado a {node_address}:{port}.")
                 self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
@@ -104,6 +105,7 @@ class WatchDog:
         """Handle SIGTERM signal to close the node gracefully."""
         logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
+        exit(0)
 
     def _set_nodes_state(self, n_nodes_instances: list[tuple[NodeType, int]]):
         """

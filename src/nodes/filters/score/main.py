@@ -26,8 +26,8 @@ def main():
     score_filter = ScoreFilter(
         instance_id,
         score_instances,
-        [('q3_joiner', joiner_q3_instances), ('q4_joiner', joiner_q4_instances), ('q5_joiner', joiner_q5_instances)],
-        container_name = f"score_{instance_id}"
+        [('JOINER_Q3', joiner_q3_instances), ('JOINER_Q4', joiner_q4_instances), ('JOINER_Q5', joiner_q5_instances)],
+        container_name = "score"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

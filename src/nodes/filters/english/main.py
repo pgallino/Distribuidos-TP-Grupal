@@ -23,8 +23,8 @@ def main():
     english_filter = EnglishFilter(
         instance_id,
         english_instances,
-        [('q4_joiner', q4_joiner_instances)],  # Configuración de next_nodes con q4_joiner_instances
-        container_name = f"english_{instance_id}"
+        [('Q4_JOINER', q4_joiner_instances)],  # Configuración de next_nodes con q4_joiner_instances
+        container_name="english"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

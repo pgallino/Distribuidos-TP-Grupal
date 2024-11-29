@@ -31,12 +31,12 @@ def main():
         instance_id,
         genre_instances,
         [
-            ('release_date', release_date_instances),
-            ('q3_joiner', q3_joiner_instances),
-            ('q4_joiner', q4_joiner_instances),
-            ('q5_joiner', q5_joiner_instances)
+            ('RELEASE_DATE', release_date_instances),
+            ('JOINER_Q3', q3_joiner_instances),
+            ('JOINER_Q4', q4_joiner_instances),
+            ('JOINER_Q5', q5_joiner_instances)
         ],
-        container_name = f"genre_{instance_id}",
+        container_name = "genre"
     )
 
     # Iniciar el filtro, escuchando mensajes en la cola

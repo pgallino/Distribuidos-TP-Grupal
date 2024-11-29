@@ -1,15 +1,15 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, decode_msg, NodeType
+from messages.messages import ListMessage, MsgType, decode_msg
 from messages.reviews_msg import BasicReview, ReviewsType, Score, TextReview
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_SCORE, E_FROM_SCORE, E_FROM_TRIMMER, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
 
 
 class ScoreFilter(Node):
-    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name: str):
+    def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
         # Inicializa la clase base Node
-        super().__init__(id, n_nodes, n_next_nodes, container_name=container_name)
+        super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
         
         # Configura las colas y los intercambios específicos para ScoreFilter
         self._middleware.declare_queue(Q_TRIMMER_SCORE_FILTER)
@@ -21,21 +21,17 @@ class ScoreFilter(Node):
     def get_keys(self):
         keys = []
         for node, n_nodes in self.n_next_nodes:
-            if node == 'q3_joiner':
+            if node == 'JOINER_Q3':
                 keys.append((K_POSITIVE, n_nodes))
-            elif node == 'q4_joiner':
+            elif node == 'JOINER_Q4':
                 keys.append((K_NEGATIVE_TEXT, n_nodes))
-            elif node == 'q5_joiner':
+            elif node == 'JOINER_Q5':
                 keys.append((K_NEGATIVE, n_nodes))
         return keys
-    
-    def get_type(self):
-        return NodeType.SCORE
     
     def run(self):
         """Inicia la recepción de mensajes de la cola."""
         try:
-            self.init_ka(self.container_name)
             if self.n_nodes > 1:
                 self.init_coordinator(self.id, Q_COORD_SCORE, E_COORD_SCORE, self.n_nodes, self.get_keys(), E_FROM_SCORE)
             self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
@@ -95,9 +91,9 @@ class ScoreFilter(Node):
             self.forward_coordfin(E_COORD_SCORE, msg)
         else:
             for node, _ in self.n_next_nodes:
-                if node == 'q3_joiner':
+                if node == 'JOINER_Q3':
                     self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_POSITIVE)
-                elif node == 'q4_joiner':
+                elif node == 'JOINER_Q4':
                     self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE_TEXT)
-                elif node == 'q5_joiner':
+                elif node == 'JOINER_Q5':
                     self._middleware.send_to_queue(E_FROM_SCORE, msg.encode(), K_NEGATIVE)
