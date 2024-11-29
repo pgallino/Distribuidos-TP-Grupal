@@ -29,9 +29,11 @@ class Node:
         self.condition = Condition()
         self.processing_client = Value('i', -1)  # 'i' indica un entero
 
+        self.connected = Value('i', 0)  # 0 para False, 1 para True
+
         # TODO: POR AHORA SOLO TIENEN EL LISTENER LOS ULTIMOS DEL PIPELINE -> OK
         if container_name:
-            self.listener = Process(target=init_listener, args=(id, container_name,))
+            self.listener = Process(target=init_listener, args=(id, container_name, self.connected))
             self.listener.start()
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -99,7 +101,6 @@ class Node:
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
         self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
 
-        self.connected = False
         # Función de callback para procesar la respuesta
         def on_replica_response(ch, method, properties, body):
             msg = decode_msg(body)
@@ -119,12 +120,12 @@ class Node:
             logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
             time_out_occurred = self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
             if not time_out_occurred:  # Si no hubo timeout, la sincronización fue exitosa
-                self.connected = True
+                self.connected.value = 1
                 break
             else:
                 logging.warning(f"No se recibió respuesta de la réplica en el intento {attempt + 1}. Reintentando...")            
 
-        if not self.connected:
+        if self.connected.value == 0:
             logging.error("No se pudo sincronizar con la réplica después de varios intentos.")
 
     def push_update(self, type: str, client_id: int, update = None):
@@ -139,8 +140,8 @@ class Node:
             self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
 
-def init_listener(id, ip_prefix):
-    listener = NodeListener(id, ip_prefix)
+def init_listener(id, ip_prefix, connected):
+    listener = NodeListener(id, ip_prefix, connected)
     listener.run()
 
 

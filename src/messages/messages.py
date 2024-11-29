@@ -28,6 +28,10 @@ class MsgType(Enum):
     LEADER_ELECTION = 15
     COORDFIN_ACK = 16
     MASTER_REANIMATED = 17
+    TASK_INTENT = 18
+    TASK_COMPLETED = 19
+    MASTER_CONNECTED = 20
+    ASK_MASTER_CONNECTED = 21
 
 class Dataset(Enum):
     GAME = 0
@@ -206,7 +210,10 @@ class SimpleMessage(BaseMessage):
             MsgType.OK_ELECTION: ["node_id"],
             MsgType.LEADER_ELECTION: ["node_id"],
             MsgType.COORDFIN: ["client_id", "node_id"],
-            MsgType.COORDFIN_ACK: ["client_id"]
+            MsgType.COORDFIN_ACK: ["client_id"],
+            MsgType.MASTER_CONNECTED: ["connected"],
+            MsgType.TASK_COMPLETED: ["node_id", "task_type"],
+            MsgType.TASK_INTENT: ["node_id", "task_type"]
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -683,7 +690,12 @@ MESSAGE_CLASSES = {
     MsgType.COORDFIN: SimpleMessage,
     MsgType.COORDFIN_ACK: SimpleMessage,
     MsgType.MASTER_REANIMATED: SimpleMessage,
-    MsgType.KEEP_ALIVE: SimpleMessage
+    MsgType.KEEP_ALIVE: SimpleMessage,
+    MsgType.TASK_INTENT: SimpleMessage,
+    MsgType.TASK_COMPLETED: SimpleMessage,
+    MsgType.MASTER_CONNECTED: SimpleMessage,
+    MsgType.ASK_MASTER_CONNECTED: SimpleMessage,
+
 }
 
 

@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 import struct
 import subprocess
@@ -148,3 +149,7 @@ def reanimate_container(container_name, sleep_seconds=5):
 
     except Exception as e:
         logging.error(f"Unexpected error while handling container {container_name}: {e}")
+
+class TaskType(Enum):
+    PULL = 0
+    REANIMATE_MASTER = 1

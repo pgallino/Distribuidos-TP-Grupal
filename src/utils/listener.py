@@ -1,8 +1,8 @@
 import logging
 import signal
 import socket
-from messages.messages import MsgType, decode_msg
-from utils.utils import recv_msg
+from messages.messages import MsgType, SimpleMessage, decode_msg
+from utils.utils import TaskType, recv_msg
 
 class Listener:
     def __init__(self, id, ip_prefix, port=12345, backlog=5):
@@ -64,10 +64,10 @@ class Listener:
                     logging.info("KeepAliveHandler: Proceso terminado.")
 
 class ReplicaListener(Listener):
-    def __init__(self, id, ids, ip_prefix, port, master_coordination_vars):
+    def __init__(self, id, ids, ip_prefix, port, task_coordination_vars):
         super().__init__(id, ip_prefix, port, 5)
 
-        self.master_alive, self.master_alive_condition = master_coordination_vars
+        self.task_status, self.task_condition = task_coordination_vars
         self.node_ids = ids
 
     def process_msg(self, conn):
@@ -76,17 +76,30 @@ class ReplicaListener(Listener):
 
         if msg.type == MsgType.KEEP_ALIVE:
             pass
-        elif msg.type == MsgType.MASTER_REANIMATED:
-            logging.info(f"Replica {self.id}: Recibí mensaje MASTER_REANIMATED.")
-            with self.master_alive_condition:  # Usar la condición para actualizar master_alive
-                self.master_alive.value = True
-                self.master_alive_condition.notify_all()  # Notificar a los hilos en espera
-                logging.info(f"Replica {self.id}: master_alive cambiado a True.")
 
+        elif msg.type == MsgType.TASK_INTENT:
+            task_type = TaskType(msg.task_type)
+            logging.info(f"Replica {self.id}: Recibí TASK_INTENT para tarea '{task_type.name}'.")
+            
+            # Actualizar task_status y notificar
+            with self.task_condition:
+                self.task_status["intent"] = task_type.value
+                self.task_condition.notify_all()
+
+        elif msg.type == MsgType.TASK_COMPLETED:
+            task_type = TaskType(msg.task_type)
+            logging.info(f"Replica {self.id}: Recibí TASK_COMPLETED para tarea '{task_type.name}'.")
+            
+            # Actualizar task_status y notificar
+            with self.task_condition:
+                self.task_status["completed"] = task_type.value
+                self.task_condition.notify_all()
             
 class NodeListener(Listener):
-    def __init__(self, id, ip_prefix, port=12345, backlog=5):
+    def __init__(self, id, ip_prefix, connected, port=12345, backlog=5):
         super().__init__(id, ip_prefix, port, backlog)
+
+        self.connected = connected
 
     def process_msg(self, conn):
         raw_msg = recv_msg(conn)
@@ -94,3 +107,8 @@ class NodeListener(Listener):
 
         if msg.type == MsgType.KEEP_ALIVE:
             pass
+        elif msg.type == MsgType.ASK_MASTER_CONNECTED:
+            # Construir y enviar la respuesta con el estado de conexión
+            response_msg = SimpleMessage(type=MsgType.MASTER_CONNECTED, socket_compatible=True, connected=self.connected.value) # 0 para False, 1 para True
+            conn.sendall(response_msg.encode())
+            logging.info(f"NodeListener: Respondí con estado 'connected={self.connected}'.")
