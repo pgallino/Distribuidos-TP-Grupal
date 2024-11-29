@@ -43,7 +43,7 @@ class ElectionListener:
                     self._handle_election_message(msg)
 
                 elif msg.type == MsgType.LEADER_ELECTION:
-                    self._handle_leader_election_message()
+                    self._handle_leader_election_message(msg)
 
                 elif msg.type == MsgType.OK_ELECTION:
                     self._handle_ok_election_message()
@@ -84,10 +84,11 @@ class ElectionListener:
             self.election_process.start()
 
 
-    def _handle_leader_election_message(self):
+    def _handle_leader_election_message(self, msg):
         """Procesa un mensaje de tipo LEADER_ELECTION."""
         logging.info(f"node {self.id}: Llego un mensaje Leader")
         with self.condition:
+            self.leader_id.value = msg.node_id
             self.election_in_progress.value = False
             self.condition.notify_all()
 
@@ -105,7 +106,7 @@ class ElectionListener:
 
     def _initiate_election(self):
         """Inicia el proceso de elección llamando a la lógica principal."""
-        leader_id = initiate_election(
+        initiate_election(
             self.id,
             self.node_ids,
             self.ip_prefix,
@@ -114,12 +115,11 @@ class ElectionListener:
             self.condition,
             self.waiting_ok,
             self.ok_condition,
+            self.leader_id
         )
         # Actualiza el líder y los nodos vivos
 
-        logging.info(f"la eleccion terminó en listener y es: {leader_id}")
         with self.condition:
-            self.leader_id.value = leader_id  # Variable compartida para el líder
             self.election_in_progress.value = False
             self.condition.notify_all()
 

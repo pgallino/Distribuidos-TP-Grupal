@@ -61,7 +61,7 @@ class ElectionManager:
                 return self.leader_id.value
             self.election_in_progress.value = True
 
-        leader = initiate_election(
+        initiate_election(
             self.node_id,
             self.node_ids,
             self.ip_prefix,
@@ -70,16 +70,11 @@ class ElectionManager:
             self.condition,
             self.waiting_ok,
             self.ok_condition,
+            self.leader_id
         )
 
-        # NO es necesario esto
-        # Actualiza el líder y notifica que la elección ha terminado
         with self.condition:
-            self.leader_id.value = leader
-            self.election_in_progress.value = False
-            self.condition.notify_all()  # Notifica a otros procesos que la elección terminó
-
-        return leader
+            return self.leader_id.value
 
     def cleanup(self):
         """Limpia todos los recursos manejados por el ElectionManager."""

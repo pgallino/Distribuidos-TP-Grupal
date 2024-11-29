@@ -1,5 +1,5 @@
 import logging
-from multiprocessing import Condition, Process, Manager
+from multiprocessing import Process, Manager
 import signal
 import socket
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
@@ -120,6 +120,7 @@ class Replica:
             logging.error(f"action: shutdown_replica | result: fail | error: {e}")
 
         self._middleware.check_closed()
+        exit(0)
 
     def _handle_sigterm(self, sig, frame):
         """Maneja la señal SIGTERM para cerrar la réplica de forma segura."""
@@ -253,6 +254,7 @@ class Replica:
                     if not self.check_node_status(leader_ip, self.port):
                         logging.warning(f"Replica {self.id}: El líder no responde. Iniciando nueva elección.")
                         self.leader_id = self.election_manager.manage_leadership()
+                        logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id}")
 
                         if self.leader_id == self.id:
                             logging.info(f"Replica {self.id}: Soy el nuevo líder tras la elección. Procesando tarea '{task_type.name}'.")
@@ -296,6 +298,7 @@ class Replica:
 
         # 2. Reanimar el maestro
         reanimate_container(self.container_to_restart)
+
         # 3. Enviar TASK_COMPLETED
         self.send_task_completed(task_type=TaskType.REANIMATE_MASTER)
 
