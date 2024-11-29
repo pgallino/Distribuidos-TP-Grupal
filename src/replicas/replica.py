@@ -176,15 +176,7 @@ class Replica:
             self.ask_keepalive_leader()
 
         if self.leader_id == self.id:  # Si soy el líder
-            logging.info(f"Replica {self.id}: Soy el líder, iniciando reanimación del maestro.")
-            # 1. Enviar TASK_INTENT
-            self.send_task_intent(task_type=TaskType.REANIMATE_MASTER)
-
-            # 2. Reanimar el maestro
-            reanimate_container(self.container_to_restart)
-
-            # 3. Enviar TASK_COMPLETED
-            self.send_task_completed(task_type=TaskType.REANIMATE_MASTER)
+            self.handle_reanimate_master()
         else:  # Si no soy el líder
             # Esperar mensajes TASK_INTENT y TASK_COMPLETED
             self.wait_for_task(task_type=TaskType.REANIMATE_MASTER)
@@ -286,8 +278,6 @@ class Replica:
 
             # 1. Enviar TASK_INTENT a las otras réplicas
             self.send_task_intent(task_type=TaskType.PULL)
-            # SIMULO FALLA ACA:
-            self.simulate_failure(3)
             # 2. Procesar el PULL (sincronización con el maestro)
             self._process_pull_data()
 
@@ -298,6 +288,16 @@ class Replica:
         else:
             self.send_task_completed(task_type=TaskType.PULL)
             logging.info(f"Replica {self.id}: Maestro ya sincronizado. No se necesita PULL.")
+
+    def handle_reanimate_master(self):
+        logging.info(f"Replica {self.id}: Soy el líder, iniciando reanimación del maestro.")
+        # 1. Enviar TASK_INTENT
+        self.send_task_intent(task_type=TaskType.REANIMATE_MASTER)
+
+        # 2. Reanimar el maestro
+        reanimate_container(self.container_to_restart)
+        # 3. Enviar TASK_COMPLETED
+        self.send_task_completed(task_type=TaskType.REANIMATE_MASTER)
 
     def ask_master_connected(self):
         """Consulta al maestro si está sincronizado."""
@@ -318,6 +318,8 @@ class Replica:
                 return is_connected
         except Exception as e:
             logging.error(f"Replica {self.id}: Error consultando maestro: {e}")
+            # TODO: pasa que aun no se le levantó el listener y no llega a responder despues de una reanimacion
+            # TODO: habria que distinguir el caso en que no me respondio porque aun no se le levanto el listener post reanimacion o de si murió post reanimacion instantaneamente.
             return False  # Por defecto, asumir que no está conectado
 
 
