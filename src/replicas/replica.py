@@ -139,18 +139,7 @@ class Replica:
                 if not self.pull_procesado:
                     self.pull_procesado = True
                     if self.leader_id == self.id:
-                        # 1. Verificar si el maestro está sincronizado
-                        if not self.ask_master_connected():
-                            # 2. Enviar TASK_INTENT
-                            self.send_task_intent(task_type=TaskType.PULL)
-                            
-                            # 3. Procesar el pull
-                            self._process_pull_data()
-                            
-                            # 4. Enviar TASK_COMPLETED
-                            self.send_task_completed(task_type=TaskType.PULL)
-                        else:
-                            logging.info(f"Replica {self.id}: Maestro ya sincronizado. No se envía PULL_DATA.")
+                        self.handle_pull()
                     else:
                         # Si no soy el líder, esperar a que lleguen los mensajes de INTENT y COMPLETED
                         self.wait_for_task(task_type=TaskType.PULL)
@@ -183,7 +172,8 @@ class Replica:
         """Maneja la caída del maestro y coordina su reanimación."""
         # Detectar al líder actual o realizar una nueva elección si el líder no responde
 
-        # TODO: hacer la eleccion si no soy lider -> mandar keep_alive
+        if self.leader_id != self.id:
+            self.ask_keepalive_leader()
 
         if self.leader_id == self.id:  # Si soy el líder
             logging.info(f"Replica {self.id}: Soy el líder, iniciando reanimación del maestro.")
@@ -222,6 +212,7 @@ class Replica:
 
         if self.id == id:
             self._shutdown()
+            exit(0)
 
     # TODO: Se puede hacer una sola funcion
     def send_task_intent(self, task_type):
@@ -237,25 +228,76 @@ class Replica:
         logging.info(f"Replica {self.id}: TASK_COMPLETED enviado para tarea '{task_type}'.")
 
     def broadcast_to_replicas(self, message):
-        """Envía un mensaje a todas las réplicas excepto a sí mismo."""
         for replica_id in self.replica_ids:
             if replica_id != self.id:  # No enviar a sí mismo
-                try:
-                    with socket.create_connection((f"{self.ip_prefix}_{replica_id}", self.port), timeout=1) as sock:
-                        sock.sendall(message.encode())
-                        logging.info(f"Replica {self.id}: Mensaje enviado a réplica {replica_id}.")
-                except Exception as e:
-                    logging.error(f"Error enviando mensaje a réplica {replica_id}: {e}")
+                for _ in range(3):  # Reintentar 3 veces
+                    try:
+                        target_ip = f"{self.ip_prefix}_{replica_id}"
+                        with socket.create_connection((target_ip, self.port), timeout=1) as sock:
+                            sock.sendall(message.encode())
+                            logging.info(f"Replica {self.id}: Mensaje enviado a réplica {replica_id}.")
+                            break
+                    except Exception as e:
+                        logging.warning(f"Replica {self.id}: Reintento fallido para réplica {replica_id}: {e}")
 
     def wait_for_task(self, task_type: TaskType):
-        """Espera a que el líder envíe TASK_INTENT y TASK_COMPLETED para una tarea específica."""
+        """
+        Espera a que el líder envíe TASK_INTENT y TASK_COMPLETED para una tarea específica.
+        Si el tiempo de espera excede el límite, se verifica el estado del líder.
+        """
+        timeout_seconds = 5  # Tiempo máximo de espera antes de verificar keep_alive
         with self.task_condition:
             while self.task_status["intent"] != task_type.value or self.task_status["completed"] != task_type.value:
                 logging.info(f"Replica {self.id}: Esperando TASK_INTENT y TASK_COMPLETED para '{task_type.name}'...")
-                self.task_condition.wait()
 
-        logging.info(f"Replica {self.id}: TASK_INTENT y TASK_COMPLETED recibidos para '{task_type.name}'.")
+                # Esperar con timeout
+                leader_responded = self.task_condition.wait(timeout=timeout_seconds)
 
+                if not leader_responded:  # Si se cumple el timeout
+                    logging.warning(f"Replica {self.id}: Timeout esperando TASK_INTENT y TASK_COMPLETED para '{task_type.name}'. Verificando líder.")
+                    
+                    # Verificar si el líder sigue activo
+                    leader_ip = f"{self.ip_prefix}_{self.leader_id}"
+                    if not self.check_node_status(leader_ip, self.port):
+                        logging.warning(f"Replica {self.id}: El líder no responde. Iniciando nueva elección.")
+                        self.leader_id = self.election_manager.manage_leadership()
+
+                        if self.leader_id == self.id:
+                            logging.info(f"Replica {self.id}: Soy el nuevo líder tras la elección. Procesando tarea '{task_type.name}'.")
+                            # Procesar la tarea como nuevo líder
+                            if task_type == TaskType.PULL:
+                                self.handle_pull()
+                            elif task_type == TaskType.REANIMATE_MASTER:
+                                self.handle_reanimate_master()
+                            return
+                    else:
+                        logging.info(f"Replica {self.id}: El líder sigue activo. Continuando espera.")
+
+            logging.info(f"Replica {self.id}: TASK_INTENT y TASK_COMPLETED recibidos para '{task_type.name}'.")
+
+    def handle_pull(self):
+        """
+        Maneja el proceso de PULL como líder.
+        Envía TASK_INTENT, realiza la sincronización y luego envía TASK_COMPLETED.
+        """
+        # Verificar si el maestro está sincronizado
+        if not self.ask_master_connected():
+            logging.info(f"Replica {self.id}: Iniciando proceso de PULL como líder.")
+
+            # 1. Enviar TASK_INTENT a las otras réplicas
+            self.send_task_intent(task_type=TaskType.PULL)
+            # SIMULO FALLA ACA:
+            self.simulate_failure(3)
+            # 2. Procesar el PULL (sincronización con el maestro)
+            self._process_pull_data()
+
+            # 3. Enviar TASK_COMPLETED a las otras réplicas
+            self.send_task_completed(task_type=TaskType.PULL)
+
+            logging.info(f"Replica {self.id}: Proceso de PULL completado y notificado a réplicas.")
+        else:
+            self.send_task_completed(task_type=TaskType.PULL)
+            logging.info(f"Replica {self.id}: Maestro ya sincronizado. No se necesita PULL.")
 
     def ask_master_connected(self):
         """Consulta al maestro si está sincronizado."""
