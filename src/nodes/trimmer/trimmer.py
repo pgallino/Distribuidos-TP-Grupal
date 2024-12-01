@@ -1,5 +1,5 @@
 import logging
-from messages.messages import Dataset, ListMessage, MsgType, decode_msg
+from messages.messages import Dataset, ListMessage, MsgType, NodeType, decode_msg
 from messages.games_msg import GamesType, Q1Game, GenreGame, Genre
 from messages.reviews_msg import Review, ReviewsType, Score
 from node import Node  # Importa la clase base Nodo
@@ -38,6 +38,9 @@ class Trimmer(Node):
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self._middleware.declare_exchange(E_FROM_TRIMMER)
         if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_TRIMMER)
+
+    def get_type(self):
+        return NodeType.TRIMMER
 
     def get_keys(self):
         keys = []

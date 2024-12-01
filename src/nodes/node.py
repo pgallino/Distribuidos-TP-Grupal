@@ -71,6 +71,9 @@ class Node:
 
     def run(self):
         raise NotImplementedError("Debe implementarse en las subclases")
+    
+    def get_type(self):
+        raise NotImplementedError("Debe implementarse en las subclases")
 
     def _receive_message(self, queue_name, callback):
         raise NotImplementedError("Debe implementarse en las subclases")
@@ -111,7 +114,6 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
-        # TODO: issue: EN CORRIDAS DONDE EL LIDER DE LAS REPLICAS SE MUERE DESPUES
         # Declarar las colas necesarias
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}_{self.id}'
@@ -126,24 +128,13 @@ class Node:
                 logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             logging.info("Callback terminado.")
+            ch.stop_consuming()
 
-        # Intentar recibir con timeout y reintentar en caso de no recibir respuesta
-        # TODO: Esta bien este sistema de retries pero mejorar el timeout
-        retries = 10  # Número de intentos de reintento
-        for attempt in range(retries):
         # Enviar un mensaje `PullDataMessage`
-            pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
-            self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
-            logging.info(f"Intento {attempt + 1} de sincronizar con la réplica.")
-            time_out_occurred = self._middleware.receive_from_queue_with_timeout(self.replica_queue, on_replica_response, inactivity_time=3, auto_ack=False)
-            if not time_out_occurred:  # Si no hubo timeout, la sincronización fue exitosa
-                self.connected.value = 1
-                break
-            else:
-                logging.warning(f"No se recibió respuesta de la réplica en el intento {attempt + 1}. Reintentando...")            
-
-        if self.connected.value == 0:
-            logging.error("No se pudo sincronizar con la réplica después de varios intentos.")
+        pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
+        self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
+        self._middleware.receive_from_queue(self.replica_queue, on_replica_response, auto_ack=False)          
+        self.connected = 1
 
     def push_update(self, type: str, client_id: int, update = None):
 

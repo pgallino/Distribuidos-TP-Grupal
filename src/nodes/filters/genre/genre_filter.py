@@ -1,6 +1,6 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, decode_msg
+from messages.messages import ListMessage, MsgType, NodeType, decode_msg
 from messages.games_msg import GamesType, Q2Game, BasicGame, Genre
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
@@ -19,6 +19,8 @@ class GenreFilter(Node):
 
         if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_GENRE)
 
+    def get_type(self):
+        return NodeType.GENRE
 
     def get_keys(self):
         keys = []

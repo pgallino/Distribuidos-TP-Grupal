@@ -1,6 +1,6 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, decode_msg
+from messages.messages import ListMessage, MsgType, NodeType, decode_msg
 from messages.reviews_msg import BasicReview, ReviewsType
 from node import Node  # Importa la clase base Node
 from utils.constants import E_COORD_ENGLISH, Q_COORD_ENGLISH, Q_ENGLISH_Q4_JOINER, Q_Q4_JOINER_ENGLISH
@@ -18,6 +18,9 @@ class EnglishFilter(Node):
 
         # Configura la cola de coordinación
         if self.n_nodes > 1: self._middleware.declare_exchange(E_COORD_ENGLISH)
+
+    def get_type(self):
+        return NodeType.ENGLISH
 
     def get_keys(self):
         return [('', 1)]

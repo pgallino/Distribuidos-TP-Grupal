@@ -52,9 +52,9 @@ class Replica:
         )
 
         # Crear las variables compartidas
-        manager = Manager()
-        self.task_status = manager.dict({"intent": None, "completed": None})
-        self.task_condition = manager.Condition()
+        self.manager = Manager()
+        self.task_status = self.manager.dict({"intent": None, "completed": None})
+        self.task_condition = self.manager.Condition()
         
         task_coordination_vars = (self.task_status, self.task_condition)
         self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, port, task_coordination_vars,))
@@ -70,8 +70,8 @@ class Replica:
         self.pull_procesado = False
         try:
             while not self.shutting_down:
-                timeout = self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
-                if timeout: self.ask_keepalive_master()
+                self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
+                self.ask_keepalive_master()
         except Exception as e:
             if not self.shutting_down:
                 logging.error(f"action: shutdown_replica | result: fail | error: {e}")
@@ -108,6 +108,7 @@ class Replica:
         self.shutting_down = True
 
         self.election_manager.cleanup()
+        self.manager.shutdown()
 
         if self.listener:
             self.listener.terminate()

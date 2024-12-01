@@ -76,7 +76,7 @@ class WatchDog:
         try:
             with socket.create_connection((node_address, port), timeout=1) as sock:
                 sock.sendall(SimpleMessage(type=MsgType.KEEP_ALIVE, socket_compatible=True).encode())
-                logging.info(f"WatchDog {self.id}: KEEP_ALIVE enviado a {node_address}:{port}.")
+                # logging.info(f"WatchDog {self.id}: KEEP_ALIVE enviado a {node_address}:{port}.")
                 self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
             logging.warning(f"WatchDog {self.id}: Nodo {node_address}:{port} no responde.")
@@ -132,7 +132,7 @@ class WatchDog:
             if node_type in self.nodes_state:
                 if instance_id in self.nodes_state[node_type]:
                     self.nodes_state[node_type][instance_id] = is_alive
-                    logging.info(f"Updated state for {node_type} instance {instance_id} to {'alive' if is_alive else 'dead'}.")
+                    # logging.info(f"Updated state for {node_type} instance {instance_id} to {'alive' if is_alive else 'dead'}.")
                 else:
                     logging.warning(f"Instance ID {instance_id} not found for node type {node_type}.")
             else:

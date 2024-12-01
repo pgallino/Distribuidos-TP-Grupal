@@ -76,9 +76,8 @@ def generate_docker_compose(instances):
             f"{node.upper()}_INSTANCES={instances[node]}" for node in instances
         ],
         'depends_on': {
-            'rabbitmq': {
-                'condition': 'service_healthy'
-            }
+            # Dependencia dinámica para todas las instancias de watchdog
+            **{f"watchdog_{i}": {'condition': 'service_started'} for i in range(1, instances['watchdog'] + 1)}
         },
         'networks': ['testing_net'],
         'privileged': True  # Añadir el modo privileged
@@ -109,6 +108,13 @@ def generate_docker_compose(instances):
                 'privileged': True  # Añadir el modo privileged
             }
 
+            # Si es el cliente, añadir dependencia de servidor y volumen datasets
+            if node == 'client':
+                services[service_name]['depends_on']['server'] = {
+                    'condition': 'service_started'
+                }
+                services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
+
         # Si es un nodo maestro, depender de todas las instancias de sus réplicas
         if node in master_nodes:
             replica_node = f"{node}_replica"
@@ -118,24 +124,31 @@ def generate_docker_compose(instances):
                         'condition': 'service_started'
                     }
 
-        # Si es el cliente, añadir dependencia de servidor y volumen datasets
-        if node == 'client':
-            services[service_name]['depends_on']['server'] = {
-                'condition': 'service_started'
-            }
-            services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
+        # Agregar dependencias de nodos maestros para filtros
+        if node in {'genre', 'score', 'release_date', 'english'}:
+            for master_node in master_nodes:
+                for j in range(1, instances[master_node] + 1):
+                    services[service_name]['depends_on'][f"{master_node}_{j}"] = {
+                        'condition': 'service_started'
+                    }
+        # Añadir dependencias acumulativas para nodos específicos
+        if node == 'trimmer':
+            for dependency_node in ['genre', 'score', 'release_date', 'english']:
+                for j in range(1, instances[dependency_node] + 1):
+                    for k in range(1, count + 1):
+                        services[f"{node}_{k}"]['depends_on'][f"{dependency_node}_{j}"] = {
+                            'condition': 'service_started'
+                        }
+
+        if node == 'watchdog':
+            for k in range(1, instances['trimmer'] + 1):
+                services[f"{node}_{i}"]['depends_on'][f"trimmer_{k}"] = {
+                    'condition': 'service_started'
+                }
 
         # Si es una réplica, añadir el volumen para el socket de Docker
         if node in replica_nodes or node == 'watchdog':
             services[service_name].setdefault('volumes', []).append('/var/run/docker.sock:/var/run/docker.sock')
-
-        # Si es el watchdog, añadir dependencia de los filtros y el trimmer
-        if node == 'watchdog':
-            for filter_node in ['trimmer', 'genre', 'score', 'release_date', 'english']:
-                for j in range(1, instances[filter_node] + 1):
-                    services[service_name]['depends_on'][f"{filter_node}_{j}"] = {
-                        'condition': 'service_started'
-                    }
                 
     # Definición de la estructura completa de Docker Compose
     docker_compose_dict = {

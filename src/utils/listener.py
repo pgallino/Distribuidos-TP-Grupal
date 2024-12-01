@@ -47,7 +47,7 @@ class Listener:
             try:
                 self.conn, addr = self.sock.accept()
                 self.process_msg(self.conn)
-                logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
+                # logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
                 self.conn.close()
             except Exception as e:
                 if not self.shutting_down:
