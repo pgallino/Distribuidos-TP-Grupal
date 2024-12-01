@@ -45,8 +45,14 @@ english=1
 client=2
 
 # Número de Replicas
-os_counter_replica=1
-avg_counter_replica=1
+os_counter_replica=0
+avg_counter_replica=0
+q3_joiner_replica=0
+q4_joiner_replica=0
+q5_joiner_replica=3
+
+# Número de Watchdogs
+watchdog=1
 ```
 
 Luego debe ejecutarse el siguiente script que modifica el archivo de Docker Compose con los datos de [config.env](scripts\config.env):
@@ -54,6 +60,8 @@ Luego debe ejecutarse el siguiente script que modifica el archivo de Docker Comp
 ```bash
 ./scripts/generar-compose.sh
 ```
+
+De todas maneras, al correr docker compose-up-logs eso ya corre el script para generar el compose.
 
 
 ### Datasets
