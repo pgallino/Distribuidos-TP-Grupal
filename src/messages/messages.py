@@ -40,6 +40,16 @@ class NodeType(Enum):
     SCORE = 2
     ENGLISH = 3
     RELEASE_DATE = 4
+    OS_COUNTER = 5
+    AVG_COUNTER = 6
+    Q3_JOINER = 7
+    Q4_JOINER = 8
+    Q5_JOINER = 9
+    OS_COUNTER_REPLICA = 10
+    AVG_COUNTER_REPLICA = 11
+    Q3_JOINER_REPLICA = 12
+    Q4_JOINER_REPLICA = 13
+    Q5_JOINER_REPLICA = 14
 
     def string_to_node_type(node_type_str: str) -> 'NodeType':
         """
@@ -74,6 +84,16 @@ _STRING_TO_NODE_TYPE = {
     "score": NodeType.SCORE,
     "english": NodeType.ENGLISH,
     "release_date": NodeType.RELEASE_DATE,
+    "os_counter": NodeType.OS_COUNTER,
+    "avg_counter": NodeType.AVG_COUNTER,
+    "q3_joiner": NodeType.Q3_JOINER,
+    "q4_joiner": NodeType.Q4_JOINER,
+    "q5_joiner": NodeType.Q5_JOINER,
+    "os_counter_replica": NodeType.OS_COUNTER_REPLICA,
+    "avg_counter_replica": NodeType.AVG_COUNTER_REPLICA,
+    "q3_joiner_replica": NodeType.Q3_JOINER_REPLICA,
+    "q4_joiner_replica": NodeType.Q4_JOINER_REPLICA,
+    "q5_joiner_replica": NodeType.Q5_JOINER_REPLICA,
 }
 
 class Dataset(Enum):

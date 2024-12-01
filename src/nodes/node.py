@@ -6,7 +6,7 @@ import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
-from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
+from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
 from utils.listener import NodeListener
 from utils.utils import recv_msg
 

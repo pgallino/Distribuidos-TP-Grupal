@@ -6,7 +6,7 @@ from messages.results_msg import Q4Result, QueryNumber
 from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
-from utils.constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.middleware_constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 
 class Q4Joiner(Node):
 

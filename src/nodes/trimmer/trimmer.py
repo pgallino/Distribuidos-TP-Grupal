@@ -8,7 +8,8 @@ from typing import List, Tuple
 import csv
 import sys
 
-from utils.constants import E_COORD_TRIMMER, E_FROM_TRIMMER, K_GENREGAME, K_Q1GAME, K_REVIEW, Q_COORD_TRIMMER, Q_GATEWAY_TRIMMER
+from utils.container_constants import GENRE_CONTAINER_NAME, OS_COUNTER_CONTAINER_NAME, SCORE_CONTAINER_NAME
+from utils.middleware_constants import E_COORD_TRIMMER, E_FROM_TRIMMER, K_GENREGAME, K_Q1GAME, K_REVIEW, Q_COORD_TRIMMER, Q_GATEWAY_TRIMMER
 
 GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
                     'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 
@@ -45,11 +46,11 @@ class Trimmer(Node):
     def get_keys(self):
         keys = []
         for node, n_nodes in self.n_next_nodes:
-            if node == 'GENRE':
+            if node == GENRE_CONTAINER_NAME:
                 keys.append((K_GENREGAME, n_nodes))
-            elif node == 'SCORE':
+            elif node == SCORE_CONTAINER_NAME:
                 keys.append((K_REVIEW, n_nodes))
-            elif node == 'OS_COUNTER':
+            elif node == OS_COUNTER_CONTAINER_NAME:
                 keys.append((K_Q1GAME, n_nodes))
         return keys
         
@@ -137,11 +138,11 @@ class Trimmer(Node):
             self.forward_coordfin(E_COORD_TRIMMER, msg)
         else:
             for node, _ in self.n_next_nodes:
-                if node == 'GENRE':
+                if node == GENRE_CONTAINER_NAME:
                     self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_GENREGAME)
-                elif node == 'SCORE':
+                elif node == SCORE_CONTAINER_NAME:
                     self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_REVIEW)
-                elif node == 'OS_COUNTER':
+                elif node == OS_COUNTER_CONTAINER_NAME:
                     self._middleware.send_to_queue(E_FROM_TRIMMER, msg.encode(), key=K_Q1GAME)
 
     def _get_game(self, values):

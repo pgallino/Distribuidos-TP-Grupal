@@ -5,17 +5,18 @@ from multiprocessing import Manager, Process, Lock
 import socket
 import time
 from messages.messages import ActiveNodesMessage, MsgType, NodeType, SimpleMessage, decode_msg
+from utils.container_constants import LISTENER_PORT
 from utils.utils import reanimate_container, recv_msg
 
 class WatchDog:
-    def __init__(self, id: int, n_watchdogs: int, container_name: str, n_nodes_instances: list[tuple[NodeType, int]] = [], check_interval=5):
+    def __init__(self, id: int, n_watchdogs: int, container_name: str, nodes_to_monitor: list[tuple[NodeType, int]] = [], check_interval=5):
         """
         Inicializa el WatchDog.
         
         :param id: Identificador del WatchDog.
         :param n_watchdogs: Número total de watchdogs.
         :param container_name: nombre del container
-        :param n_nodes_instances: Lista de tuplas con tipos de nodos y sus instancias.
+        :param nodes_to_monitor: Lista de tuplas con tipos de nodos y sus instancias.
         :param check_interval: Intervalo en segundos para verificar los nodos.
         """
         self.id = id
@@ -29,7 +30,7 @@ class WatchDog:
         self.nodes_state = self.manager.dict()
         self.nodes_state_lock = Lock()
 
-        self._set_nodes_state(n_nodes_instances)
+        self._set_nodes_state(nodes_to_monitor)
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -71,21 +72,20 @@ class WatchDog:
         :param instance_id: ID de la instancia del nodo.
         """
         node_address = f"{NodeType.node_type_to_string(node_type)}_{instance_id}"
-        port = 12345  # Con este puerto se puede aprovechar el KA que ya tienen los nodos para las replicas
         
         try:
-            with socket.create_connection((node_address, port), timeout=1) as sock:
+            with socket.create_connection((node_address, LISTENER_PORT), timeout=1) as sock:
                 sock.sendall(SimpleMessage(type=MsgType.KEEP_ALIVE, socket_compatible=True).encode())
-                # logging.info(f"WatchDog {self.id}: KEEP_ALIVE enviado a {node_address}:{port}.")
+                # logging.info(f"WatchDog {self.id}: KEEP_ALIVE enviado a {node_address}:{LISTENER_PORT}.")
                 self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
-            logging.warning(f"WatchDog {self.id}: Nodo {node_address}:{port} no responde.")
+            logging.warning(f"WatchDog {self.id}: Nodo {node_address}:{LISTENER_PORT} no responde.")
             #TODO que reanimate retorne si lo logro o no
             self.update_node_state(node_type, instance_id, False)  # Nodo está muerto
             if reanimate_container(node_address):
                 self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
         except Exception as e:
-            logging.error(f"WatchDog {self.id}: Error inesperado al verificar nodo {node_address}:{port}: {e}")
+            logging.error(f"WatchDog {self.id}: Error inesperado al verificar nodo {node_address}:{LISTENER_PORT}: {e}")
             self.update_node_state(node_type, instance_id, False)
 
     def _shutdown(self):
@@ -107,7 +107,7 @@ class WatchDog:
         self._shutdown()
         exit(0)
 
-    def _set_nodes_state(self, n_nodes_instances: list[tuple[NodeType, int]]):
+    def _set_nodes_state(self, nodes_to_monitor: list[tuple[NodeType, int]]):
         """
         Configura el estado inicial de los nodos.
 
@@ -115,7 +115,7 @@ class WatchDog:
         su valor es otro diccionario que contiene `True` o `False` para indicar
         si las instancias están vivas o muertas.
         """
-        for node_type, instances in n_nodes_instances:
+        for node_type, instances in nodes_to_monitor:
             # Inicializa cada tipo de nodo con sus instancias en estado `False` (muertas)
             self.nodes_state[node_type] = self.manager.dict({instance: False for instance in range(1, instances+1)})
 
@@ -140,7 +140,7 @@ class WatchDog:
 
 
     def init_listener_process(self):
-        process = Process(target=handle_listener_process, args=(f'watchdog_{self.id}', self.id, 12345, 5, self.nodes_state, self.nodes_state_lock))
+        process = Process(target=handle_listener_process, args=(self.container_name, self.id, 5, self.nodes_state, self.nodes_state_lock))
         process.start()
         self.listener_process = process
 
@@ -170,16 +170,16 @@ def get_active_nodes(nodes_state, lock_nodes_state, node_type: NodeType):
     return active_nodes
 
 
-def handle_listener_process(container_name, id, port, n_conn, nodes_state, lock_nodes_state): # n_conn es la cantidad de clases que existen de nodos filtro
+def handle_listener_process(container_name, id, n_conn, nodes_state, lock_nodes_state): # n_conn es la cantidad de clases que existen de nodos filtro
 
     #TODO: Armarle en handlesigterm y shutdown
 
     try:
         listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        logging.info(f"me bindee a {container_name}")
-        listener_socket.bind((container_name, port))
+        logging.info(f"me bindee a {container_name}_{id}")
+        listener_socket.bind((f'{container_name}_{id}', LISTENER_PORT))
         listener_socket.listen(n_conn)
-        logging.info(f"node {id}: Escuchando en el puerto {port}.")
+        logging.info(f"node {id}: Escuchando en el puerto {LISTENER_PORT}.")
 
         while True:
             conn, addr = listener_socket.accept()

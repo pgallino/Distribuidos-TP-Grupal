@@ -1,29 +1,25 @@
 import logging
 from os_counter_replica import OsCounterReplica
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import OS_COUNTER_REPLICA_CONFIG_KEYS
+
 
 def main():
     try:
-
-        required_keys = {
-            "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
-            "n_instances": ("OS_COUNTER_REPLICA_INSTANCES", "OS_COUNTER_REPLICA_INSTANCES"),
-            "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT"),
-            "port": ("PORT", "PORT")
-        }
-
         # Inicializar configuración y logging
-        config_params = initialize_config(required_keys)
+        config_params = initialize_config(OS_COUNTER_REPLICA_CONFIG_KEYS)
         initialize_log(config_params["logging_level"])
+
         # Crear una instancia de OsCounterReplica con un ID único
-        replica_id = config_params["id"]
-        n_instances = config_params["n_instances"]
-        timeout = config_params["timeout"]
-        port = config_params["port"]
-        replica = OsCounterReplica(replica_id, n_instances, "os_counter_replica", port, "os_counter_1", timeout)
+        replica = OsCounterReplica(
+            id=config_params["instance_id"],
+            n_instances=config_params["os_counter_replica_instances"],
+            ip_prefix="os_counter_replica",
+            container_to_restart="os_counter_1",
+            timeout=config_params["timeout"]
+        )
         
-        logging.info(f"OsCounterReplica {replica_id} iniciada. Esperando mensajes...")
+        logging.info(f"OsCounterReplica {config_params['instance_id']} iniciada. Esperando mensajes...")
         
         # Ejecutar la réplica
         replica.run()
@@ -31,6 +27,7 @@ def main():
         logging.info("OsCounterReplica: Interrumpida manualmente. Cerrando...")
     except Exception as e:
         logging.error(f"OsCounterReplica: Error inesperado: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()

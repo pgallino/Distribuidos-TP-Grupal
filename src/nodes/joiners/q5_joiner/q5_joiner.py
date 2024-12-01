@@ -5,7 +5,7 @@ from messages.messages import MsgType, ResultMessage, decode_msg, PushDataMessag
 from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # type: ignore # genera 7 pids en docker stats
-from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
+from utils.middleware_constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
 class Q5Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):

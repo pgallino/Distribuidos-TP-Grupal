@@ -5,7 +5,8 @@ import socket
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from election.election_manager import ElectionManager
-from utils.constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER, ELECTION_PORT
+from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER
+from utils.container_constants import ELECTION_PORT, LISTENER_PORT
 from utils.listener import ReplicaListener
 from utils.utils import TaskType, reanimate_container, recv_msg
 
@@ -14,7 +15,7 @@ from utils.utils import TaskType, reanimate_container, recv_msg
 TIMEOUT = 5
 
 class Replica:
-    def __init__(self, id: int, n_instances: int, ip_prefix: str, port: int, container_to_restart: str, timeout: int):
+    def __init__(self, id: int, n_instances: int, ip_prefix: str, container_to_restart: str, timeout: int):
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
@@ -22,7 +23,7 @@ class Replica:
         self.container_to_restart = container_to_restart
         self.state = None
         self.ip_prefix = ip_prefix
-        self.port = port
+        self.port = LISTENER_PORT
 
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -57,7 +58,7 @@ class Replica:
         self.task_condition = self.manager.Condition()
         
         task_coordination_vars = (self.task_status, self.task_condition)
-        self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, port, task_coordination_vars,))
+        self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, self.port, task_coordination_vars,))
         self.listener.start()
 
         # Determinar si esta réplica es el líder inicial

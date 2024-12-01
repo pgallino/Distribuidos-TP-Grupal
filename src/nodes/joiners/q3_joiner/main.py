@@ -1,35 +1,27 @@
+import logging
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import Q3_JOINER_CONFIG_KEYS, Q3_JOINER_CONTAINER_NAME
 from q3_joiner import Q3Joiner
 
-def main():
 
-    # Claves de configuración requeridas para Q3Joiner
-    required_keys = {
-        "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
-        "q3_joiner_instances": ("Q3_JOINER_INSTANCES", "Q3_JOINER_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
-        "n_replicas": ("Q3_JOINER_REPLICA_INSTANCES", "Q3_JOINER_REPLICA_INSTANCES")
-    }
-    
-    # Inicializar configuración
-    config_params = initialize_config(required_keys)
+def main():
+    # Inicializar configuración y logging
+    config_params = initialize_config(Q3_JOINER_CONFIG_KEYS)
     initialize_log(config_params["logging_level"])
 
-    # Extraer parámetros de config
-    instance_id = config_params["instance_id"]
-    q3_joiner_instances = config_params["q3_joiner_instances"]
-    n_replicas = config_params["n_replicas"]
-
-    # Crear una instancia de Q3Joiner con los parámetros configurados
+    # Crear una instancia de Q3Joiner
     q3_joiner = Q3Joiner(
-        id = instance_id,
-        n_nodes = q3_joiner_instances,
-        container_name = "q3_joiner",
-        n_replicas = n_replicas
+        id=config_params["instance_id"],
+        n_nodes=config_params["q3_joiner_instances"],
+        container_name=Q3_JOINER_CONTAINER_NAME,
+        n_replicas=config_params["q3_joiner_replica_instances"]
     )
 
-    # Iniciar el filtro, escuchando mensajes en la cola
+    logging.info(f"Q3Joiner {config_params['instance_id']} iniciado. ")
+
+    # Ejecutar el Q3Joiner
     q3_joiner.run()
+
 
 if __name__ == "__main__":
     main()

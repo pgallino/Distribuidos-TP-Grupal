@@ -1,38 +1,34 @@
 from utils.initilization import initialize_config, initialize_log
-import logging
+from utils.container_constants import TRIMMER_CONFIG_KEYS, TRIMMER_CONTAINER_NAME, TRIMMER_NEXT_NODES
 from trimmer import Trimmer
+import logging
+
 
 def main():
-
-    # Define las claves necesarias para la configuración de este nodo específico
-    required_keys = {
-        "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
-        "trimmer_instances": ("TRIMMER_INSTANCES", "TRIMMER_INSTANCES"),
-        "genre_instances": ("GENRE_INSTANCES", "GENRE_INSTANCES"),
-        "score_instances": ("SCORE_INSTANCES", "SCORE_INSTANCES"),
-        "os_counter_instances": ("OS_COUNTER_INSTANCES", "OS_COUNTER_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
-    }
-
-    # Inicializar la configuración
-    config_params = initialize_config(required_keys)
-
+    # Inicializar configuración y logging
+    config_params = initialize_config(TRIMMER_CONFIG_KEYS)
     initialize_log(config_params["logging_level"])
 
-    # Crear una instancia de Trimmer con los parámetros configurados
+    # Crear lista de tuplas para next_nodes
+    next_nodes = [
+        (node, config_params[f"{node}_instances"])
+        for node in TRIMMER_NEXT_NODES
+    ]
+
+    # Crear una instancia de Trimmer
     trimmer = Trimmer(
-        config_params["instance_id"],
-        config_params["trimmer_instances"],
-        [
-            ("GENRE", config_params["genre_instances"]),
-            ("SCORE", config_params["score_instances"]),
-            ("OS_COUNTER", config_params["os_counter_instances"])
-        ],
-        container_name = "trimmer"
+        id=config_params["instance_id"],
+        n_nodes=config_params["trimmer_instances"],
+        n_next_nodes=next_nodes,
+        container_name=TRIMMER_CONTAINER_NAME
     )
 
-    # Iniciar el filtro, escuchando mensajes en la cola
+    logging.info(f"Trimmer {config_params['instance_id']} iniciado. ")
+
+    # Ejecutar el Trimmer
     trimmer.run()
+
 
 if __name__ == "__main__":
     main()
+

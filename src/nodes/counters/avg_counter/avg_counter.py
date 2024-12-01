@@ -6,7 +6,7 @@ from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
 from node import Node
-from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
+from utils.middleware_constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 
 class AvgCounter(Node):
 

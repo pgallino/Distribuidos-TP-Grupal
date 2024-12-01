@@ -1,46 +1,33 @@
-from genre_filter import GenreFilter
+import logging
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import GENRE_FILTER_CONFIG_KEYS, GENRE_FILTER_NEXT_NODES, GENRE_CONTAINER_NAME
+from genre_filter import GenreFilter
+
 
 def main():
-
-    # Claves de configuración requeridas para GenreFilter
-    required_keys = {
-        "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
-        "genre_instances": ("GENRE_INSTANCES", "GENRE_INSTANCES"),
-        "release_date_instances": ("RELEASE_DATE_INSTANCES", "RELEASE_DATE_INSTANCES"),
-        "q3_joiner_instances": ("Q3_JOINER_INSTANCES", "Q3_JOINER_INSTANCES"),
-        "q4_joiner_instances": ("Q4_JOINER_INSTANCES", "Q4_JOINER_INSTANCES"),
-        "q5_joiner_instances": ("Q5_JOINER_INSTANCES", "Q5_JOINER_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
-    }
-
     # Inicializar configuración y logging
-    config_params = initialize_config(required_keys)
+    config_params = initialize_config(GENRE_FILTER_CONFIG_KEYS)
     initialize_log(config_params["logging_level"])
 
-    # Extraer parámetros de configuración
-    instance_id = config_params["instance_id"]
-    genre_instances = config_params["genre_instances"]
-    release_date_instances = config_params["release_date_instances"]
-    q3_joiner_instances = config_params["q3_joiner_instances"]
-    q4_joiner_instances = config_params["q4_joiner_instances"]
-    q5_joiner_instances = config_params["q5_joiner_instances"]
+    # Crear lista de tuplas para los nodos siguientes
+    next_nodes = [
+        (node, config_params[f"{node}_instances"])
+        for node in GENRE_FILTER_NEXT_NODES
+    ]
 
-    # Crear una instancia de GenreFilter con los parámetros configurados
+    # Crear una instancia de GenreFilter
     genre_filter = GenreFilter(
-        instance_id,
-        genre_instances,
-        [
-            ('RELEASE_DATE', release_date_instances),
-            ('JOINER_Q3', q3_joiner_instances),
-            ('JOINER_Q4', q4_joiner_instances),
-            ('JOINER_Q5', q5_joiner_instances)
-        ],
-        container_name = "genre"
+        id=config_params["instance_id"],
+        n_nodes=config_params["genre_instances"],
+        n_next_nodes=next_nodes,
+        container_name=GENRE_CONTAINER_NAME
     )
 
-    # Iniciar el filtro, escuchando mensajes en la cola
+    logging.info(f"GenreFilter {config_params['instance_id']} iniciado. ")
+
+    # Ejecutar el GenreFilter
     genre_filter.run()
+
 
 if __name__ == "__main__":
     main()
