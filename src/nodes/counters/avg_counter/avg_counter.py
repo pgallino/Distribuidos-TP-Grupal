@@ -94,29 +94,3 @@ class AvgCounter(Node):
     def load_state(self, msg: PushDataMessage):
         for client_id, heap_data in msg.data.items():
             self.client_heaps[client_id] = [tuple(item) for item in heap_data]
-
-    def load_state(self, msg: PushDataMessage):
-        """Carga el estado completo recibido en la réplica."""
-        state = msg.data
-
-        # Actualizar juegos por cliente
-        if "client_heaps" in state:
-            for client_id, games in state["games_per_client"].items():
-                self.games_per_client[client_id] = games
-            logging.info(f"Replica: Juegos actualizados desde estado recibido.")
-
-        # Actualizar reseñas por cliente
-        if "review_counts_per_client" in state:
-            for client_id, reviews in state["review_counts_per_client"].items():
-                if client_id not in self.review_counts_per_client:
-                    self.review_counts_per_client[client_id] = defaultdict(int)
-                self.review_counts_per_client[client_id].update(reviews)
-            logging.info(f"Replica: Reseñas actualizadas desde estado recibido.")
-
-        # Actualizar fins por cliente
-        if "fins_per_client" in state:
-            for client_id, fins in state["fins_per_client"].items():
-                self.fins_per_client[client_id] = fins
-            logging.info(f"Replica: Estados FIN actualizados desde estado recibido.")
-
-        logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
