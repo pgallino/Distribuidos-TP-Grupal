@@ -9,9 +9,9 @@ def main():
             "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
             "n_instances": ("Q3_JOINER_REPLICA_INSTANCES", "Q3_JOINER_REPLICA_INSTANCES"),
             "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT")
+            "timeout": ("TIMEOUT", "TIMEOUT"),
+            "port": ("PORT", "PORT")
         }
-
         # Inicializar configuración y logging
         config_params = initialize_config(required_keys)
         initialize_log(config_params["logging_level"])
@@ -19,7 +19,8 @@ def main():
         replica_id = config_params["id"]
         n_instances = config_params["n_instances"]
         timeout = config_params["timeout"]
-        replica = Q3JoinerReplica(replica_id, n_instances, "q3_joiner_replica", "q3_joiner_1", timeout)
+        port = config_params["port"]
+        replica = Q3JoinerReplica(replica_id, n_instances, "q3_joiner_replica", port, "q3_joiner_1", timeout)
         
         logging.info(f"Q3JoinerReplica {replica_id} iniciada. Esperando mensajes...")
         

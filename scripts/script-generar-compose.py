@@ -20,6 +20,7 @@ def parse_args():
             'q3_joiner_replica': int(args[8]),
             'q4_joiner_replica': int(args[9]),
             'q5_joiner_replica': int(args[10]),
+            'watchdog': int(args[11]),
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
@@ -36,6 +37,7 @@ def generate_docker_compose(instances):
     services = {}
     # Lista de nodos que requieren el volumen del socket de Docker
     replica_nodes = {'os_counter_replica', 'avg_counter_replica', 'q3_joiner_replica', 'q4_joiner_replica', 'q5_joiner_replica'}
+    master_nodes = {'os_counter', 'avg_counter', 'q3_joiner', 'q4_joiner', 'q5_joiner'}
 
     # Definición del servicio RabbitMQ
     services['rabbitmq'] = {
@@ -74,9 +76,8 @@ def generate_docker_compose(instances):
             f"{node.upper()}_INSTANCES={instances[node]}" for node in instances
         ],
         'depends_on': {
-            'rabbitmq': {
-                'condition': 'service_healthy'
-            }
+            # Dependencia dinámica para todas las instancias de watchdog
+            **{f"watchdog_{i}": {'condition': 'service_started'} for i in range(1, instances['watchdog'] + 1)}
         },
         'networks': ['testing_net'],
         'privileged': True  # Añadir el modo privileged
@@ -114,8 +115,38 @@ def generate_docker_compose(instances):
                 }
                 services[service_name]['volumes'] = [f'./datasets:/datasets', f'./results:/results']
 
+            # Si es un nodo maestro, depender de todas las instancias de sus réplicas
+            if node in master_nodes:
+                replica_node = f"{node}_replica"
+                if replica_node in instances:
+                    for j in range(1, instances[replica_node] + 1):
+                        services[service_name]['depends_on'][f"{replica_node}_{j}"] = {
+                            'condition': 'service_started'
+                        }
+
+            # Agregar dependencias de nodos maestros para filtros
+            if node in {'genre', 'score', 'release_date', 'english'}:
+                for master_node in master_nodes:
+                    for j in range(1, instances[master_node] + 1):
+                        services[service_name]['depends_on'][f"{master_node}_{j}"] = {
+                            'condition': 'service_started'
+                        }
+            # Añadir dependencias acumulativas para nodos específicos
+            if node == 'trimmer':
+                for dependency_node in ['genre', 'score', 'release_date', 'english']:
+                    for j in range(1, instances[dependency_node] + 1):
+                        services[service_name]['depends_on'][f"{dependency_node}_{j}"] = {
+                            'condition': 'service_started'
+                        }
+
+            if node == 'watchdog':
+                for k in range(1, instances['trimmer'] + 1):
+                    services[service_name]['depends_on'][f"trimmer_{k}"] = {
+                        'condition': 'service_started'
+                    }
+
             # Si es una réplica, añadir el volumen para el socket de Docker
-            if node in replica_nodes:
+            if node in replica_nodes or node == 'watchdog':
                 services[service_name].setdefault('volumes', []).append('/var/run/docker.sock:/var/run/docker.sock')
                 
     # Definición de la estructura completa de Docker Compose

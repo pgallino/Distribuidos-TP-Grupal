@@ -97,7 +97,7 @@ class Server:
 
         try:
 
-            while True:
+            while not self.shutting_down:
                         
                 # Solo bloquear si alcanzamos el límite de conexiones
                 with self.space_available:

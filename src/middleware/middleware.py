@@ -118,9 +118,10 @@ class Middleware:
 
         # Inicializa last_message_time al iniciar el consumo
         last_message_time = time.time()
+        mensaje_procesado = False
 
         def wrapped_callback(ch, method, properties, body):
-            nonlocal last_message_time
+            nonlocal last_message_time, mensaje_procesado
             last_message_time = time.time()  # Actualizar el tiempo del último mensaje
             callback(ch, method, properties, body)
 
@@ -130,11 +131,11 @@ class Middleware:
         while True:
             self.connection.process_data_events(time_limit=inactivity_time)  # Procesa eventos con un timeout corto
             current_time = time.time()
-            
+
             # Verifica si se excedió el tiempo de inactividad
             if current_time - last_message_time > inactivity_time:
                 logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
-                break
+                return True
 
     def close(self):
         """

@@ -3,35 +3,31 @@ from multiprocessing import Condition, Process, Value
 from election.election_listener import ElectionListener
 from election.election_logic import initiate_election
 
-def init_election_listener(id, ids, container_name, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart):
-    e_listener = ElectionListener(id, ids, container_name, election_in_progress, condition, waiting_ok_election, condition_ok, on_leader_selected, container_to_restart)
+def init_election_listener(id, ids, ip_prefix, port, election_in_progress, condition, waiting_ok, ok_condition, leader_id):
+    e_listener = ElectionListener(id, ids, ip_prefix, port, election_in_progress, condition, waiting_ok, ok_condition, leader_id)
     e_listener.run()
 
 class ElectionManager:
-    def __init__(self, id, ids, container_name, on_leader_selected, container_to_restart):
+    def __init__(self, id, ids, ip_prefix, port):
         """
         Inicializa el ElectionManager.
 
         Args:
             id (int): ID de la réplica actual.
             ids (list): Lista de IDs de nodos en el sistema.
-            container_name (str): Nombre del container que ejecuta esta logica
-            container_to_restart (str): Nombre del container master
-            on_leader_selected (function): Función genérica a ejecutar al seleccionarse como líder.
-            *args: Argumentos posicionales para `on_leader_selected`.
-            **kwargs: Argumentos clave para `on_leader_selected`.
+            ip_prefix (str): prefijo de la dirrección ip
+            port (int): puerto a utilizar
         """
         self.node_id = id
         self.node_ids = ids
-        self.container_name = container_name
+        self.ip_prefix = ip_prefix
+        self.port = port
         self.election_in_progress = Value('i', False)  # 0 = No, 1 = Sí
+        self.leader_id = Value('i', -1)  # Inicializado con -1 (ningún líder)
         self.condition = Condition()
-        self.waiting_ok_election = Value('i', False)  # 0 = No, 1 = Sí
-        self.condition_ok = Condition()
-        self.on_leader_selected = on_leader_selected
-        self.container_to_restart = container_to_restart
+        self.waiting_ok = Value('i', False)  # 0 = No, 1 = Sí
+        self.ok_condition = Condition()
         self.listener_process = None
-
         self.start_listener()
 
 
@@ -44,13 +40,13 @@ class ElectionManager:
                 args=(
                     self.node_id,
                     self.node_ids,
-                    self.container_name,
+                    self.ip_prefix,
+                    self.port,
                     self.election_in_progress,
                     self.condition,
-                    self.waiting_ok_election,
-                    self.condition_ok,
-                    self.on_leader_selected,
-                    self.container_to_restart
+                    self.waiting_ok,
+                    self.ok_condition,
+                    self.leader_id
                 ),
             )
             self.listener_process.start()
@@ -62,20 +58,23 @@ class ElectionManager:
             if self.election_in_progress.value:
                 logging.info("Elección ya en proceso. Esperando a que termine...")
                 self.condition.wait()  # Espera a que termine la elección
-                return
+                return self.leader_id.value
             self.election_in_progress.value = True
 
         initiate_election(
             self.node_id,
             self.node_ids,
-            self.container_name,
+            self.ip_prefix,
+            self.port,
             self.election_in_progress,
             self.condition,
-            self.waiting_ok_election,
-            self.condition_ok,
-            self.on_leader_selected,
-            self.container_to_restart
+            self.waiting_ok,
+            self.ok_condition,
+            self.leader_id
         )
+
+        with self.condition:
+            return self.leader_id.value
 
     def cleanup(self):
         """Limpia todos los recursos manejados por el ElectionManager."""
@@ -86,15 +85,6 @@ class ElectionManager:
             logging.info(f"ElectionManager {self.node_id}: Deteniendo listener de elecciones.")
             self.listener_process.terminate()
             self.listener_process.join()
-        
-        # Resetear el estado de las variables compartidas
-        with self.condition:
-            self.election_in_progress.value = False
-            self.condition.notify_all()  # Notificar a los hilos en espera
-
-        with self.condition_ok:
-            self.waiting_ok_election.value = False
-            self.condition_ok.notify_all()  # Notificar a los hilos en espera
 
         logging.info(f"ElectionManager {self.node_id}: Recursos limpiados exitosamente.")
 
