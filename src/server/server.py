@@ -3,6 +3,7 @@ from multiprocessing import Condition, Process, Lock, Manager
 import socket
 import logging
 import signal
+from multiprocessing.synchronize import Lock as LockType
 
 from result_dispatcher import ResultDispatcher
 from connection_handler import ConnectionHandler
@@ -10,10 +11,12 @@ from utils.constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3
 
 DISPATCH_QUEUES = 5
 
-def handle_client_connection(client_id: int, client_socket: socket.socket, n_next_nodes: int):
-    logging.info("LLEGA AL HANDLE CLIENT CONNECTION")
-    connection_handler = ConnectionHandler(client_id, client_socket, n_next_nodes)
-    connection_handler.run()
+def handle_client_connection(client_id: int, client_socket: socket.socket, n_next_nodes: int, fins_lock):
+    try:
+        connection_handler = ConnectionHandler(client_id, client_socket, n_next_nodes, fins_lock)
+        connection_handler.run()
+    except:
+        logging.error("Error: Fallo algo dentro del cliente_connection")
 
 def init_result_dispatcher(client_sockets, lock, space_available, result_queue):
     dispatcher = ResultDispatcher(client_sockets, lock, space_available, result_queue)
@@ -42,8 +45,6 @@ class Server:
         self.space_available = Condition()
 
         self.client_id_counter = 0  # Inicialización del contador
-
-        # self.fins_lock = Lock()
 
         # Inicialización de las pools
 
@@ -98,6 +99,9 @@ class Server:
 
         self.start_dispatchers()
 
+        manager = Manager()
+        fins_lock = manager.Lock()
+
         try:
 
             while not self.shutting_down:
@@ -113,13 +117,11 @@ class Server:
                 client_id = self.client_id_counter
 
                 # Asignar la conexión a la pool de handlers
-                logging.info("LLEGO A POOL SUBMIT")
                 try:
-                    self.handler_pool.submit(handle_client_connection, client_id=client_id, client_socket=client_socket, n_next_nodes=self.n_next_nodes)
+                    self.handler_pool.submit(handle_client_connection, client_id=client_id, client_socket=client_socket, n_next_nodes=self.n_next_nodes, fins_lock=fins_lock)
                 except:
                     logging.error("FALLA EL SUBMIT")
                     return
-
                 with self.active_connections_lock:
                     self.active_connections[client_id] = (client_socket, 0)  # Track client socket by ID
 

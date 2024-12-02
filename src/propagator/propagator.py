@@ -81,13 +81,13 @@ class Propagator:
         nodes_client_fins = self.nodes_fins_state[msg.client_id][node.name]
         nodes_client_fins[msg.node_instance] = True
 
-        logging.info(f'Se actualiza el diccionario: {self.nodes_fins_state[msg.client_id]}')
+        # logging.info(f'Se actualiza el diccionario: {self.nodes_fins_state[msg.client_id]}')
         # pusheamos el cambio de estado a las replicas
 
         # nos fijamos si se puede propagar el fin
         for fin_received in nodes_client_fins:
-            logging.info(f"Fin_received de {node.name} {fin_received} esta en {nodes_client_fins[fin_received]}")
-            logging.info(f"Primera condicion: {isinstance(nodes_client_fins[fin_received], bool)}")
+            # logging.info(f"Fin_received de {node.name} {fin_received} esta en {nodes_client_fins[fin_received]}")
+            # logging.info(f"Primera condicion: {isinstance(nodes_client_fins[fin_received], bool)}")
             if not fin_received in ['fins_propagated', 'were_notify'] and not nodes_client_fins[fin_received]: # no se puede
                 return
         # se puede propagar el fin

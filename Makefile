@@ -35,7 +35,7 @@ docker-image:
 .PHONY: docker-image
 
 generate-compose:
-	./scripts/generar-compose.sh
+	bash ./scripts/generar-compose.sh
 .PHONY: generate-compose
 
 docker-compose-up: docker-image
@@ -51,7 +51,7 @@ docker-compose-logs:
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
 
-docker-compose-up-logs: generate-compose docker-image
+docker-compose-up-logs: docker-image
 	docker compose -f docker-compose-dev.yaml up -d --build
 	docker compose -f docker-compose-dev.yaml logs -f
 .PHONY: docker-compose-logs
