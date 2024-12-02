@@ -9,7 +9,7 @@ from election.election_manager import ElectionManager
 from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER
 from utils.container_constants import ELECTION_PORT, LISTENER_PORT
 from utils.listener import ReplicaListener
-from utils.utils import TaskType, reanimate_container, recv_msg
+from utils.utils import TaskType, recv_msg
 
 # Diseño: https://frill-bucket-81f.notion.site/Dise-o-Replicas-14d5c77282b880cca2d6f11f42c4d2de?pvs=4
 
@@ -37,13 +37,13 @@ class Replica:
         if not container_to_restart:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
-        self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
+        # self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
         self.send_queue = Q_REPLICA_MASTER + f"_{container_to_restart}"
         exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
-        self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
         self._middleware.declare_exchange(exchange_name, type = "fanout")
-        self._middleware.bind_queue(self.recv_queue, exchange_name) # -> bindeo al fanout de los push y pull
+        # self._middleware.bind_queue(self.recv_queue, exchange_name) # -> bindeo al fanout de los push y pull
         self._middleware.declare_queue(self.send_queue) # -> cola para enviar
+        self.recv_queue = self._middleware.declare_anonymous_queue(exchange_name=exchange_name)
         
         # Inicializa el ElectionManager
         self.election_manager = ElectionManager(
@@ -188,7 +188,6 @@ class Replica:
                 else:
                     # Si no soy el líder, esperar a que lleguen los mensajes de INTENT y COMPLETED
                     self.wait_for_task(task_type=TaskType.PULL)
-                    logging.info(f"Replica {self.id}: No soy el líder. Dejo que el líder responda.")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
