@@ -122,44 +122,55 @@ class Node:
         responses = {}  # Almacenar las respuestas de las réplicas
         most_recent_msg_id = self.last_msg_id
 
-        # Función de callback para procesar las respuestas de PULL_DATA
-        def on_pull_response(ch, method, properties, body):
-            nonlocal most_recent_msg_id
+        # Función de callback para procesar las respuestas de ASK_LAST_MSG_ID
+        def on_ask_response(ch, method, properties, body):
+            nonlocal responses
             msg = decode_msg(body)
-            if isinstance(msg, PushDataMessage):
-                replica_id = msg.msg_id  # El msg_id contiene el ID de la réplica que envió el mensaje
-                last_msg_id = msg.last_msg_id
-
-                # Evitar respuestas duplicadas
-                if replica_id not in responses:
-                    responses[replica_id] = last_msg_id
-                    logging.info(f"Master: Respuesta recibida de réplica {replica_id} con last_msg_id={last_msg_id}.")
-
-                    # Cargar el estado si es más reciente
-                    if last_msg_id > most_recent_msg_id:
-                        most_recent_msg_id = last_msg_id
-                        self.load_state(msg)
-                        logging.info(f"Master: Estado cargado desde réplica {replica_id} con last_msg_id={last_msg_id}.")
+            if msg.type == MsgType.ANS_LAST_MSG_ID:
+                logging.info(f"Master: Recibido last_msg_id={msg.msg_id} de réplica {msg.node_id}.")
+                responses[msg.node_id] = msg.msg_id
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
-            # Detener consumo si ya se recibieron todas las respuestas esperadas
+            # Detener consumo si ya se recibieron todas las respuestas
             if len(responses) >= self.n_replicas:
                 ch.stop_consuming()
 
-        # Enviar mensaje PULL_DATA a todas las réplicas
-        pull_data_msg = SimpleMessage(type=MsgType.PULL_DATA)  # El msg_id se utiliza como identificador del maestro
-        self._middleware.send_to_queue(self.push_exchange_name, pull_data_msg.encode())
-        logging.info("Master: Mensaje PULL_DATA enviado a todas las réplicas.")
+        # Enviar mensaje ASK_LAST_MSG_ID a todas las réplicas
+        ask_msg = SimpleMessage(type=MsgType.ASK_LAST_MSG_ID)
+        self._middleware.send_to_queue(self.push_exchange_name, ask_msg.encode())
+        logging.info("Master: Mensaje ASK_LAST_MSG_ID enviado a todas las réplicas.")
 
         # Recibir respuestas
-        self._middleware.receive_from_queue(self.recv_queue, on_pull_response, auto_ack=False)
+        self._middleware.receive_from_queue(self.recv_queue, on_ask_response, auto_ack=False)
 
-        # Verificar si se recibió alguna respuesta
+        # Verificar si se recibieron respuestas
         if not responses:
             logging.warning("Master: No se recibieron respuestas de las réplicas. Abortando sincronización.")
-        else:
-            logging.info(f"Master: Sincronización completada. Estado más reciente con last_msg_id={most_recent_msg_id}.")
+            return
 
+        # Determinar el nodo con el estado más actualizado
+        most_recent_msg_id = max(responses.values())
+
+        # Solicitar el estado completo
+        self._request_full_state(most_recent_msg_id)
+
+    def _request_full_state(self, target_msg_id):
+        """Solicita el estado completo al nodo más actualizado."""
+        pull_data_msg = SimpleMessage(type=MsgType.PULL_DATA, msg_id=target_msg_id)
+        self._middleware.send_to_queue(self.push_exchange_name, pull_data_msg.encode())
+        logging.info(f"Master: Mensaje PULL_DATA enviado solicitando last_msg_id={target_msg_id}.")
+
+        def on_pull_response(ch, method, properties, body):
+            msg = decode_msg(body)
+            if isinstance(msg, PushDataMessage):
+                if msg.data["last_msg_id"] == target_msg_id:
+                    self.load_state(msg)
+                    logging.info(f"Master: Estado sincronizado con last_msg_id={target_msg_id} desde réplica {msg.msg_id}.")
+                    ch.stop_consuming()
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # Recibir la respuesta del estado completo
+        self._middleware.receive_from_queue(self.recv_queue, on_pull_response, auto_ack=False)
 
 
     def push_update(self, type: str, client_id: int, update = None):

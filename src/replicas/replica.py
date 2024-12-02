@@ -62,9 +62,10 @@ class Replica:
     def _load_state(self, msg):
         pass
 
-    def _process_pull_data(self):
+    def _process_pull_data(self, target_last_msg_id):
         """Procesa un mensaje de solicitud de pull de datos."""
-        self._middleware.send_to_queue(self.send_queue, self._create_pull_answer().encode())
+        if self.last_msg_id >= target_last_msg_id:
+            self._middleware.send_to_queue(self.send_queue, self._create_pull_answer().encode())
         logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
 
     def _ans_last_msg_id(self):
@@ -115,8 +116,9 @@ class Replica:
                 return
             
             if msg.type == MsgType.PULL_DATA:
-                self._process_pull_data()
-
+                self._process_pull_data(msg.msg_id)
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
             # Procesar siempre los mensajes SYNC_STATE_REQUEST
             if msg.type == MsgType.SYNC_STATE_REQUEST:
                 if msg.requester_id != self.id:  # Ignorar solicitudes propias
