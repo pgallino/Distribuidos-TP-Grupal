@@ -6,7 +6,7 @@ import socket
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
-from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
+from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER, Q_TO_PROP
 from utils.listener import NodeListener
 from utils.utils import recv_msg
 
@@ -30,6 +30,7 @@ class Node:
         self.coordination_process = None
         self.condition = Condition()
         self.processing_client = Value('i', -1)  # 'i' indica un entero
+        self.fin_to_ack = None
 
         self.connected = Value('i', 0)  # 0 para False, 1 para True
 
@@ -77,6 +78,26 @@ class Node:
 
     def _receive_message(self, queue_name, callback):
         raise NotImplementedError("Debe implementarse en las subclases")
+    
+    def _process_fin_message(self, ch, method, client_id: int):
+        fin_notify_msg = SimpleMessage(MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
+        self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
+        self.fin_to_ack = (client_id, ch, method.delivery_tag)
+        ch.stop_consuming()
+    
+    def _process_notification(self, ch, method, properties, raw_message):
+        """Callback para procesar las notificaciones de fins propagados"""
+        msg = decode_msg(raw_message)
+
+        if msg.type == MsgType.FIN_PROPAGATED:
+            if self.fin_to_ack:
+                client_id, fin_ch, tag = self.fin_to_ack
+                if msg.client_id == client_id:
+                    fin_ch.basic_ack(delivery_tag=tag)
+                    self.fin_to_ack = None
+                    ch.stop_consuming()
+        
+        ch.basic_ack(delivery_tag=method.delivery_tag)
     
     def forward_coordfin(self, coord_exchange_name, msg):
         try:

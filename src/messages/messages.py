@@ -33,6 +33,10 @@ class MsgType(Enum):
     ASK_MASTER_CONNECTED = 20
     ACTIVE_NODES = 21
     ASK_ACTIVE_NODES = 22
+    FIN_NOTIFICATION = 23
+    CLIENT_CLOSE = 24
+    FIN_PROPAGATED = 25
+
 
 class NodeType(Enum):
     TRIMMER = 0
@@ -40,6 +44,11 @@ class NodeType(Enum):
     SCORE = 2
     ENGLISH = 3
     RELEASE_DATE = 4
+    OS_COUNTER = 5
+    AVG_COUNTER = 6
+    Q3_JOINER = 7
+    Q4_JOINER = 8
+    Q5_JOINER = 9
 
     def string_to_node_type(node_type_str: str) -> 'NodeType':
         """
@@ -51,7 +60,7 @@ class NodeType(Enum):
         """
         node_type_str = node_type_str.lower()
         if node_type_str in _STRING_TO_NODE_TYPE:
-            return _STRING_TO_NODE_TYPE[node_type_str]
+            return  [node_type_str]
         raise ValueError(f"'{node_type_str}' no es un tipo de nodo válido en NodeType.")
         
     @staticmethod
@@ -66,6 +75,19 @@ class NodeType(Enum):
         if not isinstance(node_type, NodeType):
             raise ValueError(f"'{node_type}' no es un miembro válido de NodeType.")
         return node_type.name.lower()
+    
+    def get_next_nodes(node_type: 'NodeType') -> list['NodeType']:
+        if node_type == NodeType.TRIMMER:
+            return [NodeType.GENRE, NodeType.SCORE, NodeType.OS_COUNTER]
+        if node_type == NodeType.GENRE:
+            return [NodeType.RELEASE_DATE, NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER]
+        if node_type == NodeType.SCORE:
+            return [NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER]
+        if node_type == NodeType.RELEASE_DATE:
+            return [NodeType.AVG_COUNTER]
+        if node_type == NodeType.ENGLISH:
+            return [NodeType.Q4_JOINER]
+        raise ValueError(f"'{NodeType}' no tiene un nodo siguiente en el pipeline.")
 
 # Diccionario para mapeo manual
 _STRING_TO_NODE_TYPE = {
@@ -74,6 +96,11 @@ _STRING_TO_NODE_TYPE = {
     "score": NodeType.SCORE,
     "english": NodeType.ENGLISH,
     "release_date": NodeType.RELEASE_DATE,
+    "os_counter": NodeType.OS_COUNTER,
+    "avg_counter": NodeType.AVG_COUNTER,
+    "q3_joiner": NodeType.Q3_JOINER,
+    "q4_joiner": NodeType.Q4_JOINER,
+    "q5_joiner": NodeType.Q5_JOINER,
 }
 
 class Dataset(Enum):
@@ -257,7 +284,10 @@ class SimpleMessage(BaseMessage):
             MsgType.MASTER_CONNECTED: ["connected"],
             MsgType.TASK_COMPLETED: ["node_id", "task_type"],
             MsgType.TASK_INTENT: ["node_id", "task_type"],
-            MsgType.ASK_ACTIVE_NODES: ["node_type"]
+            MsgType.ASK_ACTIVE_NODES: ["node_type"],
+            MsgType.FIN_NOTIFICATION: ["client_id", "node_type", "node_instance"],
+            MsgType.CLIENT_CLOSE: ["client_id"],
+            MsgType.FIN_PROPAGATED: ["client_id", "node_type"]
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -793,10 +823,13 @@ MESSAGE_CLASSES = {
     MsgType.MASTER_CONNECTED: SimpleMessage,
     MsgType.ASK_MASTER_CONNECTED: SimpleMessage,
     MsgType.ASK_ACTIVE_NODES: SimpleMessage,
+    MsgType.FIN_NOTIFICATION: SimpleMessage,
+    MsgType.CLIENT_CLOSE: SimpleMessage,
+    MsgType.FIN_PROPAGATED: SimpleMessage
 }
 
 
-def decode_msg(data: bytes):
+def decode_msg(data: bytes) -> BaseMessage:
     try:
         type = MsgType(data[0])
         msg_class = MESSAGE_CLASSES.get(type)

@@ -5,7 +5,7 @@ from messages.results_msg import Q3Result, QueryNumber
 from node import Node
 import heapq
 
-from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
+from utils.constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 
 class Q3Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
@@ -23,6 +23,10 @@ class Q3Joiner(Node):
         self._middleware.bind_queue(Q_SCORE_Q3_JOINER, E_FROM_SCORE, K_POSITIVE)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_3)
+
+        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.bind_queue(Q_GENRE_Q3_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_games') # hay que modificarlo en el propagator
+        self._middleware.bind_queue(Q_SCORE_Q3_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_reviews')
 
         # Estructuras para almacenar datos
         self.games_per_client = defaultdict(lambda: {})  # Almacenará juegos por `app_id`, para cada cliente

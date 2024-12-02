@@ -4,7 +4,7 @@ from messages.messages import PushDataMessage, ResultMessage, decode_msg, MsgTyp
 from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
-from utils.constants import E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
+from utils.constants import E_FROM_PROP, E_FROM_TRIMMER, K_FIN, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 
@@ -18,6 +18,9 @@ class OsCounter(Node):
         self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_TRIMMER, K_Q1GAME)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_1)
+
+        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_PROP, key=K_FIN+f'_{container_name}')
 
         self.counters = {}
 
@@ -45,7 +48,10 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
-            self._process_fin_message(msg)
+            self.ch_for_fin = ch
+            self.fin_to_ack = method.delivery_tag
+            self._middleware.channel.stop_consuming()
+            return
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

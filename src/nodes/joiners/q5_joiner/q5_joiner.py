@@ -5,7 +5,7 @@ from messages.messages import MsgType, ResultMessage, decode_msg, PushDataMessag
 from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # type: ignore # genera 7 pids en docker stats
-from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
+from utils.constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
 class Q5Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
@@ -23,6 +23,10 @@ class Q5Joiner(Node):
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_5)
+
+        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.bind_queue(Q_GENRE_Q5_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_games') # hay que modificarlo en el propagator
+        self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_reviews')
 
         # Estructuras de almacenamiento
         self.games_per_client = defaultdict(lambda: {})  # Almacena juegos por `app_id`, para cada cliente
