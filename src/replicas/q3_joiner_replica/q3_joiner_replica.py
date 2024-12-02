@@ -35,7 +35,7 @@ class Q3JoinerReplica(Replica):
             "games_per_client": dict(self.games_per_client),
             "review_counts_per_client": {k: dict(v) for k, v in self.review_counts_per_client.items()},
             "fins_per_client": dict(self.fins_per_client),
-        }, last_msg_id=self.last_msg_id, msg_id=self.id)
+        }, node_id=self.id)
         return response_data
 
 
@@ -90,3 +90,33 @@ class Q3JoinerReplica(Replica):
         self.review_counts_per_client.pop(client_id, None)
         self.fins_per_client.pop(client_id, None)
         # logging.info(f"Replica: Estado borrado para client_id: {client_id}")
+
+    def _load_state(self, msg: PushDataMessage):
+        """Carga el estado completo recibido en la réplica."""
+        state = msg.data
+
+        # Actualizar juegos por cliente
+        if "games_per_client" in state:
+            for client_id, games in state["games_per_client"].items():
+                self.games_per_client[client_id] = games
+            logging.info(f"Replica: Juegos actualizados desde estado recibido.")
+
+        # Actualizar reseñas por cliente
+        if "review_counts_per_client" in state:
+            for client_id, reviews in state["review_counts_per_client"].items():
+                if client_id not in self.review_counts_per_client:
+                    self.review_counts_per_client[client_id] = defaultdict(int)
+                self.review_counts_per_client[client_id].update(reviews)
+            logging.info(f"Replica: Reseñas actualizadas desde estado recibido.")
+
+        # Actualizar fins por cliente
+        if "fins_per_client" in state:
+            for client_id, fins in state["fins_per_client"].items():
+                self.fins_per_client[client_id] = fins
+            logging.info(f"Replica: Estados FIN actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado (last_msg_id)
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]
+
+        logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")

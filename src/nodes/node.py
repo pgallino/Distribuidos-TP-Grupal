@@ -114,63 +114,47 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
-        """Sincroniza el estado con las réplicas compañeras."""
+        """Solicita el estado a las réplicas y sincroniza el nodo."""
+        logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
+
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
         self.recv_queue = self._middleware.declare_anonymous_queue(E_FROM_REPLICA_PULL)
 
-        responses = {}  # Almacenar las respuestas de las réplicas
-        most_recent_msg_id = self.last_msg_id
+        # Enviar un PULL_DATA a todas las réplicas
+        pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
+        self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
+        logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
 
-        # Función de callback para procesar las respuestas de ASK_LAST_MSG_ID
-        def on_ask_response(ch, method, properties, body):
-            nonlocal responses
+        responses = {}  # Almacenar las respuestas recibidas (por ID de réplica)
+
+        def on_response(ch, method, properties, body):
+            """Callback para manejar las respuestas de las réplicas."""
             msg = decode_msg(body)
-            if msg.type == MsgType.ANS_LAST_MSG_ID:
-                logging.info(f"Master: Recibido last_msg_id={msg.msg_id} de réplica {msg.node_id}.")
-                responses[msg.node_id] = msg.msg_id
+
+            if isinstance(msg, SimpleMessage) and msg.type == MsgType.EMPTY_STATE:
+                logging.info(f"Master {self.id}: Recibido estado vacío de réplica {msg.node_id}.")
+                responses[msg.node_id] = "empty"
+
+            elif isinstance(msg, PushDataMessage):
+                logging.info(f"Master {self.id}: Recibido estado completo de réplica {msg.node_id}.")
+                if msg.data["last_msg_id"] > self.last_msg_id:
+                    self.load_state(msg)
+                    responses[msg.node_id] = "loaded"
+                else:
+                    responses[msg.node_id] = "ignored"
+
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
-            # Detener consumo si ya se recibieron todas las respuestas
+            # Detener el consumo si ya se recibió una respuesta de cada réplica
             if len(responses) >= self.n_replicas:
                 ch.stop_consuming()
 
-        # Enviar mensaje ASK_LAST_MSG_ID a todas las réplicas
-        ask_msg = SimpleMessage(type=MsgType.ASK_LAST_MSG_ID)
-        self._middleware.send_to_queue(self.push_exchange_name, ask_msg.encode())
-        logging.info("Master: Mensaje ASK_LAST_MSG_ID enviado a todas las réplicas.")
+        # Escuchar respuestas hasta recibir de todas las réplicas
+        self._middleware.receive_from_queue(self.recv_queue, on_response, auto_ack=False)
 
-        # Recibir respuestas
-        self._middleware.receive_from_queue(self.recv_queue, on_ask_response, auto_ack=False)
+        logging.info(f"Master {self.id}: Sincronización completada. Respuestas: {responses}")
 
-        # Verificar si se recibieron respuestas
-        if not responses:
-            logging.warning("Master: No se recibieron respuestas de las réplicas. Abortando sincronización.")
-            return
-
-        # Determinar el nodo con el estado más actualizado
-        most_recent_msg_id = max(responses.values())
-
-        # Solicitar el estado completo
-        self._request_full_state(most_recent_msg_id)
-
-    def _request_full_state(self, target_msg_id):
-        """Solicita el estado completo al nodo más actualizado."""
-        pull_data_msg = SimpleMessage(type=MsgType.PULL_DATA, msg_id=target_msg_id)
-        self._middleware.send_to_queue(self.push_exchange_name, pull_data_msg.encode())
-        logging.info(f"Master: Mensaje PULL_DATA enviado solicitando last_msg_id={target_msg_id}.")
-
-        def on_pull_response(ch, method, properties, body):
-            msg = decode_msg(body)
-            if isinstance(msg, PushDataMessage):
-                if msg.data["last_msg_id"] == target_msg_id:
-                    self.load_state(msg)
-                    logging.info(f"Master: Estado sincronizado con last_msg_id={target_msg_id} desde réplica {msg.msg_id}.")
-                    ch.stop_consuming()
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-
-        # Recibir la respuesta del estado completo
-        self._middleware.receive_from_queue(self.recv_queue, on_pull_response, auto_ack=False)
 
 
     def push_update(self, type: str, client_id: int, update = None):

@@ -7,7 +7,6 @@ from middleware.middleware import Middleware
 from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_MASTER_REPLICA, Q_REPLICA_MASTER
 from utils.container_constants import LISTENER_PORT
 from utils.listener import ReplicaListener
-from utils.utils import TaskType, recv_msg
 
 class Replica:
     def __init__(self, id: int, ip_prefix: str, container_to_restart: str):
@@ -31,11 +30,13 @@ class Replica:
 
         self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
         self.send_queue = E_FROM_REPLICA_PULL
-        exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
+        self.exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
         self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
-        self._middleware.declare_exchange(exchange_name, type = "fanout")
-        self._middleware.bind_queue(self.recv_queue, exchange_name) # -> bindeo al fanout de los push y pull
+        self._middleware.declare_exchange(self.exchange_name, type = "fanout")
+        self._middleware.bind_queue(self.recv_queue, self.exchange_name) # -> bindeo al fanout de los push y pull
         self._middleware.declare_exchange(E_FROM_REPLICA_PULL)
+        self.sync_exchange = "E_SYNC_STATE"
+        self._middleware.declare_exchange(self.sync_exchange)
         
         self.listener = Process(target=init_listener, args=(id, ip_prefix, self.port,))
         self.listener.start()
@@ -46,6 +47,7 @@ class Replica:
             while not self.shutting_down:
                 # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
                 self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
+                self.recover_state()  # Método para solicitar sincronización
         except Exception as e:
             if not self.shutting_down:
                 logging.error(f"action: listening_queue | result: fail | error: {e.with_traceback()}")
@@ -62,15 +64,14 @@ class Replica:
     def _load_state(self, msg):
         pass
 
-    def _process_pull_data(self, target_last_msg_id):
+    def _process_pull_data(self):
         """Procesa un mensaje de solicitud de pull de datos."""
-        if self.last_msg_id >= target_last_msg_id:
-            self._middleware.send_to_queue(self.send_queue, self._create_pull_answer().encode())
-        logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
-
-    def _ans_last_msg_id(self):
-        """Procesa un mensaje de solicitud de pull de datos."""
-        self._middleware.send_to_queue(self.send_queue, SimpleMessage(type=MsgType.ANS_LAST_MSG_ID, node_id=self.id, msg_id=self.last_msg_id).encode())
+        if self.last_msg_id == 0:
+            self._middleware.send_to_queue(self.send_queue, SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id).encode())
+            logging.info("Replica: Estado empty enviado en respuesta a PullDataMessage.")
+            return
+        
+        self._middleware.send_to_queue(self.send_queue, self._create_pull_answer().encode())
         logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
 
     def _create_pull_answer(self):
@@ -108,36 +109,26 @@ class Replica:
             msg = decode_msg(raw_message)
 
             # Determinar si la réplica necesita sincronización
-            if msg.msg_id > 0 and not self.sincronizado and (msg.type != MsgType.PULL_DATA):
-                logging.info(f"Replica {self.id}: Recibiendo primer mensaje con ID {msg.msg_id}. Iniciando sincronización.")
-                self.recover_state()  # Método para solicitar sincronización
+            if msg.msg_id > 0 and not self.sincronizado:
+                # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
                 ch.basic_nack(delivery_tag=method.delivery_tag)
-                self.sincronizado = True
-                return
+                ch.stop_consuming()
+                logging.info(f"Replica {self.id}: Recibiendo primer mensaje con ID {msg.msg_id} de tipo {msg.type}. Iniciando sincronización.")
+                return # ya me sincronicé y me vuelvo a consumir por la cola principal
             
-            if msg.type == MsgType.PULL_DATA:
-                self._process_pull_data(msg.msg_id)
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                return
-            # Procesar siempre los mensajes SYNC_STATE_REQUEST
-            if msg.type == MsgType.SYNC_STATE_REQUEST:
+            if msg.type == MsgType.PULL_DATA: # si es un pull respondo siempre, si no estoy sincronizado se responde un Empty y listo
+                self._process_pull_data()
+
+            elif msg.type == MsgType.SYNC_STATE_REQUEST: # Procesar siempre los mensajes SYNC_STATE_REQUEST
                 if msg.requester_id != self.id:  # Ignorar solicitudes propias
-                    self._process_sync_state_request(msg.requester_id)
-                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-                return  # Finalizar el procesamiento para este mensaje
-            
-            if msg.type == MsgType.ASK_LAST_MSG_ID:
-                self._ans_last_msg_id()
-                # Confirmar la recepción del mensaje
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-                return
+                    if self.sincronizado: # respondo si se que estoy sincronizado
+                        self._process_sync_state_request(msg.requester_id)
 
-            # Procesar solo mensajes con un ID mayor al último procesado
-            if msg.msg_id > self.last_msg_id or self.last_msg_id == 0:
-                self.last_msg_id = msg.msg_id
-                self.sincronizado = True
-
-                if msg.type == MsgType.PUSH_DATA:
+            elif msg.type == MsgType.PUSH_DATA:
+                # Procesar solo mensajes con un ID mayor al último procesado
+                if msg.msg_id > self.last_msg_id or self.last_msg_id == 0:
+                    self.last_msg_id = msg.msg_id
+                    self.sincronizado = True
                     self._process_push_data(msg)
 
             # Confirmar la recepción del mensaje
@@ -152,75 +143,32 @@ class Replica:
         if self.id == id:
             self._shutdown()
             exit(0)
-
-    def handle_pull(self):
-        """
-        Maneja el proceso de PULL como líder.
-        Envía TASK_INTENT, realiza la sincronización y luego envía TASK_COMPLETED.
-        """
-        # Verificar si el maestro está sincronizado
-        if not self.ask_master_connected():
-            self._process_pull_data()
-
-    def ask_master_connected(self):
-        """
-        Consulta al maestro si está sincronizado.
-        Si no responde a tiempo (timeout), asume que no está conectado.
-        """
-        try:
-            master_ip = self.container_to_restart  # Dirección IP del maestro
-            with socket.create_connection((master_ip, self.port), timeout=3) as sock:
-                # Enviar el mensaje ASK_MASTER_CONNECTED
-                ask_msg = SimpleMessage(type=MsgType.ASK_MASTER_CONNECTED, socket_compatible=True)
-                sock.sendall(ask_msg.encode())
-
-                # Recibir la respuesta
-                raw_response = recv_msg(sock)
-                response_msg = decode_msg(raw_response)
-
-            if response_msg.type == MsgType.MASTER_CONNECTED:
-                is_connected = bool(response_msg.connected)  # Convertir 0/1 a booleano
-                logging.info(f"Recibido MASTER_CONNECTED: connected={is_connected}")
-                return is_connected
-        except socket.timeout:
-            # Caso específico: timeout en la conexión o respuesta
-            logging.warning(f"Replica {self.id}: Timeout esperando respuesta del maestro.")
-            return False
-        except Exception as e:
-            # Cualquier otro error se captura aquí
-            logging.error(f"Replica {self.id}: Error consultando maestro: {e}")
-            return False
-
-        # Si no se recibió ningún mensaje válido, asumimos desconexión
-        return False
     
     def recover_state(self):
         """
         Solicita el estado a las réplicas compañeras y se sincroniza.
         """
-        logging.info(f"Replica {self.id}: Solicitando estado a réplicas compañeras.")
-        self._initialize_storage()
-        return
+        # logging.info(f"Replica {self.id}: Solicitando estado a réplicas compañeras.")
+
         # Crear una cola anónima y vincularla al exchange E_SYNC_STATE con la routing key basada en el ID de la réplica
-        response_exchange = "E_SYNC_STATE"
-        # TODO: VER SI HACE FALTA DECLARAR EL EXCHANGE
-        self.response_queue = self._middleware.declare_anonymous_queue(exchange_name=response_exchange, routing_key=str(self.id))
+        self.response_queue = self._middleware.declare_anonymous_queue(exchange_name=self.sync_exchange, routing_key=str(self.id))
 
         # Enviar Sync_state
-        pull_state_msg = SimpleMessage(type=MsgType.SYNC_STATE_REQUEST, requester_id=self.id)
+        sync_msg = SimpleMessage(type=MsgType.SYNC_STATE_REQUEST, requester_id=self.id)
         # Lo envio a la cola de la que reciben todos
-        self._middleware.send_to_queue(E_FROM_MASTER_PUSH, pull_state_msg.encode())
+        self._middleware.send_to_queue(self.exchange_name, sync_msg.encode())
 
         # Esperar respuesta
         def on_state_response(ch, method, properties, body):
             msg = decode_msg(body)
             if isinstance(msg, PushDataMessage):
                 self._load_state(msg)
-                logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
+                # logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
             ch.basic_ack(delivery_tag=method.delivery_tag)
             ch.stop_consuming()  # Terminar el consumo después de recibir una respuesta
 
-        self._middleware.receive_from_queue(self.recv_queue, on_state_response, auto_ack=False)
+        self._middleware.receive_from_queue(self.response_queue, on_state_response, auto_ack=False)
+        self.sincronizado = True
 
     def _process_sync_state_request(self, requester_id):
         """
@@ -232,12 +180,13 @@ class Replica:
             
             # Crear el mensaje de respuesta con el estado actual
             response_data = self._create_pull_answer()
+            logging.info(f"envio esta data en la sincro: {response_data}")
 
             # Publicar el estado en el exchange con la routing key del solicitante
             self._middleware.send_to_queue(
-                exchange_name="E_SYNC_STATE",
-                message=response_data.encode(),
-                routing_key=str(requester_id)
+                self.sync_exchange,
+                response_data.encode(),
+                str(requester_id)
             )
 
             logging.info(f"Replica {self.id}: Estado enviado a la réplica {requester_id}.")

@@ -43,9 +43,9 @@ class OsCounterReplica(Replica):
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
         response_data = PushDataMessage(data={
-            "last_msg_id": self.state["last_msg_id"],
+            "last_msg_id": self.last_msg_id,
             "os_count": dict(self.os_count)  # Convierte defaultdict a dict estándar
-        }, last_msg_id=self.last_msg_id, msg_id=self.id)
+        }, node_id=self.id)
         return response_data
 
     def _delete_client_state(self, client_id):
@@ -55,3 +55,19 @@ class OsCounterReplica(Replica):
             logging.info(f"Replica: Estado eliminado para cliente {client_id}.")
         else:
             logging.warning(f"Intento de eliminar estado inexistente para cliente {client_id}.")
+
+    def _load_state(self, msg: PushDataMessage):
+        """Carga el estado completo recibido en la réplica."""
+        state = msg.data
+
+        # Actualizar contadores de sistemas operativos por cliente
+        if "os_count" in state:
+            for client_id, (windows, mac, linux) in state["os_count"].items():
+                self.os_count[client_id] = (windows, mac, linux)
+            logging.info(f"Replica: Contadores de sistemas operativos actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado
+        if "last_msg_id" in state:
+            self.last_msg_id = state.get('last_msg_id')
+
+        logging.info(f"last_id actualizado {self.last_msg_id}")

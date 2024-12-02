@@ -41,7 +41,7 @@ class AvgCounterReplica(Replica):
         response_data = PushDataMessage(data={
             "last_msg_id": self.state["last_msg_id"],
             "avg_count": dict(self.avg_heap)
-        }, last_msg_id=self.last_msg_id, msg_id=self.id)
+        }, node_id=self.id)
         return response_data
 
     def _delete_client_state(self, client_id):
@@ -51,3 +51,17 @@ class AvgCounterReplica(Replica):
             logging.info(f"Estado eliminado para cliente {client_id}.")
         else:
             logging.warning(f"Intento de eliminar estado inexistente para cliente {client_id}.")
+
+    def _load_state(self, msg: PushDataMessage):
+        """Carga el estado completo recibido en la réplica."""
+        state = msg.data
+
+        # Actualizar heaps por cliente
+        if "avg_count" in state:
+            for client_id, heap_data in state["avg_count"].items():
+                self.avg_count[client_id] = [tuple(item) for item in heap_data]
+            logging.info(f"Replica: Heaps de promedio actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]
