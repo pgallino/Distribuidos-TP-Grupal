@@ -1,8 +1,10 @@
 # Clase base Nodo
 import logging
+import random
 import signal
 from multiprocessing import Process, Value, Condition
 import socket
+import time
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
@@ -83,12 +85,22 @@ class Node:
         logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(type=MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
+        if random.random() < 0.5:
+            logging.warning(f"Se cae justo despues de mandarle al propagator el FIN del cliente {client_id}")
+            time.sleep(5)
+            return
         self.fin_to_ack = (client_id, ch, method.delivery_tag)
         ch.stop_consuming()
     
     def _process_notification(self, ch, method, properties, raw_message):
         """Callback para procesar las notificaciones de fins propagados"""
         msg = decode_msg(raw_message)
+
+        if random.random() < 0.5:
+            logging.warning(f"Se cae justo esperando la noti de la propagacion del FIN cliente {self.fin_to_ack[0]}")
+            time.sleep(5)
+            ch.stop_consuming()
+            return
 
         if msg.type == MsgType.FIN_PROPAGATED:
             if self.fin_to_ack:
@@ -98,6 +110,10 @@ class Node:
                     fin_ch.basic_ack(delivery_tag=tag)
                     self.fin_to_ack = None
                     ch.stop_consuming()
+                    if random.random() < 0.5:
+                        logging.warning(f"Se cae justo despues de hacer ack del FIN cliente {client_id}")
+                        time.sleep(5)
+                        return
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
