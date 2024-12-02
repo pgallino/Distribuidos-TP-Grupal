@@ -13,10 +13,8 @@ def main():
         # Crear una instancia de AvgCounterReplica con un ID único
         replica = AvgCounterReplica(
             id=config_params["instance_id"],
-            n_instances=config_params["avg_counter_replica_instances"],
             ip_prefix="avg_counter_replica",
             container_to_restart="avg_counter_1",
-            timeout=config_params["timeout"]
         )
         
         logging.info(f"AvgCounterReplica {config_params['instance_id']} iniciada. Esperando mensajes...")

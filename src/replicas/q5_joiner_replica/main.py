@@ -13,10 +13,8 @@ def main():
         # Crear una instancia de Q5JoinerReplica con un ID único
         replica = Q5JoinerReplica(
             id=config_params["instance_id"],
-            n_instances=config_params["q5_joiner_replica_instances"],
             ip_prefix="q5_joiner_replica",
-            container_to_restart="q5_joiner_1",
-            timeout=config_params["timeout"]
+            container_to_restart="q5_joiner_1"
         )
         
         logging.info(f"Q5JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")

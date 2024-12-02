@@ -52,7 +52,7 @@ class Middleware:
         result = self.channel.queue_declare(queue='', exclusive=True, auto_delete=True)
         queue_name = result.method.queue  # Obtiene el nombre generado automáticamente por el broker
         self.queues.add(queue_name)
-        self.channel.queue_bind(exchange=exchange_name, queue=queue_name)
+        self.channel.queue_bind(queue=queue_name, exchange=exchange_name, routing_key='')
         logging.info(f"action: middleware declare_anonymous_queue | result: success | queue_name: {queue_name}")
         return queue_name
         

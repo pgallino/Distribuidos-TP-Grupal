@@ -13,10 +13,8 @@ def main():
         # Crear una instancia de Q4JoinerReplica con un ID único
         replica = Q4JoinerReplica(
             id=config_params["instance_id"],
-            n_instances=config_params["q4_joiner_replica_instances"],
             ip_prefix="q4_joiner_replica",
             container_to_restart="q4_joiner_1",
-            timeout=config_params["timeout"]
         )
         
         logging.info(f"Q4JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")

@@ -13,10 +13,8 @@ def main():
         # Crear una instancia de OsCounterReplica con un ID único
         replica = OsCounterReplica(
             id=config_params["instance_id"],
-            n_instances=config_params["os_counter_replica_instances"],
             ip_prefix="os_counter_replica",
             container_to_restart="os_counter_1",
-            timeout=config_params["timeout"]
         )
         
         logging.info(f"OsCounterReplica {config_params['instance_id']} iniciada. Esperando mensajes...")

@@ -13,10 +13,8 @@ def main():
         # Crear una instancia de Q3JoinerReplica con un ID único
         replica = Q3JoinerReplica(
             id=config_params["instance_id"],
-            n_instances=config_params["q3_joiner_replica_instances"],
             ip_prefix="q3_joiner_replica",
             container_to_restart="q3_joiner_1",
-            timeout=config_params["timeout"]
         )
         
         logging.info(f"Q3JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")
