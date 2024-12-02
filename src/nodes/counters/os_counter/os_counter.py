@@ -50,9 +50,7 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
-            self.ch_for_fin = ch
-            self.fin_to_ack = method.delivery_tag
-            self._middleware.channel.stop_consuming()
+            self._process_fin_message(msg)
             return
         
         ch.basic_ack(delivery_tag=method.delivery_tag)

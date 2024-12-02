@@ -56,7 +56,8 @@ class GenreFilter(Node):
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_TRIMMER_GENRE_FILTER."""
         msg = decode_msg(raw_message)
-
+        if msg.type != MsgType.GAMES:
+            logging.info(f'Me llego un mensaje del tipo {msg.type}')
         if msg.type == MsgType.GAMES:
             self._process_games_message(msg)
         elif msg.type == MsgType.FIN:

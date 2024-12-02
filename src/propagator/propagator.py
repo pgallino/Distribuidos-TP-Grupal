@@ -91,11 +91,12 @@ class Propagator:
         
         # notificamos a los nodos que ya propagamos el fin
         logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
-        fin_propagated_msg = SimpleMessage(MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
+        fin_propagated_msg = SimpleMessage(type=MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
         self._middleware.send_to_queue(E_FROM_PROP, fin_propagated_msg.encode(), key=K_NOTIFICATION + f'_{NodeType.node_type_to_string(node)}')
         self.nodes_fins_state[msg.client_id][node.name]['were_notify'] = True
 
     def _process_delete_client(self, msg: SimpleMessage):
+        logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
         if msg.client_id in self.nodes_fins_state:
             del self.nodes_fins_state[msg.client_id]
             # pushear el cambio de estado a las replicas
@@ -108,15 +109,19 @@ class Propagator:
         aggregate = 0
         for node in next_nodes:
             if node in self.nodes_instances:
+                # logging.info(f'curr_instances = self.nodes_instances[{node.name}] = {self.nodes_instances[node.name]}')
                 curr_instances = self.nodes_instances[node.name]
             else:
+                # logging.info('curr_instances = 1')
                 curr_instances = 1
             if aggregate + curr_instances <= fins_propagated: # ya se mandaron los fins a ese nodo
                 aggregate += curr_instances
                 continue
             elif aggregate < fins_propagated: # se mandaron algunos fins a ese nodo, pero no todos
+                # logging.info(f'fins_to_propagate = aggregate + curr_instances - fins_propagated = {aggregate} + {curr_instances} - {fins_propagated}')
                 fins_to_propagate = aggregate + curr_instances - fins_propagated
             else: # no se mando ningun fin al nodo
+                # logging.info(f'fins_to_propagate = curr_instances = {curr_instances}')
                 fins_to_propagate = curr_instances
 
             name = NodeType.node_type_to_string(node)
@@ -129,10 +134,10 @@ class Propagator:
                 else:
                     name += '_reviews'
 
+            fin_msg = SimpleMessage(type=MsgType.FIN, client_id=client_id)
             for _ in range(fins_to_propagate):
-                fin_msg = SimpleMessage(MsgType.FIN, client_id)
+                logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
                 self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'_{name}')
-            logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
             aggregate += curr_instances
 
         nodes_client_fins['fins_propagated'] = aggregate
