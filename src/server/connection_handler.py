@@ -46,7 +46,7 @@ class ConnectionHandler:
                     data_msg = Data( client_id=self.id, rows=msg.rows, dataset=msg.dataset)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, data_msg.encode())
                 elif msg.type == MsgType.CLIENT_FIN:
-                    fin_msg = SimpleMessage(type=MsgType.FIN, cliet_id=self.id)
+                    fin_msg = SimpleMessage(type=MsgType.FIN, client_id=self.id)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, fin_msg.encode())
                     break
 

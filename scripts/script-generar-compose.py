@@ -78,7 +78,7 @@ def generate_docker_compose(instances):
         ],
         'depends_on': {
             # Dependencia dinámica para todas las instancias de watchdog
-            **{f"watchdog_{i}": {'condition': 'service_started'} for i in range(1, instances['watchdog'] + 1)}
+            **{f"propagator_{i}": {'condition': 'service_started'} for i in range(1, instances['propagator'] + 1)}
         },
         'networks': ['testing_net'],
         'privileged': True  # Añadir el modo privileged

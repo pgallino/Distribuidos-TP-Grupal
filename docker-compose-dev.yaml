@@ -417,7 +417,9 @@ services:
     privileged: true
   server:
     container_name: server
-    depends_on: {}
+    depends_on:
+      propagator_1:
+        condition: service_started
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO

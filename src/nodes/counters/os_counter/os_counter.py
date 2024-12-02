@@ -20,7 +20,9 @@ class OsCounter(Node):
         self._middleware.declare_queue(Q_QUERY_RESULT_1)
 
         self._middleware.declare_exchange(E_FROM_PROP)
-        self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_PROP, key=K_FIN+f'_{container_name}')
+        fin_key = K_FIN+f'_{container_name}'
+        logging.info(f'Bindeo cola {Q_TRIMMER_OS_COUNTER} a {E_FROM_PROP} con key {fin_key}')
+        self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_PROP, key=fin_key)
 
         self.counters = {}
 

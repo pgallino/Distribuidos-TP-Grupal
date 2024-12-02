@@ -22,7 +22,9 @@ class GenreFilter(Node):
         self._middleware.declare_queue(self.notification_queue)
         self._middleware.declare_exchange(E_FROM_PROP)
         self._middleware.bind_queue(self.notification_queue, E_FROM_PROP, key=K_NOTIFICATION+f'_{container_name}')
-        self._middleware.bind_queue(Q_TRIMMER_GENRE_FILTER, E_FROM_PROP, key=K_FIN+f'_{container_name}')
+        fin_key = K_FIN+f'_{container_name}'
+        logging.info(f'Bindeo cola {Q_TRIMMER_GENRE_FILTER} a {E_FROM_PROP} con key {fin_key}')
+        self._middleware.bind_queue(Q_TRIMMER_GENRE_FILTER, E_FROM_PROP, key=fin_key)
 
     def get_type(self):
         return NodeType.GENRE

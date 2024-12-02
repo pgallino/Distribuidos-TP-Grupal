@@ -132,6 +132,7 @@ class Propagator:
             for _ in range(fins_to_propagate):
                 fin_msg = SimpleMessage(MsgType.FIN, client_id)
                 self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'_{name}')
+            logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
             aggregate += curr_instances
 
         nodes_client_fins['fins_propagated'] = aggregate

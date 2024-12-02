@@ -80,6 +80,7 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
     
     def _process_fin_message(self, ch, method, client_id: int):
+        logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
         self.fin_to_ack = (client_id, ch, method.delivery_tag)
@@ -93,6 +94,7 @@ class Node:
             if self.fin_to_ack:
                 client_id, fin_ch, tag = self.fin_to_ack
                 if msg.client_id == client_id:
+                    logging.info(f'Llego notificacion de FIN propagado para el cliente {client_id}')
                     fin_ch.basic_ack(delivery_tag=tag)
                     self.fin_to_ack = None
                     ch.stop_consuming()

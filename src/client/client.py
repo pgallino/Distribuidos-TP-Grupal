@@ -46,7 +46,7 @@ class Client:
         finally:
             self.client_socket.close()
 
-    def send_dataset(self, fname, dataset_type):
+    def send_dataset(self, fname, dataset_type: Dataset):
         # Chequear si existe el archivo
         with open(fname, mode='r') as file:
             next(file)  # Para saltearse el header
