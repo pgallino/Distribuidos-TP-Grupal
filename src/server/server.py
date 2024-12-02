@@ -10,9 +10,9 @@ from utils.constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3
 
 DISPATCH_QUEUES = 5
 
-def handle_client_connection(client_id: int, client_socket: socket.socket, n_next_nodes: int, fins_lock):
+def handle_client_connection(client_id: int, client_socket: socket.socket, n_next_nodes: int):
     logging.info("LLEGA AL HANDLE CLIENT CONNECTION")
-    connection_handler = ConnectionHandler(client_id, client_socket, n_next_nodes, fins_lock)
+    connection_handler = ConnectionHandler(client_id, client_socket, n_next_nodes)
     connection_handler.run()
 
 def init_result_dispatcher(client_sockets, lock, space_available, result_queue):
@@ -43,7 +43,7 @@ class Server:
 
         self.client_id_counter = 0  # Inicialización del contador
 
-        self.fins_lock = Lock()
+        # self.fins_lock = Lock()
 
         # Inicialización de las pools
 
@@ -114,7 +114,11 @@ class Server:
 
                 # Asignar la conexión a la pool de handlers
                 logging.info("LLEGO A POOL SUBMIT")
-                self.handler_pool.submit(handle_client_connection, client_id=client_id, client_socket=client_socket, n_next_nodes=self.n_next_nodes, fins_lock=self.fins_lock)
+                try:
+                    self.handler_pool.submit(handle_client_connection, client_id=client_id, client_socket=client_socket, n_next_nodes=self.n_next_nodes)
+                except:
+                    logging.error("FALLA EL SUBMIT")
+                    return
 
                 with self.active_connections_lock:
                     self.active_connections[client_id] = (client_socket, 0)  # Track client socket by ID

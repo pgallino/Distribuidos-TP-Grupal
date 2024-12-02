@@ -51,7 +51,6 @@ class OsCounter(Node):
         
         elif msg.type == MsgType.FIN:
             self._process_fin_message(msg)
-            return
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 

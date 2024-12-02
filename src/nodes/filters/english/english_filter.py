@@ -44,8 +44,6 @@ class EnglishFilter(Node):
     def _process_message(self, ch, method, properties, raw_message):
         """Callback para procesar mensajes de la cola Q_SCORE_ENGLISH."""
         msg = decode_msg(raw_message)
-
-        
         
         if msg.type == MsgType.REVIEWS:
             self._process_reviews_message(msg)
@@ -55,8 +53,6 @@ class EnglishFilter(Node):
             return
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
-
-        
 
     def _process_reviews_message(self, msg):
         """Filtra y envía reseñas en inglés a la cola correspondiente."""

@@ -15,8 +15,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -48,8 +48,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -92,8 +92,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -133,8 +133,49 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - CLIENT_INSTANCES=1
+    - OS_COUNTER_REPLICA_INSTANCES=0
+    - AVG_COUNTER_REPLICA_INSTANCES=0
+    - Q3_JOINER_REPLICA_INSTANCES=0
+    - Q4_JOINER_REPLICA_INSTANCES=0
+    - Q5_JOINER_REPLICA_INSTANCES=0
+    - WATCHDOG_INSTANCES=0
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    - PROPAGATOR_INSTANCES=1
+    image: genre:latest
+    networks:
+    - testing_net
+    privileged: true
+  genre_2:
+    container_name: genre_2
+    depends_on:
+      avg_counter_1:
+        condition: service_started
+      os_counter_1:
+        condition: service_started
+      q3_joiner_1:
+        condition: service_started
+      q4_joiner_1:
+        condition: service_started
+      q5_joiner_1:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=INFO
+    - INSTANCE_ID=2
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -164,8 +205,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -195,8 +236,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -226,8 +267,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -257,8 +298,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -288,8 +329,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -352,8 +393,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -393,8 +434,8 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -423,8 +464,8 @@ services:
     environment:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
@@ -452,6 +493,8 @@ services:
         condition: service_started
       genre_1:
         condition: service_started
+      genre_2:
+        condition: service_started
       rabbitmq:
         condition: service_healthy
       release_date_1:
@@ -462,8 +505,49 @@ services:
     - PYTHONUNBUFFERED=1
     - LOGGING_LEVEL=INFO
     - INSTANCE_ID=1
-    - TRIMMER_INSTANCES=1
-    - GENRE_INSTANCES=1
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
+    - SCORE_INSTANCES=1
+    - RELEASE_DATE_INSTANCES=1
+    - ENGLISH_INSTANCES=1
+    - CLIENT_INSTANCES=1
+    - OS_COUNTER_REPLICA_INSTANCES=0
+    - AVG_COUNTER_REPLICA_INSTANCES=0
+    - Q3_JOINER_REPLICA_INSTANCES=0
+    - Q4_JOINER_REPLICA_INSTANCES=0
+    - Q5_JOINER_REPLICA_INSTANCES=0
+    - WATCHDOG_INSTANCES=0
+    - Q3_JOINER_INSTANCES=1
+    - Q4_JOINER_INSTANCES=1
+    - Q5_JOINER_INSTANCES=1
+    - OS_COUNTER_INSTANCES=1
+    - AVG_COUNTER_INSTANCES=1
+    - PROPAGATOR_INSTANCES=1
+    image: trimmer:latest
+    networks:
+    - testing_net
+    privileged: true
+  trimmer_2:
+    container_name: trimmer_2
+    depends_on:
+      english_1:
+        condition: service_started
+      genre_1:
+        condition: service_started
+      genre_2:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+      release_date_1:
+        condition: service_started
+      score_1:
+        condition: service_started
+    environment:
+    - PYTHONUNBUFFERED=1
+    - LOGGING_LEVEL=INFO
+    - INSTANCE_ID=2
+    - TRIMMER_INSTANCES=2
+    - GENRE_INSTANCES=2
     - SCORE_INSTANCES=1
     - RELEASE_DATE_INSTANCES=1
     - ENGLISH_INSTANCES=1
