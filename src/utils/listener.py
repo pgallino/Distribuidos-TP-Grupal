@@ -57,9 +57,10 @@ class Listener:
                     logging.info("KeepAliveHandler: Proceso terminado.")
 
 class ReplicaListener(Listener):
-    def __init__(self, id, ids, ip_prefix, port, task_coordination_vars):
+    def __init__(self, id, ids, ip_prefix, port, task_coordination_vars, leader_id):
         super().__init__(id, ip_prefix, port, 5)
 
+        self.leader_id = leader_id  # Variable compartida para el id del líder
         self.task_status, self.task_condition = task_coordination_vars
         self.node_ids = ids
 
@@ -87,6 +88,14 @@ class ReplicaListener(Listener):
             with self.task_condition:
                 self.task_status["completed"] = task_type.value
                 self.task_condition.notify_all()
+
+        elif msg.type == MsgType.WHO_IS_LEADER:
+            # Responder con el líder actual
+            current_leader = self.leader_id.value  # Obtener el líder actual
+            response_msg = SimpleMessage(type=MsgType.CURRENT_LEADER, current_leader=current_leader, socket_compatible=True)
+            conn.sendall(response_msg.encode())
+            logging.info(f"Replica {self.id}: Respondí que el líder actual es {current_leader}.")
+
             
 class NodeListener(Listener):
     def __init__(self, id, ip_prefix, connected, port=LISTENER_PORT, backlog=5):

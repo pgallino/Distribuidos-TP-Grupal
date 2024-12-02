@@ -2,6 +2,7 @@ import logging
 from multiprocessing import Process, Manager
 import signal
 import socket
+import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from election.election_manager import ElectionManager
@@ -52,27 +53,29 @@ class Replica:
             port=ELECTION_PORT
         )
 
+        logging.info("espere a que todos se levantaran")
+
         # Crear las variables compartidas
         self.manager = Manager()
         self.task_status = self.manager.dict({"intent": None, "completed": None})
         self.task_condition = self.manager.Condition()
+        self.leader_id = self.manager.Value("i", 0) # 0 indica que no hay lider
         
         task_coordination_vars = (self.task_status, self.task_condition)
-        self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, self.port, task_coordination_vars,))
+        self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, self.port, task_coordination_vars, self.leader_id))
         self.listener.start()
 
-        # Determinar si esta réplica es el líder inicial
-        self.leader_id = max(self.replica_ids)  # El mayor ID es el líder inicial
-        if self.id == self.leader_id:
-            logging.info(f"Replica {self.id}: Soy el líder inicial.")
+        time.sleep(10)
+        # En el constructor (__init__) o método de inicialización de Replica
+        self.leader_id.value = self.check_for_leader_or_elect()
+        logging.info(f"Replica {self.id}: Mi líder actual es {self.leader_id.value}.")
 
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
-        self.pull_procesado = False
         try:
             while not self.shutting_down:
-                self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
-                self.ask_keepalive_master()
+                # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
+                self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
         except Exception as e:
             if not self.shutting_down:
                 logging.error(f"action: shutdown_replica | result: fail | error: {e}")
@@ -85,6 +88,46 @@ class Replica:
     def _process_push_data(self, msg):
         """Procesa los datos de un mensaje de `PushDataMessage`."""
         pass
+
+    def check_for_leader_or_elect(self):
+        """
+        Consulta a las réplicas si hay un líder activo. Si no hay, inicia una elección y devuelve el ID del líder.
+        """
+        logging.info(f"Replica {self.id}: Verificando si existe un líder activo...")
+
+        for replica_id in self.replica_ids:
+            if replica_id == self.id:
+                continue  # No me consulto a mí mismo
+
+            target_ip = f"{self.ip_prefix}_{replica_id}"
+            try:
+                with socket.create_connection((target_ip, self.port), timeout=self.timeout) as sock:
+                    # Enviar consulta sobre el líder
+                    msg = SimpleMessage(type=MsgType.WHO_IS_LEADER, socket_compatible=True)
+                    sock.sendall(msg.encode())
+
+                    # Recibir la respuesta
+                    raw_response = recv_msg(sock)
+                    response = decode_msg(raw_response)
+
+                    # Validar que la respuesta sea del tipo esperado y que el líder sea válido (no 0)
+                    if response.type == MsgType.CURRENT_LEADER and response.current_leader != 0:
+                        logging.info(f"Replica {self.id}: Líder detectado: {response.current_leader}.")
+                        return response.current_leader
+                    elif response.current_leader == 0:
+                        logging.warning(f"Replica {self.id}: Réplica {replica_id} indicó que no hay líder.")
+                    else:
+                        logging.warning(f"Replica {self.id}: Respuesta inesperada de {replica_id}: {response.type}.")
+            except socket.timeout:
+                logging.warning(f"Replica {self.id}: Timeout al intentar conectar con réplica {replica_id}.")
+            except (socket.error, OSError) as e:
+                logging.warning(f"Replica {self.id}: Error de conexión con réplica {replica_id}: {e}")
+            except Exception as e:
+                logging.error(f"Replica {self.id}: Error inesperado al consultar réplica {replica_id}: {e}")
+
+        # Si no se detectó un líder válido, iniciar elección
+        logging.info(f"Replica {self.id}: No se detectó líder activo. Iniciando elección.")
+        return self.election_manager.manage_leadership()
 
     def _process_pull_data(self):
         """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
@@ -139,28 +182,17 @@ class Replica:
                 self._process_push_data(msg)
 
             elif msg.type == MsgType.PULL_DATA:
-                if not self.pull_procesado:
-                    self.pull_procesado = True
-                    if self.leader_id == self.id:
-                        self.handle_pull()
-                    else:
-                        # Si no soy el líder, esperar a que lleguen los mensajes de INTENT y COMPLETED
-                        self.wait_for_task(task_type=TaskType.PULL)
-                        logging.info(f"Replica {self.id}: No soy el líder. Dejo que el líder responda.")
+
+                if self.leader_id.value == self.id:
+                    self.handle_pull()
+                else:
+                    # Si no soy el líder, esperar a que lleguen los mensajes de INTENT y COMPLETED
+                    self.wait_for_task(task_type=TaskType.PULL)
+                    logging.info(f"Replica {self.id}: No soy el líder. Dejo que el líder responda.")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
             logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
-
-    def ask_keepalive_master(self):
-        """Verifica si el contenedor maestro está vivo."""
-        master_ip = self.container_to_restart  # Dirección IP del contenedor maestro
-
-        if not self.check_node_status(master_ip, self.port):
-            logging.info("Master inactivo, manejando el fallo.")
-            self.handle_master_down()
-        else:
-            logging.info("Master activo y accesible.")
 
     def ask_keepalive_leader(self):
         leader_ip = f"{self.ip_prefix}_{self.leader_id}"
@@ -170,23 +202,6 @@ class Replica:
             logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id}")
         else:
             logging.info("Leader activo y accesible.")
-
-    def handle_master_down(self):
-        """Maneja la caída del maestro y coordina su reanimación."""
-        # Detectar al líder actual o realizar una nueva elección si el líder no responde
-
-        if self.leader_id != self.id:
-            self.ask_keepalive_leader()
-
-        if self.leader_id == self.id:  # Si soy el líder
-            self.handle_reanimate_master()
-        else:  # Si no soy el líder
-            # Esperar mensajes TASK_INTENT y TASK_COMPLETED
-            self.wait_for_task(task_type=TaskType.REANIMATE_MASTER)
-            logging.info(f"Replica {self.id}: Maestro reanimado por el líder.")
-
-        self.pull_procesado = False
-
 
     def check_node_status(self, target_ip, target_port):
         try:
@@ -252,24 +267,25 @@ class Replica:
                     logging.warning(f"Replica {self.id}: Timeout esperando TASK_INTENT y TASK_COMPLETED para '{task_type.name}'. Verificando líder.")
                     
                     # Verificar si el líder sigue activo
-                    leader_ip = f"{self.ip_prefix}_{self.leader_id}"
+                    leader_ip = f"{self.ip_prefix}_{self.leader_id.value}"
                     if not self.check_node_status(leader_ip, self.port):
                         logging.warning(f"Replica {self.id}: El líder no responde. Iniciando nueva elección.")
-                        self.leader_id = self.election_manager.manage_leadership()
-                        logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id}")
+                        self.leader_id.value = self.election_manager.manage_leadership()
+                        logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id.value}")
 
-                        if self.leader_id == self.id:
+                        if self.leader_id.value == self.id:
                             logging.info(f"Replica {self.id}: Soy el nuevo líder tras la elección. Procesando tarea '{task_type.name}'.")
                             # Procesar la tarea como nuevo líder
                             if task_type == TaskType.PULL:
                                 self.handle_pull()
-                            elif task_type == TaskType.REANIMATE_MASTER:
-                                self.handle_reanimate_master()
-                            return
+                                return
                     else:
                         logging.info(f"Replica {self.id}: El líder sigue activo. Continuando espera.")
 
-            logging.info(f"Replica {self.id}: TASK_INTENT y TASK_COMPLETED recibidos para '{task_type.name}'.")
+        # Limpieza de los valores de la tarea después de recibir ambos eventos
+        self.task_status["intent"] = None
+        self.task_status["completed"] = None
+        logging.info(f"Replica {self.id}: TASK_INTENT y TASK_COMPLETED procesados y limpiados para '{task_type.name}'.")
 
     def handle_pull(self):
         """
@@ -292,17 +308,6 @@ class Replica:
         else:
             self.send_task_completed(task_type=TaskType.PULL)
             logging.info(f"Replica {self.id}: Maestro ya sincronizado. No se necesita PULL.")
-
-    def handle_reanimate_master(self):
-        logging.info(f"Replica {self.id}: Soy el líder, iniciando reanimación del maestro.")
-        # 1. Enviar TASK_INTENT
-        self.send_task_intent(task_type=TaskType.REANIMATE_MASTER)
-
-        # 2. Reanimar el maestro
-        reanimate_container(self.container_to_restart)
-
-        # 3. Enviar TASK_COMPLETED
-        self.send_task_completed(task_type=TaskType.REANIMATE_MASTER)
 
     def ask_master_connected(self):
         """Consulta al maestro si está sincronizado."""
@@ -328,6 +333,6 @@ class Replica:
             return False  # Por defecto, asumir que no está conectado
 
 
-def init_listener(id, replica_ids, ip_prefix, port, master_coordination_vars):
-    listener = ReplicaListener(id, replica_ids, ip_prefix, port, master_coordination_vars)
+def init_listener(id, replica_ids, ip_prefix, port, master_coordination_vars, leader_id):
+    listener = ReplicaListener(id, replica_ids, ip_prefix, port, master_coordination_vars, leader_id)
     listener.run()

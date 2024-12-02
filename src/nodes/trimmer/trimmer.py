@@ -1,5 +1,5 @@
 import logging
-from messages.messages import Dataset, ListMessage, MsgType, NodeType, decode_msg
+from messages.messages import Dataset, ListMessage, MsgType, decode_msg
 from messages.games_msg import GamesType, Q1Game, GenreGame, Genre
 from messages.reviews_msg import Review, ReviewsType, Score
 from node import Node  # Importa la clase base Nodo
@@ -10,6 +10,7 @@ import sys
 
 from utils.container_constants import GENRE_CONTAINER_NAME, OS_COUNTER_CONTAINER_NAME, SCORE_CONTAINER_NAME
 from utils.middleware_constants import E_COORD_TRIMMER, E_FROM_TRIMMER, K_GENREGAME, K_Q1GAME, K_REVIEW, Q_COORD_TRIMMER, Q_GATEWAY_TRIMMER
+from utils.utils import NodeType
 
 GAME_FIELD_NAMES = ['AppID', 'Name', 'Release date', 'Estimated owners', 'Peak CCU', 
                     'Required age', 'Price', 'Unknown', 'DiscountDLC count', 'About the game', 

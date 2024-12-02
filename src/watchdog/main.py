@@ -1,6 +1,6 @@
-from messages.messages import NodeType
 from utils.container_constants import WATCHDOG_CONFIG_KEYS, WATCHDOG_CONTAINER_NAME, WATCHDOG_NODES_TO_MONITOR
 from utils.initilization import initialize_config, initialize_log
+from utils.utils import NodeType
 from watchdog import WatchDog
 
 def main():

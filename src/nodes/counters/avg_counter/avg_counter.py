@@ -1,6 +1,5 @@
 from collections import defaultdict
 import logging
-from typing import List, Tuple
 from messages.messages import MsgType, PushDataMessage, ResultMessage, decode_msg
 from messages.results_msg import Q2Result, QueryNumber
 import heapq

@@ -4,9 +4,9 @@ import signal
 from multiprocessing import Manager, Process, Lock
 import socket
 import time
-from messages.messages import ActiveNodesMessage, MsgType, NodeType, SimpleMessage, decode_msg
+from messages.messages import ActiveNodesMessage, MsgType, SimpleMessage, decode_msg
 from utils.container_constants import LISTENER_PORT
-from utils.utils import reanimate_container, recv_msg
+from utils.utils import NodeType, reanimate_container, recv_msg
 
 class WatchDog:
     def __init__(self, id: int, n_watchdogs: int, container_name: str, nodes_to_monitor: list[tuple[NodeType, int]] = [], check_interval=5):
@@ -84,6 +84,7 @@ class WatchDog:
             self.update_node_state(node_type, instance_id, False)  # Nodo está muerto
             if reanimate_container(node_address):
                 self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
+                logging.info(f"Updated state for {node_type} instance {instance_id} to alive.")
         except Exception as e:
             logging.error(f"WatchDog {self.id}: Error inesperado al verificar nodo {node_address}:{LISTENER_PORT}: {e}")
             self.update_node_state(node_type, instance_id, False)
@@ -132,7 +133,6 @@ class WatchDog:
             if node_type in self.nodes_state:
                 if instance_id in self.nodes_state[node_type]:
                     self.nodes_state[node_type][instance_id] = is_alive
-                    # logging.info(f"Updated state for {node_type} instance {instance_id} to {'alive' if is_alive else 'dead'}.")
                 else:
                     logging.warning(f"Instance ID {instance_id} not found for node type {node_type}.")
             else:

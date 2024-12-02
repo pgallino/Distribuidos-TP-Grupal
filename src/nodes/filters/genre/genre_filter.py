@@ -1,10 +1,11 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, NodeType, decode_msg
+from messages.messages import ListMessage, MsgType, decode_msg
 from messages.games_msg import GamesType, Q2Game, BasicGame, Genre
 from node import Node  # Importa la clase base Node
 from utils.container_constants import Q3_JOINER_CONTAINER_NAME, Q4_JOINER_CONTAINER_NAME, RELEASE_DATE_CONTAINER_NAME
 from utils.middleware_constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
+from utils.utils import NodeType
 
 
 class GenreFilter(Node):

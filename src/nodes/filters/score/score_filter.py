@@ -1,10 +1,11 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, NodeType, decode_msg
+from messages.messages import ListMessage, MsgType, decode_msg
 from messages.reviews_msg import BasicReview, ReviewsType, Score, TextReview
 from node import Node  # Importa la clase base Node
 from utils.container_constants import Q3_JOINER_CONTAINER_NAME, Q4_JOINER_CONTAINER_NAME, Q5_JOINER_CONTAINER_NAME
 from utils.middleware_constants import E_COORD_SCORE, E_FROM_SCORE, E_FROM_TRIMMER, K_NEGATIVE, K_NEGATIVE_TEXT, K_POSITIVE, K_REVIEW, Q_COORD_SCORE, Q_TRIMMER_SCORE_FILTER
+from utils.utils import NodeType
 
 
 class ScoreFilter(Node):

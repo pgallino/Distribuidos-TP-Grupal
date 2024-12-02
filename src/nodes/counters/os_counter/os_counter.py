@@ -1,5 +1,4 @@
 import logging
-from typing import List, Tuple
 from messages.messages import PushDataMessage, ResultMessage, decode_msg, MsgType
 from messages.results_msg import Q1Result, QueryNumber
 
