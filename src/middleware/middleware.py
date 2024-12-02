@@ -45,14 +45,14 @@ class Middleware:
         else:
             logging.error(f"action: middleware declare_exchange | result: fail | exchange: {exchange} already exist")
 
-    def declare_anonymous_queue(self, exchange_name):
+    def declare_anonymous_queue(self, exchange_name, routing_key = ''):
         """
         Declara una cola anónima, exclusiva y vinculada al exchange especificado.
         """
-        result = self.channel.queue_declare(queue='', exclusive=True, auto_delete=True)
+        result = self.channel.queue_declare(queue='', exclusive=True)
         queue_name = result.method.queue  # Obtiene el nombre generado automáticamente por el broker
         self.queues.add(queue_name)
-        self.channel.queue_bind(queue=queue_name, exchange=exchange_name, routing_key='')
+        self.channel.queue_bind(queue=queue_name, exchange=exchange_name, routing_key=routing_key)
         logging.info(f"action: middleware declare_anonymous_queue | result: success | queue_name: {queue_name}")
         return queue_name
         

@@ -114,27 +114,53 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
-        # Declarar las colas necesarias
+        """Sincroniza el estado con las réplicas compañeras."""
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
-        self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
-        self._middleware.declare_exchange(E_FROM_REPLICA_PULL) # EXCHANGE DE DONDE ESCUCHO RESPUESTAS A LOS PULL
+        self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
         self.recv_queue = self._middleware.declare_anonymous_queue(E_FROM_REPLICA_PULL)
 
-        # Función de callback para procesar la respuesta
-        def on_replica_response(ch, method, properties, body):
+        responses = {}  # Almacenar las respuestas de las réplicas
+        most_recent_msg_id = self.last_msg_id
+
+        # Función de callback para procesar las respuestas de PULL_DATA
+        def on_pull_response(ch, method, properties, body):
+            nonlocal most_recent_msg_id
             msg = decode_msg(body)
             if isinstance(msg, PushDataMessage):
-                self.load_state(msg)
-                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            logging.info("Callback terminado.")
-            ch.stop_consuming()
+                replica_id = msg.msg_id  # El msg_id contiene el ID de la réplica que envió el mensaje
+                last_msg_id = msg.last_msg_id
 
-        # Enviar un mensaje `PullDataMessage`
-        pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
-        self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
-        self._middleware.receive_from_queue(self.recv_queue, on_replica_response, auto_ack=False)          
-        self.connected.value = 1
+                # Evitar respuestas duplicadas
+                if replica_id not in responses:
+                    responses[replica_id] = last_msg_id
+                    logging.info(f"Master: Respuesta recibida de réplica {replica_id} con last_msg_id={last_msg_id}.")
+
+                    # Cargar el estado si es más reciente
+                    if last_msg_id > most_recent_msg_id:
+                        most_recent_msg_id = last_msg_id
+                        self.load_state(msg)
+                        logging.info(f"Master: Estado cargado desde réplica {replica_id} con last_msg_id={last_msg_id}.")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            # Detener consumo si ya se recibieron todas las respuestas esperadas
+            if len(responses) >= self.n_replicas:
+                ch.stop_consuming()
+
+        # Enviar mensaje PULL_DATA a todas las réplicas
+        pull_data_msg = SimpleMessage(type=MsgType.PULL_DATA)  # El msg_id se utiliza como identificador del maestro
+        self._middleware.send_to_queue(self.push_exchange_name, pull_data_msg.encode())
+        logging.info("Master: Mensaje PULL_DATA enviado a todas las réplicas.")
+
+        # Recibir respuestas
+        self._middleware.receive_from_queue(self.recv_queue, on_pull_response, auto_ack=False)
+
+        # Verificar si se recibió alguna respuesta
+        if not responses:
+            logging.warning("Master: No se recibieron respuestas de las réplicas. Abortando sincronización.")
+        else:
+            logging.info(f"Master: Sincronización completada. Estado más reciente con last_msg_id={most_recent_msg_id}.")
+
+
 
     def push_update(self, type: str, client_id: int, update = None):
 
@@ -144,8 +170,10 @@ class Node:
             else:
                 data = {'type': type, 'id': client_id}
 
-            push_msg = PushDataMessage(data=data)
+            push_msg = PushDataMessage(data=data, msg_id=self.last_msg_id)
             self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
+
+        self.last_msg_id += 1
 
 
 def init_listener(id, ip_prefix, connected):

@@ -28,6 +28,7 @@ class Q3Joiner(Node):
         self.games_per_client = defaultdict(lambda: {})  # Almacenará juegos por `app_id`, para cada cliente
         self.review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas positivas por `app_id`, para cada cliente
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
+        self.last_msg_id = 0
 
     def run(self):
 
@@ -159,6 +160,10 @@ class Q3Joiner(Node):
             for client_id, fins in state["fins_per_client"].items():
                 self.fins_per_client[client_id] = fins
             logging.info(f"Replica: Estados FIN actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado (last_msg_id)
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]
 
         logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
 

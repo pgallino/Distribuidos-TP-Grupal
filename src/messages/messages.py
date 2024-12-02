@@ -33,8 +33,9 @@ class MsgType(Enum):
     ASK_MASTER_CONNECTED = 20
     ACTIVE_NODES = 21
     ASK_ACTIVE_NODES = 22
-    WHO_IS_LEADER = 23
-    CURRENT_LEADER = 24
+    SYNC_STATE_REQUEST = 23
+    ASK_LAST_MSG_ID = 24
+    ANS_LAST_MSG_ID = 25
 
 class Dataset(Enum):
     GAME = 0
@@ -218,7 +219,8 @@ class SimpleMessage(BaseMessage):
             MsgType.TASK_COMPLETED: ["node_id", "task_type"],
             MsgType.TASK_INTENT: ["node_id", "task_type"],
             MsgType.ASK_ACTIVE_NODES: ["node_type"],
-            MsgType.CURRENT_LEADER: ["current_leader"]
+            MsgType.SYNC_STATE_REQUEST: ["requester_id"],
+            MsgType.ANS_LAST_MSG_ID: ["node_id"]
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -452,14 +454,14 @@ def convert_keys_to_int(obj):
 import json
 
 class PushDataMessage(BaseMessage):
-    def __init__(self, data: dict, msg_id: int = 0):
+    def __init__(self, data: dict, last_msg_id: int = 0, msg_id: int = 0):
         """
         Mensaje genérico para enviar datos arbitrarios entre nodos y réplicas.
 
         :param msg_id: Identificador único del mensaje.
         :param data: Diccionario con los datos a enviar.
         """
-        super().__init__(MsgType.PUSH_DATA, msg_id=msg_id, data=data)
+        super().__init__(MsgType.PUSH_DATA, msg_id=msg_id, data=data, last_msg_id=last_msg_id)
 
     @handle_encode_error
     def encode(self) -> bytes:
@@ -471,6 +473,9 @@ class PushDataMessage(BaseMessage):
         # Codificar los campos comunes (`type` y `msg_id`)
         base_data = self.base_encode()
 
+        # Codificar el campo last_msg_id como un entero
+        last_msg_id_bytes = struct.pack('>I', self.last_msg_id)
+
         # Serializar el diccionario de datos a JSON
         data_json = json.dumps(self.data)
         data_bytes = data_json.encode()
@@ -478,8 +483,8 @@ class PushDataMessage(BaseMessage):
         # Codificar la longitud del mensaje y los datos
         body = struct.pack('>I', len(data_bytes)) + data_bytes
 
-        # Concatenar la base y el cuerpo
-        return base_data + body
+        # Concatenar la base, el last_msg_id y el cuerpo
+        return base_data + last_msg_id_bytes + body
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
@@ -494,6 +499,12 @@ class PushDataMessage(BaseMessage):
         if msg_type != MsgType.PUSH_DATA:
             raise DecodeError(f"Invalid message type: expected {MsgType.PUSH_DATA}, got {msg_type}")
         
+        # Decodificar el campo last_msg_id
+        if len(remaining_data) < 4:
+            raise DecodeError("Insufficient data to decode last_msg_id")
+        last_msg_id = struct.unpack('>I', remaining_data[:4])[0]
+        remaining_data = remaining_data[4:]
+        
         # Decodificar la longitud de los datos
         if len(remaining_data) < 4:
             raise DecodeError("Insufficient data to decode PushDataMessage length")
@@ -507,7 +518,7 @@ class PushDataMessage(BaseMessage):
         parsed_data = json.loads(data_json)
 
         parsed_data = convert_keys_to_int(parsed_data)
-        return cls(data=parsed_data, msg_id=msg_id)
+        return cls(data=parsed_data, last_msg_id=last_msg_id, msg_id=msg_id)
 
     def __str__(self):
         """
@@ -754,8 +765,9 @@ MESSAGE_CLASSES = {
     MsgType.MASTER_CONNECTED: SimpleMessage,
     MsgType.ASK_MASTER_CONNECTED: SimpleMessage,
     MsgType.ASK_ACTIVE_NODES: SimpleMessage,
-    MsgType.WHO_IS_LEADER: SimpleMessage,
-    MsgType.CURRENT_LEADER: SimpleMessage
+    MsgType.SYNC_STATE_REQUEST: SimpleMessage,
+    MsgType.ASK_LAST_MSG_ID: SimpleMessage,
+    MsgType.ANS_LAST_MSG_ID: SimpleMessage
 }
 
 

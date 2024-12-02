@@ -18,7 +18,8 @@ class OsCounter(Node):
 
         self._middleware.declare_queue(Q_QUERY_RESULT_1)
 
-        self.counters = {}
+        self.os_count = {}
+        self.last_msg_id = 0
 
     def run(self):
 
@@ -51,7 +52,7 @@ class OsCounter(Node):
     
     def _process_game_message(self, msg):
         # Actualizar los contadores
-        client_counters = self.counters.get(msg.client_id, (0, 0, 0))
+        client_counters = self.os_count.get(msg.client_id, (0, 0, 0))
         windows, mac, linux = client_counters
 
         for game in msg.items:
@@ -63,11 +64,11 @@ class OsCounter(Node):
                 linux += 1
 
         # Guardar los contadores actualizados
-        self.counters[msg.client_id] = (windows, mac, linux)
+        self.os_count[msg.client_id] = (windows, mac, linux)
 
         # Enviar los datos actualizados a la réplica
 
-        self.push_update('os_count', msg.client_id, self.counters[msg.client_id])
+        self.push_update('os_count', msg.client_id, self.os_count[msg.client_id])
 
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
@@ -77,8 +78,8 @@ class OsCounter(Node):
     def _process_fin_message(self, msg):
 
         # Obtener el contador final para el id del mensaje
-        if msg.client_id in self.counters:
-            windows_count, mac_count, linux_count = self.counters[msg.client_id]
+        if msg.client_id in self.os_count:
+            windows_count, mac_count, linux_count = self.os_count[msg.client_id]
 
             # Crear el mensaje de resultado
             q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
@@ -89,9 +90,19 @@ class OsCounter(Node):
             # TODO: Descartar mensajes repetidos en el dispatcher
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
-        del self.counters[msg.client_id]
+        del self.os_count[msg.client_id]
         self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
-        for client_id, (windows, mac, linux) in msg.data.items():
-            self.counters[client_id] = (windows, mac, linux)
+        """Carga el estado completo recibido en la réplica."""
+        state = msg.data
+
+        # Actualizar contadores de sistemas operativos por cliente
+        if "os_count" in state:
+            for client_id, (windows, mac, linux) in state["os_count"].items():
+                self.os_count[client_id] = (windows, mac, linux)
+            logging.info(f"Replica: Contadores de sistemas operativos actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]

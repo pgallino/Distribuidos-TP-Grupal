@@ -4,26 +4,20 @@ from messages.messages import PushDataMessage
 from replica import Replica
 
 class OsCounterReplica(Replica):
-        
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
-        self.state = defaultdict(lambda: (0, 0, 0))  # Diccionario con contadores para Windows, Mac y Linux
+        self.os_count = defaultdict(lambda: (0, 0, 0))  # Diccionario con contadores para Windows, Mac y Linux
+        self.last_msg_id = 0  # Último mensaje procesado
+
+        self.state = {
+            "last_msg_id": self.last_msg_id,
+            "os_count": self.os_count,
+        }
+        logging.info("Replica: Almacenamiento inicializado para OsCounter.")
 
     def _process_push_data(self, msg: PushDataMessage):
         """Procesa los datos de un mensaje `PushDataMessage`."""
-        # logging.info(f"OsCounterReplica: Recibiendo PushDataMessage del cliente {msg.client_id}")
 
-        # Actualizar los contadores con los datos recibidos
-        for client_id, (windows, mac, linux) in msg.data.items():
-            self.state[client_id] = (
-                windows,
-                mac,
-                linux,
-            )
-        # logging.info(f"OsCounterReplica: Estado actualizado: {self.state}")
-
-    def _process_push_data(self, msg: PushDataMessage):
-        """Procesa los datos de un mensaje `PushDataMessage`."""
         state = msg.data
 
         # Identificar el tipo de actualización
@@ -33,19 +27,31 @@ class OsCounterReplica(Replica):
         if update_type == "os_count":
             updated_counters = state.get("update")
             if updated_counters:
-                self.state[client_id] = updated_counters
-
-                # logging.info(f"Estado actualizado para {client_id}: {self.state[client_id]}")
+                self.state["os_count"][client_id] = updated_counters
+                # logging.info(f"Replica: Estado actualizado para client_id={client_id}: {self.state['os_count'][client_id]}")
 
         elif update_type == "delete":
             self._delete_client_state(client_id)
+
         else:
             logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
+        # Actualizar last_msg_id después de procesar un mensaje válido
+        self.state["last_msg_id"] = msg.msg_id
+        #logging.info(f"Replica: Mensaje PUSH procesado con ID {msg.msg_id}. Estado actualizado.")
+
+    def _create_pull_answer(self):
+        """Procesa un mensaje de solicitud de pull de datos."""
+        response_data = PushDataMessage(data={
+            "last_msg_id": self.state["last_msg_id"],
+            "os_count": dict(self.os_count)  # Convierte defaultdict a dict estándar
+        }, last_msg_id=self.last_msg_id, msg_id=self.id)
+        return response_data
+
     def _delete_client_state(self, client_id):
         """Elimina el estado de un cliente específico."""
-        if client_id in self.state:
-            del self.state[client_id]
-            logging.info(f"Estado eliminado para cliente {client_id}.")
+        if client_id in self.state["os_count"]:
+            del self.state["os_count"][client_id]
+            logging.info(f"Replica: Estado eliminado para cliente {client_id}.")
         else:
             logging.warning(f"Intento de eliminar estado inexistente para cliente {client_id}.")

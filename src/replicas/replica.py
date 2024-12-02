@@ -18,7 +18,7 @@ class Replica:
         self.state = None
         self.ip_prefix = ip_prefix
         self.port = LISTENER_PORT
-
+        self.sincronizado = False
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -30,6 +30,7 @@ class Replica:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
         self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
+        self.send_queue = E_FROM_REPLICA_PULL
         exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
         self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
         self._middleware.declare_exchange(exchange_name, type = "fanout")
@@ -58,19 +59,21 @@ class Replica:
         """Procesa los datos de un mensaje de `PushDataMessage`."""
         pass
 
+    def _load_state(self, msg):
+        pass
+
     def _process_pull_data(self):
-        """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
+        """Procesa un mensaje de solicitud de pull de datos."""
+        self._middleware.send_to_queue(self.send_queue, self._create_pull_answer().encode())
+        logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
 
-        # Crear el mensaje de respuesta con el estado actual
+    def _ans_last_msg_id(self):
+        """Procesa un mensaje de solicitud de pull de datos."""
+        self._middleware.send_to_queue(self.send_queue, SimpleMessage(type=MsgType.ANS_LAST_MSG_ID, node_id=self.id, msg_id=self.last_msg_id).encode())
+        logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
 
-        logging.info("Respondiendo solicitud de pull por master")
-        response_data = PushDataMessage( data=dict(self.state))
-
-        # Enviar el mensaje a Q_REPLICA_RESPONSE
-        self._middleware.send_to_queue(
-            E_FROM_REPLICA_PULL, # Cola de respuesta
-            response_data.encode()
-        )
+    def _create_pull_answer(self):
+        pass
 
     def _shutdown(self):
         """Cierra la réplica de forma segura."""
@@ -102,17 +105,44 @@ class Replica:
         """Procesa mensajes de la cola `Q_REPLICA`."""
         try:
             msg = decode_msg(raw_message)
-            # logging.info(f"Recibi un mensaje del tipo: {msg.type}")
 
-            if msg.type == MsgType.PUSH_DATA:
-                self._process_push_data(msg)
+            # Determinar si la réplica necesita sincronización
+            if msg.msg_id > 0 and not self.sincronizado and (msg.type != MsgType.PULL_DATA):
+                logging.info(f"Replica {self.id}: Recibiendo primer mensaje con ID {msg.msg_id}. Iniciando sincronización.")
+                self.recover_state()  # Método para solicitar sincronización
+                ch.basic_nack(delivery_tag=method.delivery_tag)
+                self.sincronizado = True
+                return
+            
+            if msg.type == MsgType.PULL_DATA:
+                self._process_pull_data()
 
-            elif msg.type == MsgType.PULL_DATA:
-                self.handle_pull()
+            # Procesar siempre los mensajes SYNC_STATE_REQUEST
+            if msg.type == MsgType.SYNC_STATE_REQUEST:
+                if msg.requester_id != self.id:  # Ignorar solicitudes propias
+                    self._process_sync_state_request(msg.requester_id)
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+                return  # Finalizar el procesamiento para este mensaje
+            
+            if msg.type == MsgType.ASK_LAST_MSG_ID:
+                self._ans_last_msg_id()
+                # Confirmar la recepción del mensaje
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
 
+            # Procesar solo mensajes con un ID mayor al último procesado
+            if msg.msg_id > self.last_msg_id or self.last_msg_id == 0:
+                self.last_msg_id = msg.msg_id
+                self.sincronizado = True
+
+                if msg.type == MsgType.PUSH_DATA:
+                    self._process_push_data(msg)
+
+            # Confirmar la recepción del mensaje
             ch.basic_ack(delivery_tag=method.delivery_tag)
+
         except Exception as e:
-            logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
+            logging.error(f"action: process_replica_message | result: fail | error: {e}")
         
     def simulate_failure(self, id):
         """Simula la caída del id"""
@@ -161,6 +191,57 @@ class Replica:
 
         # Si no se recibió ningún mensaje válido, asumimos desconexión
         return False
+    
+    def recover_state(self):
+        """
+        Solicita el estado a las réplicas compañeras y se sincroniza.
+        """
+        logging.info(f"Replica {self.id}: Solicitando estado a réplicas compañeras.")
+        self._initialize_storage()
+        return
+        # Crear una cola anónima y vincularla al exchange E_SYNC_STATE con la routing key basada en el ID de la réplica
+        response_exchange = "E_SYNC_STATE"
+        # TODO: VER SI HACE FALTA DECLARAR EL EXCHANGE
+        self.response_queue = self._middleware.declare_anonymous_queue(exchange_name=response_exchange, routing_key=str(self.id))
+
+        # Enviar Sync_state
+        pull_state_msg = SimpleMessage(type=MsgType.SYNC_STATE_REQUEST, requester_id=self.id)
+        # Lo envio a la cola de la que reciben todos
+        self._middleware.send_to_queue(E_FROM_MASTER_PUSH, pull_state_msg.encode())
+
+        # Esperar respuesta
+        def on_state_response(ch, method, properties, body):
+            msg = decode_msg(body)
+            if isinstance(msg, PushDataMessage):
+                self._load_state(msg)
+                logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            ch.stop_consuming()  # Terminar el consumo después de recibir una respuesta
+
+        self._middleware.receive_from_queue(self.recv_queue, on_state_response, auto_ack=False)
+
+    def _process_sync_state_request(self, requester_id):
+        """
+        Responde al mensaje SYNC_STATE_REQUEST enviado por otra réplica.
+        Envía el estado actual al ID de la réplica que realizó la solicitud.
+        """
+        try:
+            logging.info(f"Replica {self.id}: Respondiendo estado a la réplica {requester_id}.")
+            
+            # Crear el mensaje de respuesta con el estado actual
+            response_data = self._create_pull_answer()
+
+            # Publicar el estado en el exchange con la routing key del solicitante
+            self._middleware.send_to_queue(
+                exchange_name="E_SYNC_STATE",
+                message=response_data.encode(),
+                routing_key=str(requester_id)
+            )
+
+            logging.info(f"Replica {self.id}: Estado enviado a la réplica {requester_id}.")
+        except Exception as e:
+            logging.error(f"Replica {self.id}: Error al procesar SYNC_STATE_REQUEST: {e}")
+
 
 def init_listener(id, ip_prefix, port):
     listener = ReplicaListener(id, ip_prefix, port)
