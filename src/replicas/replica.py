@@ -2,6 +2,7 @@ import logging
 from multiprocessing import Process
 import signal
 import socket
+import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_MASTER_REPLICA, Q_REPLICA_MASTER
@@ -19,6 +20,7 @@ class Replica:
         self.ip_prefix = ip_prefix
         self.port = LISTENER_PORT
         self.sincronizado = False
+        self.timestamp = time.time()  # Marca de tiempo al iniciar
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 

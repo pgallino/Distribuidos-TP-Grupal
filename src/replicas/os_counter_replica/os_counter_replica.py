@@ -2,8 +2,13 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.utils import NodeType
 
 class OsCounterReplica(Replica):
+
+    def get_type(self):
+            return NodeType.OS_COUNTER_REPLICA
+    
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
         self.os_count = defaultdict(lambda: (0, 0, 0))  # Diccionario con contadores para Windows, Mac y Linux

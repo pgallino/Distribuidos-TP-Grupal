@@ -236,10 +236,19 @@ def simulate_random_failure(node, log_message, probability=0.1):
         node (node): La instancia de la réplica en la que se ejecuta la simulación.
         probability (float): Probabilidad de simular una caída (entre 0 y 1).
     """
+    replicas = {NodeType.AVG_COUNTER_REPLICA, NodeType.OS_COUNTER_REPLICA, NodeType.Q3_JOINER_REPLICA, NodeType.Q4_JOINER_REPLICA, NodeType.Q5_JOINER_REPLICA}
 
-    if node.id == 1: #SI ES EL NODO 1 NO LO TIRO NUNCA
+    if (node.get_type() in replicas) and node.id == 1: #SI ES EL NODO 1 NO LO TIRO NUNCA SI ES UNA REPLICA
+        return
+
+    # Verificar si el nodo inició hace menos de 5 segundos
+    current_time = time.time()
+    time_since_start = current_time - node.timestamp  # Calcular tiempo transcurrido
+
+    if time_since_start < 20:  # Si han pasado menos de 5 segundos, no simular fallo
         return
     if random.random() < probability:
         logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
         logging.warning(log_message)
         node._shutdown()
+        exit(0)

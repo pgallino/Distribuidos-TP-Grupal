@@ -3,6 +3,7 @@ import logging
 import signal
 from multiprocessing import Process, Value, Condition
 import socket
+import time
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
@@ -32,6 +33,8 @@ class Node:
         self.processing_client = Value('i', -1)  # 'i' indica un entero
 
         self.connected = Value('i', 0)  # 0 para False, 1 para True
+
+        self.timestamp = time.time()  # Marca de tiempo al iniciar
 
         self.listener = Process(target=init_listener, args=(id, container_name, self.connected))
         self.listener.start()
