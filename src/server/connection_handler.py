@@ -17,7 +17,7 @@ class ConnectionHandler:
         self._middleware = Middleware()  # Each child process has its own middleware connection
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self.shutting_down = False
-        self.msg_counter = 0
+        self.msg_counter = -1
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _handle_sigterm(self, sig, frame):

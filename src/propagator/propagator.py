@@ -90,7 +90,7 @@ class Propagator:
             if not fin_received in ['fins_propagated', 'were_notify'] and not nodes_client_fins[fin_received]: # no se puede
                 return
         # se puede propagar el fin
-        self._propagate_fins(nodes_client_fins, msg.client_id, node)
+        self._propagate_fins(nodes_client_fins, msg.client_id, node, msg.msg_id)
         
         # notificamos a los nodos que ya propagamos el fin
         logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
@@ -104,7 +104,7 @@ class Propagator:
             del self.nodes_fins_state[msg.client_id]
             # pushear el cambio de estado a las replicas
 
-    def _propagate_fins(self, nodes_client_fins: dict[int, bool], client_id: int, origin_node: NodeType):
+    def _propagate_fins(self, nodes_client_fins: dict[int, bool], client_id: int, origin_node: NodeType, msg_id: int):
         fins_propagated = nodes_client_fins['fins_propagated'] # lo consigue gracias a las replicas
         logging.info(f'Se propagan los fins del cliente {client_id}, desde {origin_node.name}. Ya habia {fins_propagated} fins propagados')
         next_nodes = NodeType.get_next_nodes(origin_node)
@@ -137,7 +137,7 @@ class Propagator:
                 else:
                     name += '_reviews'
 
-            fin_msg = SimpleMessage(type=MsgType.FIN, client_id=client_id)
+            fin_msg = SimpleMessage(type=MsgType.FIN, client_id=client_id, msg_id=msg_id)
             for _ in range(fins_to_propagate):
                 logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
                 self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'_{name}')
