@@ -6,7 +6,7 @@ from messages.results_msg import Q4Result, QueryNumber
 from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
-from utils.middleware_constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.middleware_constants import E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 
 class Q4Joiner(Node):
 
@@ -26,6 +26,11 @@ class Q4Joiner(Node):
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_GENRE, K_SHOOTER_GAMES)
         self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_SCORE, K_NEGATIVE_TEXT)
+
+        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_games') # hay que modificarlo en el propagator
+        self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_reviews')
+        self._middleware.bind_queue(Q_ENGLISH_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_english')
 
         # Estructuras de almacenamiento
         self.negative_reviews_count_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas negativas en inglés, para cada cliente
@@ -65,15 +70,20 @@ class Q4Joiner(Node):
             self.push_update('games', msg.client_id, update)
                 
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
             self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
-                self.send_reviews(msg.client_id)
+                # TODO: Mucho cuidado aca que ya envia reviews a la cola del english
+                #       Hay que ver que pasa si se cae justo antes de entrar, en el
+                #       medio del envio, o si se cae justo despues
+                self.send_reviews(msg.client_id) # (!!!!!!!!!!!) QUE HAGA ESTO SOLAMENTE CUANDO LE LLEGA EL FIN DE REVIEWS
                 # Manda el fin a los english filters
-                self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
+                for _ in range(self.n_next_nodes[0][1]):
+                    self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
         
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
@@ -97,6 +107,9 @@ class Q4Joiner(Node):
                     game_reviews, _ = client_reviews[review.app_id]
                     game_reviews.append(review.text)
                     if len(game_reviews) > self.n_reviews:
+                        # TODO: Mucho cuidado aca que ya envia reviews a la cola del english
+                        #       Hay que ver que pasa si se cae justo antes de entrar, en el
+                        #       medio del envio, o si se cae justo despues
                         self.send_reviews_v2(msg.client_id, review.app_id, game_reviews)
                         client_reviews[review.app_id] = ([], True)
                     update[review.app_id] = client_reviews[review.app_id]
@@ -104,16 +117,21 @@ class Q4Joiner(Node):
             self.push_update('reviews', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
             self.push_update('fins', msg.client_id, client_fins)
 
             if client_fins[0] and client_fins[1]:
+                # TODO: Mucho cuidado aca que ya envia reviews a la cola del english
+                #       Hay que ver que pasa si se cae justo antes de entrar, en el
+                #       medio del envio, o si se cae justo despues
                 # Se termina de mandar las reviews que superan las 5000
                 self.send_reviews(msg.client_id)
                 # Manda el fin a los english filters
-                self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
+                for _ in range(self.n_next_nodes[0][1]):
+                    self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -187,6 +205,7 @@ class Q4Joiner(Node):
             self.push_update('reviews_count', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego FIN ENGLISH de cliente {msg.client_id}")
             # TODO: Enviar a las replicas la recepcion de este FIN.
             self.join_results(msg.client_id)
 

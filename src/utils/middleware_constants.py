@@ -39,6 +39,8 @@ Q_SCORE_Q4_JOINER = 'score-q4_joiner'
 Q_Q4_JOINER_ENGLISH = 'q4_joiner-english'
 Q_REPLICA_MASTER = 'replica_master'
 Q_MASTER_REPLICA = 'master_replica'
+Q_TO_PROP = 'propagation'
+Q_NOTIFICATION = 'notification'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'
@@ -51,6 +53,7 @@ E_COORD_RELEASE_DATE = 'from-coord-release_date'
 E_COORD_ENGLISH = 'from-coord-english'
 E_FROM_MASTER_PUSH = 'from-master-push'
 E_FROM_REPLICA_PULL = 'from-replica-pull'
+E_FROM_PROP = 'from-propagator'
 
 # Routing Keys
 K_GENREGAME = 'genregame'
@@ -62,3 +65,5 @@ K_Q1GAME = 'q1game'
 K_POSITIVE = 'positive'
 K_REVIEW = 'review'
 K_NEGATIVE_TEXT = 'negative_text'
+K_NOTIFICATION = 'notification'
+K_FIN = 'fin'

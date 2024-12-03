@@ -1,0 +1,728 @@
+./scripts/generar-compose.sh
+Archivo /mnt/c/Users/pgallino/Documents/Distribuidos-TP-Grupal/docker-compose-dev.yaml generado con éxito.
+docker build -f ./src/server/Dockerfile -t "server:latest" .
+docker build -f ./src/client/Dockerfile -t "client:latest" .
+docker build -f ./src/watchdog/Dockerfile -t "watchdog:latest" .
+docker build -f ./src/propagator/Dockerfile -t "propagator:latest" .
+docker build -f ./src/nodes/trimmer/Dockerfile -t "trimmer:latest" .
+docker build -f ./src/nodes/filters/genre/Dockerfile -t "genre:latest" .
+docker build -f ./src/nodes/filters/score/Dockerfile -t "score:latest" .
+docker build -f ./src/nodes/filters/release_date/Dockerfile -t "release_date:latest" .
+docker build -f ./src/nodes/filters/english/Dockerfile -t "english:latest" .
+docker build -f ./src/nodes/counters/os_counter/Dockerfile -t "os_counter:latest" .
+docker build -f ./src/nodes/counters/avg_counter/Dockerfile -t "avg_counter:latest" .
+docker build -f ./src/nodes/joiners/q3_joiner/Dockerfile -t "q3_joiner:latest" .
+docker build -f ./src/nodes/joiners/q4_joiner/Dockerfile -t "q4_joiner:latest" .
+docker build -f ./src/nodes/joiners/q5_joiner/Dockerfile -t "q5_joiner:latest" .
+# docker build -f ./src/replicas/os_counter_replica/Dockerfile -t "os_counter_replica:latest" .
+# docker build -f ./src/replicas/avg_counter_replica/Dockerfile -t "avg_counter_replica:latest" .
+# docker build -f ./src/replicas/q3_joiner_replica/Dockerfile -t "q3_joiner_replica:latest" .
+# docker build -f ./src/replicas/q4_joiner_replica/Dockerfile -t "q4_joiner_replica:latest" .
+# docker build -f ./src/replicas/q5_joiner_replica/Dockerfile -t "q5_joiner_replica:latest" .
+# Execute this command from time to time to clean up intermediate stages generated 
+# during client build (your hard drive will like this :) ). Don't left uncommented if you 
+# want to avoid rebuilding client image every time the docker-compose-up command 
+# is executed, even when client code has not changed
+# docker rmi `docker images --filter label=intermediateStageToBeDeleted=true -q`
+docker compose -f docker-compose-dev.yaml up -d --build
+docker compose -f docker-compose-dev.yaml logs -f
+client_2        | 2024-12-03 14:36:50 INFO     action: send_handshake | result: success | message: Handshake
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     KeepAliveHandler: Escuchando mensajes en q3_joiner_1:12345
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: genre-q3-joiner
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: score-q3-joiner
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: query_result_3
+q3_joiner_1     | 2024-12-03 14:36:45 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+release_date_1  | 2024-12-03 14:36:46 INFO     KeepAliveHandler: Escuchando mensajes en release_date_1:12345
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: genre-release_date
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: release_date-avg_counter
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+client_1        | 2024-12-03 14:36:50 INFO     action: send_handshake | result: success | message: Handshake
+server          | 2024-12-03 14:36:49 INFO     action: start | result: success
+server          | 2024-12-03 14:36:49 INFO     action: accept_connections | result: in progress...
+server          | 2024-12-03 14:36:49 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:49 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:49 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: query_result_1
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: query_result_3
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: query_result_2
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+server          | 2024-12-03 14:36:49 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: query_result_4
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+server          | 2024-12-03 14:36:49 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: query_result_5
+server          | 2024-12-03 14:36:49 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+server          | 2024-12-03 14:36:50 INFO     action: accept_connections | result: success | ip: 172.25.125.16
+server          | 2024-12-03 14:36:50 INFO     action: accept_connections | result: in progress...
+server          | 2024-12-03 14:36:50 INFO     entre a init la puta madre
+server          | 2024-12-03 14:36:50 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:50 INFO     action: middleware declare_queue | result: success | queue_name: gateway-trimmer
+server          | 2024-12-03 14:36:50 INFO     action: accept_connections | result: success | ip: 172.25.125.17
+server          | 2024-12-03 14:36:50 INFO     action: accept_connections | result: in progress...
+server          | 2024-12-03 14:36:50 INFO     entre a init la puta madre
+server          | 2024-12-03 14:36:50 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+server          | 2024-12-03 14:36:50 INFO     action: middleware declare_queue | result: success | queue_name: gateway-trimmer
+trimmer_1       | 2024-12-03 14:36:47 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+trimmer_1       | 2024-12-03 14:36:47 INFO     KeepAliveHandler: Escuchando mensajes en trimmer_1:12345
+trimmer_1       | 2024-12-03 14:36:47 INFO     action: middleware declare_queue | result: success | queue_name: gateway-trimmer
+trimmer_1       | 2024-12-03 14:36:47 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+trimmer_1       | 2024-12-03 14:36:47 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+trimmer_1       | 2024-12-03 14:36:47 INFO     action: middleware declare_queue | result: success | queue_name: notification_trimmer_1
+trimmer_1       | 2024-12-03 14:36:47 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+trimmer_1       | 2024-12-03 14:36:47 INFO     Empiezo a consumir de la cola de DATA
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     KeepAliveHandler: Escuchando mensajes en q4_joiner_1:12345
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: genre-q4-joiner
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: score-q4_joiner
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: query_result_4
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+q4_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+propagator_1    | 2024-12-03 14:36:44 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+propagator_1    | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+propagator_1    | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: notification_release_date_1
+release_date_1  | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+release_date_1  | 2024-12-03 14:36:46 INFO     Empiezo a consumir de la cola de DATA
+genre_1         | 2024-12-03 14:36:46 INFO     KeepAliveHandler: Escuchando mensajes en genre_1:12345
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-genre_filter
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: notification_genre_1
+genre_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+genre_1         | 2024-12-03 14:36:46 INFO     Bindeo cola trimmer-genre_filter a from-propagator con key fin_genre
+genre_1         | 2024-12-03 14:36:46 INFO     Empiezo a consumir de la cola de DATA
+os_counter_1    | 2024-12-03 14:36:45 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+os_counter_1    | 2024-12-03 14:36:45 INFO     KeepAliveHandler: Escuchando mensajes en os_counter_1:12345
+os_counter_1    | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-os_counter
+os_counter_1    | 2024-12-03 14:36:45 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+os_counter_1    | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: query_result_1
+os_counter_1    | 2024-12-03 14:36:45 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+os_counter_1    | 2024-12-03 14:36:45 INFO     Bindeo cola trimmer-os_counter a from-propagator con key fin_os_counter
+watchdog_1      | 2024-12-03 14:36:48 INFO     me bindee a watchdog_1
+watchdog_1      | 2024-12-03 14:36:48 INFO     node 1: Escuchando en el puerto 12345.
+english_1       | 2024-12-03 14:36:46 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1       | 2024-12-03 14:36:46 INFO     KeepAliveHandler: Escuchando mensajes en english_1:12345
+english_1       | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1       | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+english_1       | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+english_1       | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: notification_english_1
+english_1       | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+english_1       | 2024-12-03 14:36:46 INFO     Empiezo a consumir de la cola de DATA
+avg_counter_1   | 2024-12-03 14:36:45 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+avg_counter_1   | 2024-12-03 14:36:45 INFO     KeepAliveHandler: Escuchando mensajes en avg_counter_1:12345
+avg_counter_1   | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: release_date-avg_counter
+avg_counter_1   | 2024-12-03 14:36:45 INFO     action: middleware declare_queue | result: success | queue_name: query_result_2
+avg_counter_1   | 2024-12-03 14:36:45 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     KeepAliveHandler: Escuchando mensajes en q5_joiner_1:12345
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: genre-q5-joiner
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+score_1         | 2024-12-03 14:36:46 INFO     KeepAliveHandler: Escuchando mensajes en score_1:12345
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: score-q5-joiner
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-score_filter
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     Bindeo cola genre-q5-joiner a from-propagator con key fin_q5_joiner_games
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     Bindeo cola genre-q5-joiner a from-propagator con key fin_q5_joiner_reviews
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_queue | result: success | queue_name: notification_score_1
+q5_joiner_1     | 2024-12-03 14:36:44 INFO     action: middleware declare_queue | result: success | queue_name: query_result_5
+score_1         | 2024-12-03 14:36:46 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+score_1         | 2024-12-03 14:36:46 INFO     Bindeo cola trimmer-score_filter a from-propagator con key fin_score
+score_1         | 2024-12-03 14:36:46 INFO     Empiezo a consumir de la cola de DATA
+client_2        | 2024-12-03 14:36:58 INFO     action: send_data | result: success | dataset: Dataset.GAME
+client_1        | 2024-12-03 14:36:58 INFO     action: send_data | result: success | dataset: Dataset.GAME
+client_2        | 2024-12-03 14:37:01 INFO     action: send_data | result: success | dataset: Dataset.REVIEW
+client_2        | 2024-12-03 14:37:01 INFO     action: send_fin | result: success | message: Fin
+client_2        | 2024-12-03 14:37:01 INFO     action: recv_results | result: in progress...
+server          | 2024-12-03 14:37:01 INFO     Con el lock empiezo a mandar los FINs del cliente 1
+server          | 2024-12-03 14:37:01 INFO     Termine de mandar 1 FINs del cliente 1. Suelto el lock
+client_1        | 2024-12-03 14:37:02 INFO     action: send_data | result: success | dataset: Dataset.REVIEW
+client_1        | 2024-12-03 14:37:02 INFO     action: send_fin | result: success | message: Fin
+client_1        | 2024-12-03 14:37:02 INFO     action: recv_results | result: in progress...
+server          | 2024-12-03 14:37:02 INFO     Con el lock empiezo a mandar los FINs del cliente 2
+server          | 2024-12-03 14:37:02 INFO     Termine de mandar 1 FINs del cliente 2. Suelto el lock
+english_1       | 2024-12-03 14:37:40 INFO     initializing identifier
+trimmer_1       | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 1 de TRIMMER 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se crea el diccionario {'TRIMMER': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'GENRE': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'SCORE': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'RELEASE_DATE': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'ENGLISH': {1: False, 'fins_propagated': 0, 'were_notify': False}} para el cliente 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 1, desde TRIMMER. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_genre
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_score
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_os_counter
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 1 propagados desde TRIMMER
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a TRIMMER que ya se propagaron los fins del cliente 1
+genre_1         | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 1 de GENRE 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 1, desde GENRE. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_release_date
+trimmer_1       | 2024-12-03 14:37:48 INFO     Llego notificacion de FIN propagado para el cliente 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q3_joiner_games
+score_1         | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 1
+os_counter_1    | 2024-12-03 14:37:48 INFO     Llego un FIN de cliente 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q4_joiner_games
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q5_joiner_games
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 1 propagados desde GENRE
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a GENRE que ya se propagaron los fins del cliente 1
+trimmer_1       | 2024-12-03 14:37:48 INFO     Empiezo a consumir de la cola de DATA
+q3_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 1
+q4_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 1
+release_date_1  | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 1
+genre_1         | 2024-12-03 14:37:48 INFO     Llego notificacion de FIN propagado para el cliente 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 1 de SCORE 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 1, desde SCORE. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q3_joiner_reviews
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q4_joiner_reviews
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q5_joiner_reviews
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 1 propagados desde SCORE
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a SCORE que ya se propagaron los fins del cliente 1
+genre_1         | 2024-12-03 14:37:48 INFO     Empiezo a consumir de la cola de DATA
+q4_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN REVIEWS de cliente 1
+q5_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 1
+q3_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN REVIEWs de cliente 1
+score_1         | 2024-12-03 14:37:48 WARNING  Se cae justo esperando la noti de la propagacion del FIN cliente 1
+score_1         | 2024-12-03 14:37:48 INFO     action: shutdown_node | result: in progress...
+q5_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 1
+q5_joiner_1     | 2024-12-03 14:37:48 INFO     LA LONGITUD DE REVIEWS ES: 443
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | status: start | message: Starting close process
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | step: stop_consuming | status: in_progress
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | step: stop_consuming | status: success
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_channel | status: in_progress
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_channel | status: success
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_connection | status: in_progress
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_connection | status: success
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware close | status: completed
+score_1         | 2024-12-03 14:37:48 INFO     action: shutdown_node | result: success
+score_1         | 2024-12-03 14:37:48 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+score_1         | 2024-12-03 14:37:48 INFO     Voy a exitiar con CODE 0
+client_2        | 2024-12-03 14:37:48 INFO     
+client_2        | Q1: OS Count Summary:
+client_2        | - Windows: 92534
+client_2        | - Linux: 12307
+client_2        | - Mac: 17703
+client_2        | 
+client_2        | 
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 1 de RELEASE_DATE 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 1, desde RELEASE_DATE. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_avg_counter
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 1 propagados desde RELEASE_DATE
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a RELEASE_DATE que ya se propagaron los fins del cliente 1
+release_date_1  | 2024-12-03 14:37:48 INFO     Llego notificacion de FIN propagado para el cliente 1
+avg_counter_1   | 2024-12-03 14:37:48 INFO     Llego un FIN de cliente 1
+release_date_1  | 2024-12-03 14:37:48 INFO     Empiezo a consumir de la cola de DATA
+client_2        | 2024-12-03 14:37:48 INFO     
+client_2        | Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):
+client_2        | - Left 4 Dead: 249 negative reviews
+client_2        | - Portal 2: 410 negative reviews
+client_2        | - Kane and Lynch: Dead Men™: 218 negative reviews
+client_2        | - EVE Online: 524 negative reviews
+client_2        | - Mirror's Edge™: 761 negative reviews
+client_2        | - F.E.A.R. 3: 680 negative reviews
+client_2        | - Hydrophobia: Prophecy: 383 negative reviews
+client_2        | - Guardians of Middle-earth: 437 negative reviews
+client_2        | - Awesomenauts - the 2D moba: 1198 negative reviews
+client_2        | - Dishonored: 475 negative reviews
+client_2        | 
+client_2        | 
+client_2        | 2024-12-03 14:37:48 INFO     
+client_2        | Q3: Top 5 Indie Games with Most Positive Reviews:
+client_2        | 1. Undertale: 42284 positive reviews
+client_2        | 2. FTL: Faster Than Light: 21302 positive reviews
+client_2        | 3. Insurgency: 20666 positive reviews
+client_2        | 4. Path of Exile: 17058 positive reviews
+client_2        | 5. Super Meat Boy: 7926 positive reviews
+client_2        | 
+client_2        | 
+client_2        | 2024-12-03 14:37:48 INFO     
+client_2        | Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:
+client_2        | - Relive: 68357 average playtime
+client_2        | - 拯救大魔王2 Rescue the Great Demon 2: 49555 average playtime
+client_2        | - Out of the Park Baseball 20: 34798 average playtime
+client_2        | - 时之回廊/Corridor of time: 33343 average playtime
+client_2        | - Clicker Heroes 2: 31708 average playtime
+client_2        | - Time of Dragons: 27080 average playtime
+client_2        | - Project AURA: 26827 average playtime
+client_2        | - Midas Gold Plus: 19196 average playtime
+client_2        | - Beasts of Bermuda: 17147 average playtime
+client_2        | - Rust: 16623 average playtime
+client_2        | 
+client_2        | 
+trimmer_1       | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 2
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 2 de TRIMMER 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se crea el diccionario {'TRIMMER': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'GENRE': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'SCORE': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'RELEASE_DATE': {1: False, 'fins_propagated': 0, 'were_notify': False}, 'ENGLISH': {1: False, 'fins_propagated': 0, 'were_notify': False}} para el cliente 2
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 2, desde TRIMMER. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_genre
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_score
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_os_counter
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 2 propagados desde TRIMMER
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a TRIMMER que ya se propagaron los fins del cliente 2
+os_counter_1    | 2024-12-03 14:37:48 INFO     Llego un FIN de cliente 2
+genre_1         | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 2
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 2 de GENRE 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 2, desde GENRE. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_release_date
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q3_joiner_games
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q4_joiner_games
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_q5_joiner_games
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 2 propagados desde GENRE
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a GENRE que ya se propagaron los fins del cliente 2
+genre_1         | 2024-12-03 14:37:48 INFO     Llego notificacion de FIN propagado para el cliente 2
+release_date_1  | 2024-12-03 14:37:48 INFO     Llego un FIN del cliente 2
+client_1        | 2024-12-03 14:37:48 INFO     
+client_1        | Q1: OS Count Summary:
+client_1        | - Windows: 92534
+client_1        | - Linux: 12307
+client_1        | - Mac: 17703
+client_1        | 
+client_1        | 
+q4_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 2
+q5_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 2
+q3_joiner_1     | 2024-12-03 14:37:48 INFO     Llego FIN GAMES de cliente 2
+genre_1         | 2024-12-03 14:37:48 INFO     Empiezo a consumir de la cola de DATA
+trimmer_1       | 2024-12-03 14:37:48 INFO     Llego notificacion de FIN propagado para el cliente 2
+release_date_1  | 2024-12-03 14:37:48 WARNING  Se cae justo despues de mandarle al propagator el FIN del cliente 2
+release_date_1  | 2024-12-03 14:37:48 INFO     action: shutdown_node | result: in progress...
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | status: start | message: Starting close process
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | step: stop_consuming | status: in_progress
+propagator_1    | 2024-12-03 14:37:48 INFO     Llego un una notificacion de fin cliente 2 de RELEASE_DATE 1
+propagator_1    | 2024-12-03 14:37:48 INFO     Se propagan los fins del cliente 2, desde RELEASE_DATE. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:48 INFO     Envie fin con key fin_avg_counter
+trimmer_1       | 2024-12-03 14:37:48 WARNING  Se cae justo despues de hacer ack del FIN cliente 2
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: shutdown_node | result: in progress...
+propagator_1    | 2024-12-03 14:37:48 INFO     Fins del cliente 2 propagados desde RELEASE_DATE
+propagator_1    | 2024-12-03 14:37:48 INFO     Se notifica a RELEASE_DATE que ya se propagaron los fins del cliente 2
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | step: stop_consuming | status: success
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_channel | status: in_progress
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | status: start | message: Starting close process
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | step: stop_consuming | status: in_progress
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | step: stop_consuming | status: success
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_channel | status: in_progress
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_channel | status: success
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_channel | status: success
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_connection | status: in_progress
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_connection | status: in_progress
+avg_counter_1   | 2024-12-03 14:37:48 INFO     Llego un FIN de cliente 2
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_connection | status: success
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware close | status: completed
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: shutdown_node | result: success
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | step: close_connection | status: success
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware close | status: completed
+release_date_1  | 2024-12-03 14:37:48 INFO     action: shutdown_node | result: success
+trimmer_1       | 2024-12-03 14:37:48 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+trimmer_1       | 2024-12-03 14:37:48 INFO     Voy a exitiar con CODE 0
+client_1        | 2024-12-03 14:37:48 INFO     
+client_1        | Q2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:
+client_1        | - Relive: 68357 average playtime
+client_1        | - 拯救大魔王2 Rescue the Great Demon 2: 49555 average playtime
+client_1        | - Out of the Park Baseball 20: 34798 average playtime
+client_1        | - 时之回廊/Corridor of time: 33343 average playtime
+client_1        | - Clicker Heroes 2: 31708 average playtime
+client_1        | - Time of Dragons: 27080 average playtime
+client_1        | - Project AURA: 26827 average playtime
+client_1        | - Midas Gold Plus: 19196 average playtime
+client_1        | - Beasts of Bermuda: 17147 average playtime
+client_1        | - Rust: 16623 average playtime
+client_1        | 
+client_1        | 
+release_date_1  | 2024-12-03 14:37:48 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+release_date_1  | 2024-12-03 14:37:48 INFO     Voy a exitiar con CODE 0
+score_1 exited with code 0
+trimmer_1 exited with code 0
+release_date_1 exited with code 0
+watchdog_1      | 2024-12-03 14:37:56 WARNING  WatchDog 1: Nodo score_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:37:57 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:37:57 INFO     Container score_1 is not running. No need to stop.
+english_1       | 2024-12-03 14:37:57 INFO     Llego un FIN del cliente 1
+propagator_1    | 2024-12-03 14:37:57 INFO     Llego un una notificacion de fin cliente 1 de ENGLISH 1
+propagator_1    | 2024-12-03 14:37:57 INFO     Se propagan los fins del cliente 1, desde ENGLISH. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:37:57 INFO     Envie fin con key fin_q4_joiner_english
+propagator_1    | 2024-12-03 14:37:57 INFO     Fins del cliente 1 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:37:57 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 1
+q4_joiner_1     | 2024-12-03 14:37:57 INFO     Llego FIN ENGLISH de cliente 1
+english_1       | 2024-12-03 14:37:57 WARNING  Se cae justo esperando la noti de la propagacion del FIN cliente 1
+english_1       | 2024-12-03 14:37:57 INFO     action: shutdown_node | result: in progress...
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | status: start | message: Starting close process
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | step: stop_consuming | status: in_progress
+client_2        | 2024-12-03 14:37:57 INFO     
+client_2        | Q4: Action games with more than 5,000 negative reviews in English:
+client_2        | - Insurgency: 1683 negative reviews
+client_2        | - Call of Duty®: Infinite Warfare: 1549 negative reviews
+client_2        | 
+client_2        | 
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | step: stop_consuming | status: success
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | step: close_channel | status: in_progress
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | step: close_channel | status: success
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | step: close_connection | status: in_progress
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | step: close_connection | status: success
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware close | status: completed
+english_1       | 2024-12-03 14:37:57 INFO     action: shutdown_node | result: success
+english_1       | 2024-12-03 14:37:57 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+english_1       | 2024-12-03 14:37:57 INFO     Voy a exitiar con CODE 0
+client_2 exited with code 0
+english_1 exited with code 0
+propagator_1    | 2024-12-03 14:37:58 INFO     Llego un una notificacion de fin cliente 1 de SCORE 1
+propagator_1    | 2024-12-03 14:37:58 INFO     Se propagan los fins del cliente 1, desde SCORE. Ya habia 3 fins propagados
+propagator_1    | 2024-12-03 14:37:58 INFO     Fins del cliente 1 propagados desde SCORE
+propagator_1    | 2024-12-03 14:37:58 INFO     Se notifica a SCORE que ya se propagaron los fins del cliente 1
+watchdog_1      | 2024-12-03 14:37:58 INFO     Docker start executed. Result: 0. Output: score_1. Error: 
+watchdog_1      | 2024-12-03 14:37:58 INFO     Container score_1 reanimated successfully.
+score_1 exited with code 0
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+score_1         | 2024-12-03 14:37:58 INFO     KeepAliveHandler: Escuchando mensajes en score_1:12345
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-score_filter
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware declare_queue | result: success | queue_name: notification_score_1
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+score_1         | 2024-12-03 14:37:58 INFO     Bindeo cola trimmer-score_filter a from-propagator con key fin_score
+score_1         | 2024-12-03 14:37:58 INFO     Empiezo a consumir de la cola de DATA
+score_1         | 2024-12-03 14:37:58 INFO     Llego un FIN del cliente 1
+score_1         | 2024-12-03 14:37:58 WARNING  Se cae justo esperando la noti de la propagacion del FIN cliente 1
+score_1         | 2024-12-03 14:37:58 INFO     action: shutdown_node | result: in progress...
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | status: start | message: Starting close process
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | step: stop_consuming | status: in_progress
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | step: stop_consuming | status: success
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | step: close_channel | status: in_progress
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | step: close_channel | status: success
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | step: close_connection | status: in_progress
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | step: close_connection | status: success
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware close | status: completed
+score_1         | 2024-12-03 14:37:58 INFO     action: shutdown_node | result: success
+score_1         | 2024-12-03 14:37:58 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+score_1         | 2024-12-03 14:37:58 INFO     Voy a exitiar con CODE 0
+watchdog_1      | 2024-12-03 14:38:06 WARNING  WatchDog 1: Nodo release_date_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:38:06 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:38:06 INFO     Container release_date_1 is not running. No need to stop.
+propagator_1    | 2024-12-03 14:38:07 INFO     Llego un una notificacion de fin cliente 2 de RELEASE_DATE 1
+propagator_1    | 2024-12-03 14:38:07 INFO     Se propagan los fins del cliente 2, desde RELEASE_DATE. Ya habia 1 fins propagados
+propagator_1    | 2024-12-03 14:38:07 INFO     Fins del cliente 2 propagados desde RELEASE_DATE
+propagator_1    | 2024-12-03 14:38:07 INFO     Se notifica a RELEASE_DATE que ya se propagaron los fins del cliente 2
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+release_date_1  | 2024-12-03 14:38:07 INFO     KeepAliveHandler: Escuchando mensajes en release_date_1:12345
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware declare_queue | result: success | queue_name: genre-release_date
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware declare_exchange | result: success | exchange: from_genre
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware declare_queue | result: success | queue_name: release_date-avg_counter
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware declare_queue | result: success | queue_name: notification_release_date_1
+release_date_1  | 2024-12-03 14:38:07 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+release_date_1  | 2024-12-03 14:38:07 INFO     Empiezo a consumir de la cola de DATA
+release_date_1  | 2024-12-03 14:38:07 INFO     Llego un FIN del cliente 2
+release_date_1  | 2024-12-03 14:38:07 INFO     Llego notificacion de FIN propagado para el cliente 2
+release_date_1  | 2024-12-03 14:38:07 INFO     Empiezo a consumir de la cola de DATA
+watchdog_1      | 2024-12-03 14:38:07 INFO     Docker start executed. Result: 0. Output: release_date_1. Error: 
+watchdog_1      | 2024-12-03 14:38:07 INFO     Container release_date_1 reanimated successfully.
+watchdog_1      | 2024-12-03 14:38:15 WARNING  WatchDog 1: Nodo english_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:38:16 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:38:16 INFO     Container english_1 is not running. No need to stop.
+watchdog_1      | 2024-12-03 14:38:17 INFO     Docker start executed. Result: 0. Output: english_1. Error: 
+watchdog_1      | 2024-12-03 14:38:17 INFO     Container english_1 reanimated successfully.
+english_1       | 2024-12-03 14:38:17 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1       | 2024-12-03 14:38:17 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1       | 2024-12-03 14:38:17 INFO     KeepAliveHandler: Escuchando mensajes en english_1:12345
+english_1       | 2024-12-03 14:38:17 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+english_1       | 2024-12-03 14:38:17 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+english_1       | 2024-12-03 14:38:17 INFO     action: middleware declare_queue | result: success | queue_name: notification_english_1
+english_1       | 2024-12-03 14:38:17 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+english_1       | 2024-12-03 14:38:17 INFO     Empiezo a consumir de la cola de DATA
+english_1       | 2024-12-03 14:38:17 INFO     Llego un FIN del cliente 1
+propagator_1    | 2024-12-03 14:38:17 INFO     Llego un una notificacion de fin cliente 1 de ENGLISH 1
+propagator_1    | 2024-12-03 14:38:17 INFO     Se propagan los fins del cliente 1, desde ENGLISH. Ya habia 1 fins propagados
+propagator_1    | 2024-12-03 14:38:17 INFO     Fins del cliente 1 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:38:17 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 1
+english_1       | 2024-12-03 14:38:17 INFO     Llego notificacion de FIN propagado para el cliente 1
+english_1       | 2024-12-03 14:38:17 INFO     Empiezo a consumir de la cola de DATA
+watchdog_1      | 2024-12-03 14:38:27 WARNING  WatchDog 1: Nodo trimmer_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:38:27 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:38:27 INFO     Container trimmer_1 is not running. No need to stop.
+trimmer_1       | 2024-12-03 14:38:29 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+trimmer_1       | 2024-12-03 14:38:29 INFO     KeepAliveHandler: Escuchando mensajes en trimmer_1:12345
+trimmer_1       | 2024-12-03 14:38:29 INFO     action: middleware declare_queue | result: success | queue_name: gateway-trimmer
+trimmer_1       | 2024-12-03 14:38:29 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+trimmer_1       | 2024-12-03 14:38:29 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+trimmer_1       | 2024-12-03 14:38:29 INFO     action: middleware declare_queue | result: success | queue_name: notification_trimmer_1
+trimmer_1       | 2024-12-03 14:38:29 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+trimmer_1       | 2024-12-03 14:38:29 INFO     Empiezo a consumir de la cola de DATA
+watchdog_1      | 2024-12-03 14:38:29 INFO     Docker start executed. Result: 0. Output: trimmer_1. Error: 
+watchdog_1      | 2024-12-03 14:38:29 INFO     Container trimmer_1 reanimated successfully.
+watchdog_1      | 2024-12-03 14:38:37 WARNING  WatchDog 1: Nodo score_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:38:37 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:38:37 INFO     Container score_1 is not running. No need to stop.
+propagator_1    | 2024-12-03 14:38:38 INFO     Llego un una notificacion de fin cliente 1 de SCORE 1
+propagator_1    | 2024-12-03 14:38:38 INFO     Se propagan los fins del cliente 1, desde SCORE. Ya habia 3 fins propagados
+propagator_1    | 2024-12-03 14:38:38 INFO     Fins del cliente 1 propagados desde SCORE
+propagator_1    | 2024-12-03 14:38:38 INFO     Se notifica a SCORE que ya se propagaron los fins del cliente 1
+watchdog_1      | 2024-12-03 14:38:38 INFO     Docker start executed. Result: 0. Output: score_1. Error: 
+watchdog_1      | 2024-12-03 14:38:38 INFO     Container score_1 reanimated successfully.
+score_1 exited with code 0
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+score_1         | 2024-12-03 14:38:38 INFO     KeepAliveHandler: Escuchando mensajes en score_1:12345
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-score_filter
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware declare_queue | result: success | queue_name: notification_score_1
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+score_1         | 2024-12-03 14:38:38 INFO     Bindeo cola trimmer-score_filter a from-propagator con key fin_score
+score_1         | 2024-12-03 14:38:38 INFO     Empiezo a consumir de la cola de DATA
+score_1         | 2024-12-03 14:38:38 INFO     Llego un FIN del cliente 1
+score_1         | 2024-12-03 14:38:38 WARNING  Se cae justo esperando la noti de la propagacion del FIN cliente 1
+score_1         | 2024-12-03 14:38:38 INFO     action: shutdown_node | result: in progress...
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | status: start | message: Starting close process
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | step: stop_consuming | status: in_progress
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | step: stop_consuming | status: success
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | step: close_channel | status: in_progress
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | step: close_channel | status: success
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | step: close_connection | status: in_progress
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | step: close_connection | status: success
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware close | status: completed
+score_1         | 2024-12-03 14:38:38 INFO     action: shutdown_node | result: success
+score_1         | 2024-12-03 14:38:38 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+score_1         | 2024-12-03 14:38:38 INFO     Voy a exitiar con CODE 0
+watchdog_1      | 2024-12-03 14:38:48 WARNING  WatchDog 1: Nodo score_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:38:48 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:38:48 INFO     Container score_1 is not running. No need to stop.
+propagator_1    | 2024-12-03 14:38:50 INFO     Llego un una notificacion de fin cliente 1 de SCORE 1
+propagator_1    | 2024-12-03 14:38:50 INFO     Se propagan los fins del cliente 1, desde SCORE. Ya habia 3 fins propagados
+propagator_1    | 2024-12-03 14:38:50 INFO     Fins del cliente 1 propagados desde SCORE
+propagator_1    | 2024-12-03 14:38:50 INFO     Se notifica a SCORE que ya se propagaron los fins del cliente 1
+watchdog_1      | 2024-12-03 14:38:50 INFO     Docker start executed. Result: 0. Output: score_1. Error: 
+watchdog_1      | 2024-12-03 14:38:50 INFO     Container score_1 reanimated successfully.
+score_1 exited with code 0
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+score_1         | 2024-12-03 14:38:50 INFO     KeepAliveHandler: Escuchando mensajes en score_1:12345
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-score_filter
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware declare_queue | result: success | queue_name: notification_score_1
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+score_1         | 2024-12-03 14:38:50 INFO     Bindeo cola trimmer-score_filter a from-propagator con key fin_score
+score_1         | 2024-12-03 14:38:50 INFO     Empiezo a consumir de la cola de DATA
+score_1         | 2024-12-03 14:38:50 INFO     Llego un FIN del cliente 1
+score_1         | 2024-12-03 14:38:50 INFO     Llego notificacion de FIN propagado para el cliente 1
+score_1         | 2024-12-03 14:38:50 WARNING  Se cae justo despues de hacer ack del FIN cliente 1
+score_1         | 2024-12-03 14:38:50 INFO     action: shutdown_node | result: in progress...
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | status: start | message: Starting close process
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | step: stop_consuming | status: in_progress
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | step: stop_consuming | status: success
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | step: close_channel | status: in_progress
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | step: close_channel | status: success
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | step: close_connection | status: in_progress
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | step: close_connection | status: success
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware close | status: completed
+score_1         | 2024-12-03 14:38:50 INFO     action: shutdown_node | result: success
+score_1         | 2024-12-03 14:38:50 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+score_1         | 2024-12-03 14:38:50 INFO     Voy a exitiar con CODE 0
+watchdog_1      | 2024-12-03 14:39:00 WARNING  WatchDog 1: Nodo score_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:39:00 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:39:00 INFO     Container score_1 is not running. No need to stop.
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+score_1         | 2024-12-03 14:39:01 INFO     KeepAliveHandler: Escuchando mensajes en score_1:12345
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware declare_queue | result: success | queue_name: trimmer-score_filter
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware declare_exchange | result: success | exchange: trimmer-filters
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware declare_exchange | result: success | exchange: from_score
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware declare_queue | result: success | queue_name: notification_score_1
+score_1         | 2024-12-03 14:39:01 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+score_1         | 2024-12-03 14:39:01 INFO     Bindeo cola trimmer-score_filter a from-propagator con key fin_score
+score_1         | 2024-12-03 14:39:01 INFO     Empiezo a consumir de la cola de DATA
+watchdog_1      | 2024-12-03 14:39:01 INFO     Docker start executed. Result: 0. Output: score_1. Error: 
+watchdog_1      | 2024-12-03 14:39:01 INFO     Container score_1 reanimated successfully.
+english_1       | 2024-12-03 14:39:02 INFO     initializing identifier
+score_1         | 2024-12-03 14:39:02 INFO     Llego un FIN del cliente 2
+propagator_1    | 2024-12-03 14:39:02 INFO     Llego un una notificacion de fin cliente 2 de SCORE 1
+propagator_1    | 2024-12-03 14:39:02 INFO     Se propagan los fins del cliente 2, desde SCORE. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:39:02 INFO     Envie fin con key fin_q3_joiner_reviews
+propagator_1    | 2024-12-03 14:39:02 INFO     Envie fin con key fin_q4_joiner_reviews
+q3_joiner_1     | 2024-12-03 14:39:02 INFO     Llego FIN REVIEWs de cliente 2
+propagator_1    | 2024-12-03 14:39:02 INFO     Envie fin con key fin_q5_joiner_reviews
+propagator_1    | 2024-12-03 14:39:02 INFO     Fins del cliente 2 propagados desde SCORE
+propagator_1    | 2024-12-03 14:39:02 INFO     Se notifica a SCORE que ya se propagaron los fins del cliente 2
+q4_joiner_1     | 2024-12-03 14:39:02 INFO     Llego FIN REVIEWS de cliente 2
+q5_joiner_1     | 2024-12-03 14:39:02 INFO     Llego FIN GAMES de cliente 2
+q5_joiner_1     | 2024-12-03 14:39:02 INFO     LA LONGITUD DE REVIEWS ES: 441
+score_1         | 2024-12-03 14:39:02 INFO     Llego notificacion de FIN propagado para el cliente 2
+score_1         | 2024-12-03 14:39:02 INFO     Empiezo a consumir de la cola de DATA
+client_1        | 2024-12-03 14:39:02 INFO     
+client_1        | Q3: Top 5 Indie Games with Most Positive Reviews:
+client_1        | 1. Undertale: 42284 positive reviews
+client_1        | 2. FTL: Faster Than Light: 21302 positive reviews
+client_1        | 3. Insurgency: 20666 positive reviews
+client_1        | 4. Path of Exile: 17058 positive reviews
+client_1        | 5. Super Meat Boy: 7926 positive reviews
+client_1        | 
+client_1        | 
+client_1        | 2024-12-03 14:39:02 INFO     
+client_1        | Q5: Games in the 90th Percentile for Negative Reviews (Action Genre):
+client_1        | - Left 4 Dead: 249 negative reviews
+client_1        | - Portal 2: 410 negative reviews
+client_1        | - Kane and Lynch: Dead Men™: 218 negative reviews
+client_1        | - EVE Online: 524 negative reviews
+client_1        | - Mirror's Edge™: 761 negative reviews
+client_1        | - F.E.A.R. 3: 680 negative reviews
+client_1        | - Hydrophobia: Prophecy: 383 negative reviews
+client_1        | - Guardians of Middle-earth: 437 negative reviews
+client_1        | - Awesomenauts - the 2D moba: 1198 negative reviews
+client_1        | - Dishonored: 475 negative reviews
+client_1        | 
+client_1        | 
+english_1       | 2024-12-03 14:39:05 INFO     Llego un FIN del cliente 2
+propagator_1    | 2024-12-03 14:39:05 INFO     Llego un una notificacion de fin cliente 2 de ENGLISH 1
+propagator_1    | 2024-12-03 14:39:05 INFO     Se propagan los fins del cliente 2, desde ENGLISH. Ya habia 0 fins propagados
+propagator_1    | 2024-12-03 14:39:05 INFO     Envie fin con key fin_q4_joiner_english
+propagator_1    | 2024-12-03 14:39:05 INFO     Fins del cliente 2 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:39:05 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 2
+english_1       | 2024-12-03 14:39:05 WARNING  Se cae justo esperando la noti de la propagacion del FIN cliente 2
+q4_joiner_1     | 2024-12-03 14:39:05 INFO     Llego FIN ENGLISH de cliente 2
+english_1       | 2024-12-03 14:39:05 INFO     action: shutdown_node | result: in progress...
+client_1        | 2024-12-03 14:39:05 INFO     
+client_1        | Q4: Action games with more than 5,000 negative reviews in English:
+client_1        | - Insurgency: 1683 negative reviews
+client_1        | - Call of Duty®: Infinite Warfare: 1549 negative reviews
+client_1        | 
+client_1        | 
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | status: start | message: Starting close process
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | step: stop_consuming | status: in_progress
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | step: stop_consuming | status: success
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | step: close_channel | status: in_progress
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | step: close_channel | status: success
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | step: close_connection | status: in_progress
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | step: close_connection | status: success
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware close | status: completed
+english_1       | 2024-12-03 14:39:05 INFO     action: shutdown_node | result: success
+english_1       | 2024-12-03 14:39:05 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+english_1       | 2024-12-03 14:39:05 INFO     Voy a exitiar con CODE 0
+client_1 exited with code 0
+english_1 exited with code 0
+watchdog_1      | 2024-12-03 14:39:14 WARNING  WatchDog 1: Nodo english_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:39:14 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:39:14 INFO     Container english_1 is not running. No need to stop.
+watchdog_1      | 2024-12-03 14:39:15 INFO     Docker start executed. Result: 0. Output: english_1. Error: 
+watchdog_1      | 2024-12-03 14:39:15 INFO     Container english_1 reanimated successfully.
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1       | 2024-12-03 14:39:15 INFO     KeepAliveHandler: Escuchando mensajes en english_1:12345
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware declare_queue | result: success | queue_name: notification_english_1
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+english_1       | 2024-12-03 14:39:15 INFO     Empiezo a consumir de la cola de DATA
+english_1       | 2024-12-03 14:39:15 INFO     Llego un FIN del cliente 2
+english_1       | 2024-12-03 14:39:15 WARNING  Se cae justo despues de mandarle al propagator el FIN del cliente 2
+english_1       | 2024-12-03 14:39:15 INFO     action: shutdown_node | result: in progress...
+propagator_1    | 2024-12-03 14:39:15 INFO     Llego un una notificacion de fin cliente 2 de ENGLISH 1
+propagator_1    | 2024-12-03 14:39:15 INFO     Se propagan los fins del cliente 2, desde ENGLISH. Ya habia 1 fins propagados
+propagator_1    | 2024-12-03 14:39:15 INFO     Fins del cliente 2 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:39:15 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 2
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | status: start | message: Starting close process
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | step: stop_consuming | status: in_progress
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | step: stop_consuming | status: success
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | step: close_channel | status: in_progress
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | step: close_channel | status: success
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | step: close_connection | status: in_progress
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | step: close_connection | status: success
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware close | status: completed
+english_1       | 2024-12-03 14:39:15 INFO     action: shutdown_node | result: success
+english_1       | 2024-12-03 14:39:15 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+english_1       | 2024-12-03 14:39:15 INFO     Voy a exitiar con CODE 0
+english_1 exited with code 0
+watchdog_1      | 2024-12-03 14:39:25 WARNING  WatchDog 1: Nodo english_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:39:25 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:39:25 INFO     Container english_1 is not running. No need to stop.
+watchdog_1      | 2024-12-03 14:39:27 INFO     Docker start executed. Result: 0. Output: english_1. Error: 
+watchdog_1      | 2024-12-03 14:39:27 INFO     Container english_1 reanimated successfully.
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1       | 2024-12-03 14:39:27 INFO     KeepAliveHandler: Escuchando mensajes en english_1:12345
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware declare_queue | result: success | queue_name: notification_english_1
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+english_1       | 2024-12-03 14:39:27 INFO     Empiezo a consumir de la cola de DATA
+english_1       | 2024-12-03 14:39:27 INFO     Llego un FIN del cliente 2
+english_1       | 2024-12-03 14:39:27 WARNING  Se cae justo despues de mandarle al propagator el FIN del cliente 2
+english_1       | 2024-12-03 14:39:27 INFO     action: shutdown_node | result: in progress...
+propagator_1    | 2024-12-03 14:39:27 INFO     Llego un una notificacion de fin cliente 2 de ENGLISH 1
+propagator_1    | 2024-12-03 14:39:27 INFO     Se propagan los fins del cliente 2, desde ENGLISH. Ya habia 1 fins propagados
+propagator_1    | 2024-12-03 14:39:27 INFO     Fins del cliente 2 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:39:27 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 2
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | status: start | message: Starting close process
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | step: stop_consuming | status: in_progress
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | step: stop_consuming | status: success
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | step: close_channel | status: in_progress
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | step: close_channel | status: success
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | step: close_connection | status: in_progress
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | step: close_connection | status: success
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware close | status: completed
+english_1       | 2024-12-03 14:39:27 INFO     action: shutdown_node | result: success
+english_1       | 2024-12-03 14:39:27 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+english_1       | 2024-12-03 14:39:27 INFO     Voy a exitiar con CODE 0
+english_1 exited with code 0
+watchdog_1      | 2024-12-03 14:39:37 WARNING  WatchDog 1: Nodo english_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:39:37 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:39:37 INFO     Container english_1 is not running. No need to stop.
+watchdog_1      | 2024-12-03 14:39:38 INFO     Docker start executed. Result: 0. Output: english_1. Error: 
+watchdog_1      | 2024-12-03 14:39:38 INFO     Container english_1 reanimated successfully.
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1       | 2024-12-03 14:39:38 INFO     KeepAliveHandler: Escuchando mensajes en english_1:12345
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware declare_queue | result: success | queue_name: notification_english_1
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+english_1       | 2024-12-03 14:39:38 INFO     Empiezo a consumir de la cola de DATA
+english_1       | 2024-12-03 14:39:38 INFO     Llego un FIN del cliente 2
+english_1       | 2024-12-03 14:39:38 WARNING  Se cae justo despues de mandarle al propagator el FIN del cliente 2
+english_1       | 2024-12-03 14:39:38 INFO     action: shutdown_node | result: in progress...
+propagator_1    | 2024-12-03 14:39:38 INFO     Llego un una notificacion de fin cliente 2 de ENGLISH 1
+propagator_1    | 2024-12-03 14:39:38 INFO     Se propagan los fins del cliente 2, desde ENGLISH. Ya habia 1 fins propagados
+propagator_1    | 2024-12-03 14:39:38 INFO     Fins del cliente 2 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:39:38 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 2
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | status: start | message: Starting close process
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | step: stop_consuming | status: in_progress
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | step: stop_consuming | status: success
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | step: close_channel | status: in_progress
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | step: close_channel | status: success
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | step: close_connection | status: in_progress
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | step: close_connection | status: success
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware close | status: completed
+english_1       | 2024-12-03 14:39:38 INFO     action: shutdown_node | result: success
+english_1       | 2024-12-03 14:39:38 INFO     action: middleware check_closed | channel_status: closed | connection_status: closed ✅ 
+english_1       | 2024-12-03 14:39:38 INFO     Voy a exitiar con CODE 0
+english_1 exited with code 0
+watchdog_1      | 2024-12-03 14:39:48 WARNING  WatchDog 1: Nodo english_1:12345 no responde.
+watchdog_1      | 2024-12-03 14:39:48 INFO     Docker ps executed. Result: 0. Output: . Error: 
+watchdog_1      | 2024-12-03 14:39:48 INFO     Container english_1 is not running. No need to stop.
+watchdog_1      | 2024-12-03 14:39:49 INFO     Docker start executed. Result: 0. Output: english_1. Error: 
+watchdog_1      | 2024-12-03 14:39:49 INFO     Container english_1 reanimated successfully.
+english_1       | 2024-12-03 14:39:49 INFO     action: middleware init_middleware | result: success | host: rabbitmq
+english_1       | 2024-12-03 14:39:49 INFO     KeepAliveHandler: Escuchando mensajes en english_1:12345
+english_1       | 2024-12-03 14:39:49 INFO     action: middleware declare_queue | result: success | queue_name: english-q4_joiner
+english_1       | 2024-12-03 14:39:49 INFO     action: middleware declare_queue | result: success | queue_name: q4_joiner-english
+english_1       | 2024-12-03 14:39:49 INFO     action: middleware declare_queue | result: success | queue_name: propagation
+english_1       | 2024-12-03 14:39:49 INFO     action: middleware declare_queue | result: success | queue_name: notification_english_1
+english_1       | 2024-12-03 14:39:49 INFO     action: middleware declare_exchange | result: success | exchange: from-propagator
+english_1       | 2024-12-03 14:39:49 INFO     Empiezo a consumir de la cola de DATA
+english_1       | 2024-12-03 14:39:49 INFO     Llego un FIN del cliente 2
+propagator_1    | 2024-12-03 14:39:49 INFO     Llego un una notificacion de fin cliente 2 de ENGLISH 1
+propagator_1    | 2024-12-03 14:39:49 INFO     Se propagan los fins del cliente 2, desde ENGLISH. Ya habia 1 fins propagados
+propagator_1    | 2024-12-03 14:39:49 INFO     Fins del cliente 2 propagados desde ENGLISH
+propagator_1    | 2024-12-03 14:39:49 INFO     Se notifica a ENGLISH que ya se propagaron los fins del cliente 2
+english_1       | 2024-12-03 14:39:49 INFO     Llego notificacion de FIN propagado para el cliente 2
+english_1       | 2024-12-03 14:39:49 INFO     Empiezo a consumir de la cola de DATA

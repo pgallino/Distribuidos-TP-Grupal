@@ -35,6 +35,9 @@ class MsgType(Enum):
     ASK_ACTIVE_NODES = 22
     SYNC_STATE_REQUEST = 23
     EMPTY_STATE = 24
+    FIN_NOTIFICATION = 25
+    CLIENT_CLOSE = 26
+    FIN_PROPAGATED = 27
 
 class Dataset(Enum):
     GAME = 0
@@ -219,7 +222,10 @@ class SimpleMessage(BaseMessage):
             MsgType.TASK_INTENT: ["node_id", "task_type"],
             MsgType.ASK_ACTIVE_NODES: ["node_type"],
             MsgType.SYNC_STATE_REQUEST: ["requester_id"],
-            MsgType.EMPTY_STATE: ["node_id"]
+            MsgType.EMPTY_STATE: ["node_id"],
+            MsgType.FIN_NOTIFICATION: ["client_id", "node_type", "node_instance"],
+            MsgType.CLIENT_CLOSE: ["client_id"],
+            MsgType.FIN_PROPAGATED: ["client_id", "node_type"]
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -766,10 +772,13 @@ MESSAGE_CLASSES = {
     MsgType.ASK_ACTIVE_NODES: SimpleMessage,
     MsgType.SYNC_STATE_REQUEST: SimpleMessage,
     MsgType.EMPTY_STATE: SimpleMessage,
+    MsgType.FIN_NOTIFICATION: SimpleMessage,
+    MsgType.CLIENT_CLOSE: SimpleMessage,
+    MsgType.FIN_PROPAGATED: SimpleMessage
 }
 
 
-def decode_msg(data: bytes):
+def decode_msg(data: bytes) -> BaseMessage:
     try:
         type = MsgType(data[0])
         msg_class = MESSAGE_CLASSES.get(type)

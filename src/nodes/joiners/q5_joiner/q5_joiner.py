@@ -4,7 +4,7 @@ from messages.messages import MsgType, ResultMessage, decode_msg, PushDataMessag
 from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # type: ignore # genera 7 pids en docker stats
-from utils.middleware_constants import E_FROM_GENRE, E_FROM_SCORE, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
+from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 
 class Q5Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
@@ -20,6 +20,14 @@ class Q5Joiner(Node):
         self._middleware.declare_queue(Q_SCORE_Q5_JOINER)
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
+        
+        self._middleware.declare_exchange(E_FROM_PROP)
+        fin_games_key = K_FIN+f'_{container_name}_games'
+        logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_games_key}')
+        self._middleware.bind_queue(Q_GENRE_Q5_JOINER, E_FROM_PROP, key=fin_games_key) # hay que modificarlo en el propagator
+        fin_reviews_key = K_FIN+f'_{container_name}_reviews'
+        logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_reviews_key}')
+        self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_PROP, key=fin_reviews_key)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_5)
 
@@ -61,6 +69,7 @@ class Q5Joiner(Node):
             self.push_update('games', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
@@ -90,6 +99,7 @@ class Q5Joiner(Node):
             self.push_update('reviews', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 

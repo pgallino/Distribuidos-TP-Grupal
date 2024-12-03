@@ -9,7 +9,7 @@ from utils.container_constants import LISTENER_PORT
 from utils.utils import NodeType, reanimate_container, recv_msg
 
 class WatchDog:
-    def __init__(self, id: int, n_watchdogs: int, container_name: str, nodes_to_monitor: list[tuple[NodeType, int]] = [], check_interval=5):
+    def __init__(self, id: int, n_watchdogs: int, container_name: str, nodes_to_monitor: list[tuple[NodeType, int]] = [], check_interval=2):
         """
         Inicializa el WatchDog.
         

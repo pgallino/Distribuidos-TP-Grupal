@@ -5,7 +5,7 @@ from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
 from node import Node
-from utils.middleware_constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
+from utils.middleware_constants import E_FROM_PROP, K_FIN, Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 
 class AvgCounter(Node):
 
@@ -15,6 +15,8 @@ class AvgCounter(Node):
         self.n_replicas = n_replicas
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
+        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.bind_queue(Q_RELEASE_DATE_AVG_COUNTER, E_FROM_PROP, key=K_FIN+f'_{container_name}')
 
         # Diccionario para almacenar un heap por cada cliente
         self.avg_count = defaultdict(list)  # client_id -> heap
@@ -43,6 +45,7 @@ class AvgCounter(Node):
             self._process_game_message(msg)
 
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego un FIN de cliente {msg.client_id}")
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)

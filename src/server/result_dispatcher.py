@@ -1,7 +1,8 @@
 import logging
 import signal
-from messages.messages import decode_msg
+from messages.messages import decode_msg, SimpleMessage, MsgType
 from middleware.middleware import Middleware
+from utils.constants import Q_TO_PROP
 
 
 
@@ -16,6 +17,7 @@ class ResultDispatcher:
         self.queue = result_queue
         self._middleware = Middleware()  # Each process gets its own Middleware instance
         self._middleware.declare_queue(self.queue)
+        self._middleware.declare_queue(Q_TO_PROP)
         self.shutting_down = False
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -66,6 +68,8 @@ class ResultDispatcher:
                         with self.space_available:
                             del self.client_connections[client_id]
                             self.space_available.notify_all() # notifica que hay espacio libre
+                        # client_close_msg = SimpleMessage(type=MsgType.CLIENT_CLOSE, client_id=client_id)
+                        # self._middleware.send_to_queue(Q_TO_PROP, client_close_msg.encode())
                 else:
                     # Raise an exception if there's no active connection for client_id
                     raise Exception(f"No active connection for client_id {client_id}")

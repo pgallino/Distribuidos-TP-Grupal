@@ -219,7 +219,7 @@ class Middleware:
             self.declare_queue(queue)
 
     def _connect_to_rabbitmq(self):
-        retries = 5
+        retries = 10
         for i in range(retries):
             try:
                 connection = pika.BlockingConnection(

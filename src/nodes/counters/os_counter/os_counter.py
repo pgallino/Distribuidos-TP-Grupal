@@ -3,8 +3,9 @@ from messages.messages import PushDataMessage, ResultMessage, decode_msg, MsgTyp
 from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
-from utils.middleware_constants import E_FROM_TRIMMER, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
+
 from utils.utils import NodeType, log_with_location, simulate_random_failure
+from utils.middleware_constants import E_FROM_PROP, E_FROM_TRIMMER, K_FIN, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
 
@@ -18,6 +19,11 @@ class OsCounter(Node):
         self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_TRIMMER, K_Q1GAME)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_1)
+
+        self._middleware.declare_exchange(E_FROM_PROP)
+        fin_key = K_FIN+f'_{container_name}'
+        logging.info(f'Bindeo cola {Q_TRIMMER_OS_COUNTER} a {E_FROM_PROP} con key {fin_key}')
+        self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_PROP, key=fin_key)
 
         self.os_count = {}
         self.last_msg_id = 0
@@ -52,6 +58,7 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego un FIN de cliente {msg.client_id}")
             self._process_fin_message(msg)
 
         # ==================================================================

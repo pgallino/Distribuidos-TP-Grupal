@@ -26,6 +26,7 @@ def parse_args():
             'q5_joiner': 1,
             'os_counter': 1,
             'avg_counter': 1,
+            'propagator': 1,
         }
         return instances
     except (IndexError, ValueError):
@@ -142,6 +143,9 @@ def generate_docker_compose(instances):
             if node == 'watchdog':
                 for k in range(1, instances['trimmer'] + 1):
                     services[service_name]['depends_on'][f"trimmer_{k}"] = {
+                        'condition': 'service_started'
+                    }
+                services[service_name]['depends_on']['propagator_1'] = {
                         'condition': 'service_started'
                     }
 

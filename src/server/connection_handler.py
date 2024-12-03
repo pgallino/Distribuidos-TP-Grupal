@@ -9,10 +9,11 @@ from utils.utils import recv_msg
 class ConnectionHandler:
     """Handles communication with a connected client in a separate process."""
 
-    def __init__(self, id, client_sock, n_next_nodes):
+    def __init__(self, id, client_sock, n_next_nodes, fins_lock):   
         self.id = id
         self.client_sock = client_sock
         self.n_next_nodes = n_next_nodes
+        self.fins_lock = fins_lock
         self._middleware = Middleware()  # Each child process has its own middleware connection
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self.shutting_down = False
@@ -46,8 +47,12 @@ class ConnectionHandler:
                     data_msg = Data( client_id=self.id, rows=msg.rows, dataset=msg.dataset)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, data_msg.encode())
                 elif msg.type == MsgType.CLIENT_FIN:
-                    fin_msg = SimpleMessage(type=MsgType.FIN, cliet_id=self.id)
-                    self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, fin_msg.encode())
+                    fin_msg = SimpleMessage(type=MsgType.FIN, client_id=self.id)
+                    with self.fins_lock:
+                        logging.info(f"Con el lock empiezo a mandar los FINs del cliente {self.id}")
+                        for _ in range(self.n_next_nodes):
+                            self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, fin_msg.encode())
+                        logging.info(f"Termine de mandar {self.n_next_nodes} FINs del cliente {self.id}. Suelto el lock")
                     break
 
             except ValueError as e:
