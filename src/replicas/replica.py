@@ -77,7 +77,7 @@ class Replica:
         answer = self._create_pull_answer()
         self._middleware.send_to_queue(self.send_queue, answer.encode())
         logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
-        logging.info(f"envie: {answer}")
+        # logging.info(f"envie: {answer}")
 
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
@@ -167,7 +167,7 @@ class Replica:
             # ==================================================================
 
         except Exception as e:
-            logging.error(f"action: process_replica_message | result: fail | error: {e}")
+            logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
         
     def simulate_failure(self, id):
         """Simula la caída del id"""
@@ -238,7 +238,7 @@ class Replica:
             
             # Crear el mensaje de respuesta con el estado actual
             response_data = self._create_pull_answer()
-            logging.info(f"envio esta data en la sincro: {response_data}")
+            # logging.info(f"envio esta data en la sincro: {response_data}")
 
             # Publicar el estado en el exchange con la routing key del solicitante
             self._middleware.send_to_queue(

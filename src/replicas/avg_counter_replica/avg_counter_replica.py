@@ -2,19 +2,18 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.utils import NodeType
 
 class AvgCounterReplica(Replica):
         
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para AvgCounter."""
-        self.avg_heap = defaultdict(list)  # Diccionario para almacenar un heap por cliente
+        self.avg_count = defaultdict(list)  # Diccionario para almacenar un count por cliente
         self.last_msg_id = 0
-
-        self.state = {
-            "last_msg_id": self.last_msg_id,
-            "avg_count": self.avg_heap,
-        }
         logging.info("Replica: Almacenamiento inicializado.")
+
+    def get_type(self):
+        return NodeType.AVG_COUNTER_REPLICA
 
     def _process_push_data(self, msg: PushDataMessage):
         #TODO: ES IGUAL AL DE OS_COUNTER
@@ -29,26 +28,29 @@ class AvgCounterReplica(Replica):
             heap_data = state.get("update")
             if heap_data:
                 # Actualizar el heap del cliente
-                self.state["avg_count"][client_id] = heap_data
+                self.avg_count[client_id] = heap_data
                 # logging.info(f"Replica: Estado actualizado para client_id={client_id}: {self.state['avg_count'][client_id]}")
 
+        elif update_type == "delete":
+            self._delete_client_state(client_id)
+
         # Actualizar last_msg_id después de procesar un mensaje válido
-        self.state["last_msg_id"] = msg.msg_id
+        self.last_msg_id = msg.msg_id
         # logging.info(f"Replica: Mensaje PUSH procesado con ID {msg.msg_id}. Estado actualizado.")
 
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
         response_data = PushDataMessage(data={
-            "last_msg_id": self.state["last_msg_id"],
-            "avg_count": dict(self.avg_heap)
+            "last_msg_id": self.last_msg_id,
+            "avg_count": dict(self.avg_count)
         }, node_id=self.id)
         return response_data
 
     def _delete_client_state(self, client_id):
         """Elimina el estado de un cliente específico."""
-        if client_id in self.avg_heap:
-            del self.avg_heap[client_id]
-            logging.info(f"Estado eliminado para cliente {client_id}.")
+        if client_id in self.avg_count:
+            del self.avg_count[client_id]
+            logging.info(f"Replica: Estado eliminado para cliente {client_id}.")
         else:
             logging.warning(f"Intento de eliminar estado inexistente para cliente {client_id}.")
 

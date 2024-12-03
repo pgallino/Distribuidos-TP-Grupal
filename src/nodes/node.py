@@ -141,7 +141,7 @@ class Node:
             msg = decode_msg(body)
 
             if isinstance(msg, PushDataMessage):
-                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id} con {msg.data}.")
+                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id}.")
                 self.load_state(msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
 

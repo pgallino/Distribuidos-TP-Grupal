@@ -7,6 +7,7 @@ from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
 from utils.middleware_constants import E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q4Joiner(Node):
 
@@ -39,10 +40,17 @@ class Q4Joiner(Node):
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
         self.last_msg_id = 0
 
+    def get_type(self) -> NodeType:
+        return NodeType.Q3_JOINER
+
     def run(self):
 
         try:
             if self.n_replicas > 0: # verifico si se instanciaron replicas
+                # ==================================================================
+                # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
+                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"))
+                # ==================================================================
                 self._synchronize_with_replicas()
 
             # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo
@@ -67,14 +75,34 @@ class Q4Joiner(Node):
                 # Registrar el cambio en el diccionario de actualizaciones
                 update[game.app_id] = game.name
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('games', msg.client_id, update)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"))
+            # ==================================================================
                 
         elif msg.type == MsgType.FIN:
             logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('fins', msg.client_id, client_fins)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"))
+            # ==================================================================
 
             if client_fins[0] and client_fins[1]:
                 # TODO: Mucho cuidado aca que ya envia reviews a la cola del english
@@ -89,6 +117,11 @@ class Q4Joiner(Node):
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
         # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # ==================================================================
+        # CAIDA DESPUES DE HACER EL ACK EN GAMES
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"))
+        # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_ENGLISH_Q4_JOINER`."""
@@ -114,14 +147,34 @@ class Q4Joiner(Node):
                         client_reviews[review.app_id] = ([], True)
                     update[review.app_id] = client_reviews[review.app_id]
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('reviews', msg.client_id, update)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️")) 
+            # ==================================================================
 
         elif msg.type == MsgType.FIN:
             logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('fins', msg.client_id, client_fins)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"))
+            # ==================================================================
 
             if client_fins[0] and client_fins[1]:
                 # TODO: Mucho cuidado aca que ya envia reviews a la cola del english
@@ -134,6 +187,11 @@ class Q4Joiner(Node):
                     self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, msg.encode())
 
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # ==================================================================
+        # CAIDA DESPUES DE HACER EL ACK EN REVIEWS
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"))
+        # ==================================================================
 
     def send_reviews_v2(self, client_id, app_id, reviews):
         # manda las reviews del juego al filtro de ingles
@@ -190,7 +248,6 @@ class Q4Joiner(Node):
 
         msg = decode_msg(raw_message)
 
-
         if msg.type == MsgType.REVIEWS:
 
             # Inicializar diccionario de actualizaciones
@@ -202,7 +259,17 @@ class Q4Joiner(Node):
                     client_reviews_count[review.app_id] += 1
                     update[review.app_id] = client_reviews_count[review.app_id]
 
+            # ==================================================================
+            # CAIDA ANTES DE PUSH EN PROCESS_NEGATIVE_REVIEWS_MESSAGE
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE PUSH EN PROCESS_NEGATIVE_REVIEWS_MESSAGE"))
+            # ==================================================================
+
             self.push_update('reviews_count', msg.client_id, update)
+
+            # ==================================================================
+            # CAIDA DESPUES DE PUSH EN PROCESS_NEGATIVE_REVIEWS_MESSAGE
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE PUSH EN PROCESS_NEGATIVE_REVIEWS_MESSAGE ⚠️"))
+            # ==================================================================
 
         elif msg.type == MsgType.FIN:
             logging.info(f"Llego FIN ENGLISH de cliente {msg.client_id}")
@@ -231,7 +298,18 @@ class Q4Joiner(Node):
         # Crear y enviar el mensaje Q4Result
         q4_result = Q4Result(negative_reviews=negative_reviews)
         result_message = ResultMessage( client_id=client_id, result_type=QueryNumber.Q4, result=q4_result)
+
+        # ==================================================================
+        # CAIDA ANTES DE ENVIAR RESULTADO Q4
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q4"))
+        # ==================================================================
+
         self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
+
+        # ==================================================================
+        # CAIDA ANTES DE ENVIAR RESULTADO Q4
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q4 ⚠️"))
+        # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos
         del self.games_per_client[client_id]
@@ -278,3 +356,8 @@ class Q4Joiner(Node):
             self.last_msg_id = state["last_msg_id"]
 
         logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
+
+        # ==================================================================
+        # CAIDA DESPUES DE CARGAR EL ESTADO
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"))
+        # ==================================================================
