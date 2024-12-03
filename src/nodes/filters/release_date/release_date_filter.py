@@ -61,6 +61,6 @@ class ReleaseDateFilter(Node):
         """Filtra y envía juegos lanzados en 2010 o después."""
         batch = [game for game in msg.items if "201" in game.release_date]
         if batch:
-            games_msg = ListMessage(type=MsgType.GAMES, item_type=GamesType.Q2GAMES, items=batch, client_id=msg.client_id)
+            games_msg = ListMessage(type=MsgType.GAMES, item_type=GamesType.Q2GAMES, items=batch, client_id=msg.client_id, msg_id=msg.msg_id)
             self._middleware.send_to_queue(Q_RELEASE_DATE_AVG_COUNTER, games_msg.encode())
 

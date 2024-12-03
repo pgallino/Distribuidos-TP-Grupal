@@ -54,6 +54,9 @@ class OsCounter(Node):
 
         msg = decode_msg(raw_message)
 
+        self.last_msg_id = msg.msg_id
+        logging.info(f"last_msg_id: {self.last_msg_id}")
+
         if msg.type == MsgType.GAMES:
             self._process_game_message(msg)
         

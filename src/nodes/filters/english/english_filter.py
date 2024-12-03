@@ -63,7 +63,7 @@ class EnglishFilter(Node):
         ]
 
         if en_reviews:
-            english_reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type= ReviewsType.BASICREVIEW, items=en_reviews, client_id=msg.client_id)
+            english_reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type= ReviewsType.BASICREVIEW, items=en_reviews, client_id=msg.client_id, msg_id=msg.msg_id)
             self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
 
     def is_english(self, text):

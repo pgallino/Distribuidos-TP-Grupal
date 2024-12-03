@@ -85,13 +85,13 @@ class ScoreFilter(Node):
                 negative_reviews.append(BasicReview(review.app_id))
 
         if positive_reviews:
-            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.BASICREVIEW, items=positive_reviews, client_id=msg.client_id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.BASICREVIEW, items=positive_reviews, client_id=msg.client_id, msg_id=msg.msg_id)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_POSITIVE)
 
         if negative_textreviews:
-            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=negative_textreviews, client_id=msg.client_id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=negative_textreviews, client_id=msg.client_id, msg_id=msg.msg_id)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE_TEXT)
 
         if negative_reviews:
-            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.BASICREVIEW, items=negative_reviews, client_id=msg.client_id)
+            reviews_msg = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.BASICREVIEW, items=negative_reviews, client_id=msg.client_id, msg_id=msg.msg_id)
             self._middleware.send_to_queue(E_FROM_SCORE, reviews_msg.encode(), K_NEGATIVE)

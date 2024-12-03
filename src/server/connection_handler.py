@@ -17,6 +17,7 @@ class ConnectionHandler:
         self._middleware = Middleware()  # Each child process has its own middleware connection
         self._middleware.declare_queue(Q_GATEWAY_TRIMMER)
         self.shutting_down = False
+        self.msg_counter = 0
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _handle_sigterm(self, sig, frame):
@@ -44,16 +45,17 @@ class ConnectionHandler:
 
                 # Process the message based on its type
                 if msg.type == MsgType.CLIENT_DATA:
-                    data_msg = Data( client_id=self.id, rows=msg.rows, dataset=msg.dataset)
+                    data_msg = Data( client_id=self.id, rows=msg.rows, dataset=msg.dataset, msg_id=self.msg_counter)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, data_msg.encode())
                 elif msg.type == MsgType.CLIENT_FIN:
-                    fin_msg = SimpleMessage(type=MsgType.FIN, client_id=self.id)
+                    fin_msg = SimpleMessage(type=MsgType.FIN, client_id=self.id, msg_id=self.msg_counter)
                     with self.fins_lock:
                         logging.info(f"Con el lock empiezo a mandar los FINs del cliente {self.id}")
                         for _ in range(self.n_next_nodes):
                             self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, fin_msg.encode())
                         logging.info(f"Termine de mandar {self.n_next_nodes} FINs del cliente {self.id}. Suelto el lock")
                     break
+                self.msg_counter += 1
 
             except ValueError as e:
                 if not self.shutting_down:

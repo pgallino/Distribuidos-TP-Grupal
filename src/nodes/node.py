@@ -161,8 +161,6 @@ class Node:
             push_msg = PushDataMessage(data=data, msg_id=self.last_msg_id)
             self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
-        self.last_msg_id += 1
-
 def init_listener(id, ip_prefix, connected):
     listener = NodeListener(id, ip_prefix, connected)
     listener.run()
