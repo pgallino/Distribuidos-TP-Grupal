@@ -134,10 +134,9 @@ class Node:
             msg = decode_msg(body)
 
             if isinstance(msg, PushDataMessage):
-                logging.info(f"Master {self.id}: RECIBI PULL: Recibido estado completo de réplica {msg.node_id}.")
+                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id} con {msg.data}.")
                 self.load_state(msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
-            ch.stop_consuming()
 
         # Escuchar respuestas hasta recibir de todas las réplicas
         self._middleware.receive_from_queue_with_timeout(self.recv_queue, on_response, inactivity_time=5, auto_ack=False)

@@ -146,7 +146,8 @@ class Middleware:
             # Verifica si se excedió el tiempo de inactividad
             if current_time - last_message_time > inactivity_time:
                 logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
-                return True
+                self.channel.stop_consuming()
+                break
 
     def close(self):
         """

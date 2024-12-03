@@ -56,7 +56,7 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA ANTES DE HACER EL ACK AL MENSAJE
-        simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"))
+        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"))
         # ==================================================================
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -101,7 +101,7 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA"))
         # ==================================================================
 
 
