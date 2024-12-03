@@ -81,7 +81,7 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"))
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
@@ -98,7 +98,7 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"))
             # ==================================================================
 
             if client_fins[0] and client_fins[1]:
@@ -139,7 +139,7 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"))
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
@@ -156,7 +156,7 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"))
             # ==================================================================
 
             if client_fins[0] and client_fins[1]:
@@ -199,8 +199,8 @@ class Q3Joiner(Node):
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
         # ==================================================================
-        # CAIDA ANTES DE ENVIAR RESULTADO Q3
-        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q3"))
+        # CAIDA DESPUES DE ENVIAR RESULTADO Q3
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q3 ⚠️"))
         # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos
