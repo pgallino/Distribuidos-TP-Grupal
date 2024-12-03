@@ -1,29 +1,23 @@
 import logging
 from q5_joiner_replica import Q5JoinerReplica
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import Q5_JOINER_REPLICA_CONFIG_KEYS
+
 
 def main():
     try:
-
-        required_keys = {
-            "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
-            "n_instances": ("Q5_JOINER_REPLICA_INSTANCES", "Q5_JOINER_REPLICA_INSTANCES"),
-            "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT"),
-            "port": ("PORT", "PORT")
-        }
-
         # Inicializar configuración y logging
-        config_params = initialize_config(required_keys)
+        config_params = initialize_config(Q5_JOINER_REPLICA_CONFIG_KEYS)
         initialize_log(config_params["logging_level"])
+
         # Crear una instancia de Q5JoinerReplica con un ID único
-        replica_id = config_params["id"]
-        n_instances = config_params["n_instances"]
-        timeout = config_params["timeout"]
-        port = config_params["port"]
-        replica = Q5JoinerReplica(replica_id, n_instances, "q5_joiner_replica", port, "q5_joiner_1", timeout)
+        replica = Q5JoinerReplica(
+            id=config_params["instance_id"],
+            ip_prefix="q5_joiner_replica",
+            container_to_restart="q5_joiner_1"
+        )
         
-        logging.info(f"Q5JoinerReplica {replica_id} iniciada. Esperando mensajes...")
+        logging.info(f"Q5JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")
         
         # Ejecutar la réplica
         replica.run()
@@ -31,6 +25,7 @@ def main():
         logging.info("Q5JoinerReplica: Interrumpida manualmente. Cerrando...")
     except Exception as e:
         logging.error(f"Q5JoinerReplica: Error inesperado: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()

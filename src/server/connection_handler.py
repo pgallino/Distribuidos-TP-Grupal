@@ -2,7 +2,7 @@ import logging
 import signal
 from messages.messages import Data, MsgType, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from utils.constants import Q_GATEWAY_TRIMMER
+from utils.middleware_constants import Q_GATEWAY_TRIMMER
 from utils.utils import recv_msg
 
 

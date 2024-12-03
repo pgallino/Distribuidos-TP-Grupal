@@ -1,34 +1,27 @@
+import logging
 from client import Client
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import CLIENT_CONFIG_KEYS
+
 
 def main():
+    # Inicializar configuración y logging
+    config_params = initialize_config(CLIENT_CONFIG_KEYS)
+    initialize_log(config_params["logging_level"])
 
-    required_keys = {
-        "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
-        "ip": ("SERVER_IP", "SERVER_IP"),
-        "port": ("SERVER_PORT", "SERVER_PORT"),
-        "games": ("GAMES_DATASET", "GAMES_DATASET"),
-        "reviews": ("REVIEWS_DATASET", "REVIEWS_DATASET"),
-        "batch": ("MAX_BATCH_SIZE", "MAX_BATCH_SIZE"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
-    }
+    # Crear una instancia de Client
+    client = Client(
+        id=config_params["instance_id"],
+        server_addr=(config_params["server_ip"], config_params["server_port"]),
+        max_batch_size=config_params["max_batch_size"],
+        games=config_params["games_dataset"],
+        reviews=config_params["reviews_dataset"]
+    )
 
-    config_params = initialize_config(required_keys)
-    id = config_params["instance_id"]
-    ip = config_params["ip"]
-    port = config_params["port"]
-    batch_size = config_params["batch"]
-    games = config_params["games"]
-    reviews = config_params["reviews"]
-    logging_level = config_params["logging_level"]
+    logging.info(f"Cliente {config_params['instance_id']} iniciado.")
 
-    initialize_log(logging_level)
-
-    # client = Client(int(os.environ['INSTANCE_ID']), (ip, port), batch_size)
-    client = Client(id, (ip, port), batch_size, games, reviews)
+    # Ejecutar el cliente
     client.run()
-    # if id == 1:
-    #     client.run()
 
 
 if __name__ == "__main__":

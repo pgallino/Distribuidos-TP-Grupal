@@ -2,10 +2,11 @@ import logging
 import signal
 import socket
 from messages.messages import MsgType, SimpleMessage, decode_msg
+from utils.container_constants import LISTENER_PORT
 from utils.utils import TaskType, recv_msg
 
 class Listener:
-    def __init__(self, id, ip_prefix, port=12345, backlog=5):
+    def __init__(self, id, ip_prefix, port=LISTENER_PORT, backlog=5):
         """
         Inicializa el manejador de Keep Alive.
 
@@ -47,7 +48,7 @@ class Listener:
             try:
                 self.conn, addr = self.sock.accept()
                 self.process_msg(self.conn)
-                # logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
+                logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
                 self.conn.close()
             except Exception as e:
                 if not self.shutting_down:
@@ -56,11 +57,6 @@ class Listener:
                     logging.info("KeepAliveHandler: Proceso terminado.")
 
 class ReplicaListener(Listener):
-    def __init__(self, id, ids, ip_prefix, port, task_coordination_vars):
-        super().__init__(id, ip_prefix, port, 5)
-
-        self.task_status, self.task_condition = task_coordination_vars
-        self.node_ids = ids
 
     def process_msg(self, conn):
         raw_msg = recv_msg(conn)
@@ -69,26 +65,9 @@ class ReplicaListener(Listener):
         if msg.type == MsgType.KEEP_ALIVE:
             pass
 
-        elif msg.type == MsgType.TASK_INTENT:
-            task_type = TaskType(msg.task_type)
-            logging.info(f"Replica {self.id}: Recibí TASK_INTENT para tarea '{task_type.name}'.")
-            
-            # Actualizar task_status y notificar
-            with self.task_condition:
-                self.task_status["intent"] = task_type.value
-                self.task_condition.notify_all()
-
-        elif msg.type == MsgType.TASK_COMPLETED:
-            task_type = TaskType(msg.task_type)
-            logging.info(f"Replica {self.id}: Recibí TASK_COMPLETED para tarea '{task_type.name}'.")
-            
-            # Actualizar task_status y notificar
-            with self.task_condition:
-                self.task_status["completed"] = task_type.value
-                self.task_condition.notify_all()
             
 class NodeListener(Listener):
-    def __init__(self, id, ip_prefix, connected, port=12345, backlog=5):
+    def __init__(self, id, ip_prefix, connected, port=LISTENER_PORT, backlog=5):
         super().__init__(id, ip_prefix, port, backlog)
 
         self.connected = connected

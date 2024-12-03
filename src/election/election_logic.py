@@ -25,13 +25,9 @@ def initiate_election(node_id, node_ids, ip_prefix, port, election_in_progress, 
                 logging.info(f"Node {node_id}: Mensaje de elección enviado a Node {nid}.")
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
             logging.warning(f"Node {node_id}: No se pudo contactar a Node {nid} (timeout o nodo caido).")
-            if nid in node_ids:
-                node_ids.remove(nid)
 
         except Exception as e:
             logging.error(f"Node {node_id}: Error inesperado al contactar a Node {nid}: {e}")
-            if nid in node_ids:
-                node_ids.remove(nid)
 
 
     # Esperar OK o Timeout

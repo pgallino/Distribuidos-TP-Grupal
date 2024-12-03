@@ -5,7 +5,7 @@ from messages.results_msg import Q3Result, QueryNumber
 from node import Node
 import heapq
 
-from utils.constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
+from utils.middleware_constants import E_FROM_GENRE, E_FROM_SCORE, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 
 class Q3Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
@@ -28,6 +28,7 @@ class Q3Joiner(Node):
         self.games_per_client = defaultdict(lambda: {})  # Almacenará juegos por `app_id`, para cada cliente
         self.review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas positivas por `app_id`, para cada cliente
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
+        self.last_msg_id = 0
 
     def run(self):
 
@@ -159,6 +160,10 @@ class Q3Joiner(Node):
             for client_id, fins in state["fins_per_client"].items():
                 self.fins_per_client[client_id] = fins
             logging.info(f"Replica: Estados FIN actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado (last_msg_id)
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]
 
         logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
 

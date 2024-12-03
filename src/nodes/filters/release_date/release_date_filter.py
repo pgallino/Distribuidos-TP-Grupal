@@ -1,9 +1,10 @@
 import logging
 from typing import List, Tuple
 from messages.games_msg import GamesType
-from messages.messages import ListMessage, MsgType, NodeType, decode_msg
+from messages.messages import ListMessage, MsgType, decode_msg
 from node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
+from utils.middleware_constants import E_COORD_RELEASE_DATE, E_FROM_GENRE, K_INDIE_Q2GAMES, Q_RELEASE_DATE_AVG_COUNTER, Q_COORD_RELEASE_DATE, Q_GENRE_RELEASE_DATE
+from utils.utils import NodeType
 
 class ReleaseDateFilter(Node):
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):

@@ -1,9 +1,11 @@
 import logging
 from typing import List, Tuple
-from messages.messages import ListMessage, MsgType, NodeType, decode_msg
+from messages.messages import ListMessage, MsgType, decode_msg
 from messages.games_msg import GamesType, Q2Game, BasicGame, Genre
 from node import Node  # Importa la clase base Node
-from utils.constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
+from utils.container_constants import Q3_JOINER_CONTAINER_NAME, Q4_JOINER_CONTAINER_NAME, RELEASE_DATE_CONTAINER_NAME
+from utils.middleware_constants import E_COORD_GENRE, E_FROM_GENRE, E_FROM_TRIMMER, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_SHOOTER_GAMES, Q_COORD_GENRE, Q_TRIMMER_GENRE_FILTER
+from utils.utils import NodeType
 
 
 class GenreFilter(Node):
@@ -25,11 +27,11 @@ class GenreFilter(Node):
     def get_keys(self):
         keys = []
         for node, n_nodes in self.n_next_nodes:
-            if node == 'RELEASE_DATE':
+            if node == RELEASE_DATE_CONTAINER_NAME:
                 keys.append((K_INDIE_Q2GAMES, n_nodes))
-            elif node == 'JOINER_Q3':
+            elif node == Q3_JOINER_CONTAINER_NAME:
                 keys.append((K_INDIE_BASICGAMES, n_nodes))
-            elif node == 'JOINER_Q4':
+            elif node == Q4_JOINER_CONTAINER_NAME:
                 keys.append((K_SHOOTER_GAMES, n_nodes))
         return keys
     
@@ -94,11 +96,11 @@ class GenreFilter(Node):
             self.forward_coordfin(E_COORD_GENRE, msg)
         else:
             for node, _ in self.n_next_nodes:
-                if node == 'RELEASE_DATE':
+                if node == RELEASE_DATE_CONTAINER_NAME:
                     self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_Q2GAMES)
-                elif node == 'JOINER_Q3':
+                elif node == Q3_JOINER_CONTAINER_NAME:
                     self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_INDIE_BASICGAMES)
-                elif node == 'JOINER_Q4':
+                elif node == Q4_JOINER_CONTAINER_NAME:
                     self._middleware.send_to_queue(E_FROM_GENRE, msg.encode(), key=K_SHOOTER_GAMES)
                 # TODO
                 # VER QUE HACER CON JOINER Q5

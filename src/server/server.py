@@ -6,7 +6,7 @@ import signal
 
 from result_dispatcher import ResultDispatcher
 from connection_handler import ConnectionHandler
-from utils.constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
+from utils.middleware_constants import Q_QUERY_RESULT_1, Q_QUERY_RESULT_2, Q_QUERY_RESULT_3, Q_QUERY_RESULT_4, Q_QUERY_RESULT_5
 
 DISPATCH_QUEUES = 5
 
@@ -28,7 +28,7 @@ class Server:
 
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.bind(("server", port))
-        self._server_socket.listen(5)
+        self._server_socket.listen(listen_backlog)
 
 
         self.dispatchers = []

@@ -3,10 +3,11 @@ import logging
 import signal
 from multiprocessing import Process, Value, Condition
 import socket
+import time
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
-from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_REPLICA_MASTER
 from utils.listener import NodeListener
 from utils.utils import recv_msg
 
@@ -32,6 +33,8 @@ class Node:
         self.processing_client = Value('i', -1)  # 'i' indica un entero
 
         self.connected = Value('i', 0)  # 0 para False, 1 para True
+
+        self.timestamp = time.time()  # Marca de tiempo al iniciar
 
         self.listener = Process(target=init_listener, args=(id, container_name, self.connected))
         self.listener.start()
@@ -114,27 +117,29 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
-        # Declarar las colas necesarias
+        """Solicita el estado a las réplicas y sincroniza el nodo."""
+        logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
+
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
-        self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}_{self.id}'
-        self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
-        self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
+        self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
+        self.recv_queue = self._middleware.declare_anonymous_queue(E_FROM_REPLICA_PULL)
 
-        # Función de callback para procesar la respuesta
-        def on_replica_response(ch, method, properties, body):
-            msg = decode_msg(body)
-            if isinstance(msg, PushDataMessage):
-                self.load_state(msg)
-                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            logging.info("Callback terminado.")
-            ch.stop_consuming()
-
-        # Enviar un mensaje `PullDataMessage`
+        # Enviar un PULL_DATA a todas las réplicas
         pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
         self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
-        self._middleware.receive_from_queue(self.replica_queue, on_replica_response, auto_ack=False)          
-        self.connected = 1
+        logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
+
+        def on_response(ch, method, properties, body):
+            """Callback para manejar las respuestas de las réplicas."""
+            msg = decode_msg(body)
+
+            if isinstance(msg, PushDataMessage):
+                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id} con {msg.data}.")
+                self.load_state(msg)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # Escuchar respuestas hasta recibir de todas las réplicas
+        self._middleware.receive_from_queue_with_timeout(self.recv_queue, on_response, inactivity_time=5, auto_ack=False)
 
     def push_update(self, type: str, client_id: int, update = None):
 
@@ -144,8 +149,10 @@ class Node:
             else:
                 data = {'type': type, 'id': client_id}
 
-            push_msg = PushDataMessage(data=data)
+            push_msg = PushDataMessage(data=data, msg_id=self.last_msg_id)
             self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
+
+        self.last_msg_id += 1
 
 
 def init_listener(id, ip_prefix, connected):

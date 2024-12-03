@@ -1,29 +1,23 @@
 import logging
 from avg_counter_replica import AvgCounterReplica
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import AVG_COUNTER_REPLICA_CONFIG_KEYS
+
 
 def main():
     try:
-
-        required_keys = {
-            "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
-            "n_instances": ("AVG_COUNTER_REPLICA_INSTANCES", "AVG_COUNTER_REPLICA_INSTANCES"),
-            "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT"),
-            "port": ("PORT", "PORT")
-        }
-
         # Inicializar configuración y logging
-        config_params = initialize_config(required_keys)
+        config_params = initialize_config(AVG_COUNTER_REPLICA_CONFIG_KEYS)
         initialize_log(config_params["logging_level"])
+
         # Crear una instancia de AvgCounterReplica con un ID único
-        replica_id = config_params["id"]
-        n_instances = config_params["n_instances"]
-        timeout = config_params["timeout"]
-        port = config_params["port"]
-        replica = AvgCounterReplica(replica_id, n_instances, "avg_counter_replica", port, "avg_counter_1", timeout)
+        replica = AvgCounterReplica(
+            id=config_params["instance_id"],
+            ip_prefix="avg_counter_replica",
+            container_to_restart="avg_counter_1",
+        )
         
-        logging.info(f"AvgCounterReplica {replica_id} iniciada. Esperando mensajes...")
+        logging.info(f"AvgCounterReplica {config_params['instance_id']} iniciada. Esperando mensajes...")
         
         # Ejecutar la réplica
         replica.run()
@@ -31,6 +25,7 @@ def main():
         logging.info("AvgCounterReplica: Interrumpida manualmente. Cerrando...")
     except Exception as e:
         logging.error(f"AvgCounterReplica: Error inesperado: {e}", exc_info=True)
+
 
 if __name__ == "__main__":
     main()

@@ -1,12 +1,11 @@
 from collections import defaultdict
 import logging
-from typing import List, Tuple
 from messages.messages import MsgType, PushDataMessage, ResultMessage, decode_msg
 from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
 from node import Node
-from utils.constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
+from utils.middleware_constants import Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 
 class AvgCounter(Node):
 
@@ -18,7 +17,8 @@ class AvgCounter(Node):
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
 
         # Diccionario para almacenar un heap por cada cliente
-        self.client_heaps = defaultdict(list)  # client_id -> heap
+        self.avg_count = defaultdict(list)  # client_id -> heap
+        self.last_msg_id = 0
 
     def run(self):
 
@@ -51,7 +51,7 @@ class AvgCounter(Node):
         client_id = msg.client_id  # Asumo que cada mensaje tiene un client_id
 
         # Obtener el heap para este cliente
-        client_heap = self.client_heaps[client_id]
+        client_heap = self.avg_count[client_id]
 
         for game in msg.items:
             if len(client_heap) < 10:
@@ -71,9 +71,9 @@ class AvgCounter(Node):
         client_id = msg.client_id  # Usar el client_id del mensaje FIN
         # TODO: Hacer el push:Fin
 
-        if client_id in self.client_heaps:
+        if client_id in self.avg_count:
             # Obtener el heap del cliente y ordenarlo
-            client_heap = self.client_heaps[client_id]
+            client_heap = self.avg_count[client_id]
             result = sorted(client_heap, key=lambda x: x[0], reverse=True)
             top_games = [(name, avg_playtime) for avg_playtime, _, name in result]
 
@@ -87,10 +87,20 @@ class AvgCounter(Node):
             # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
             # TODO: Descartar mensajes repetidos en el dispatcher
             # TODO: Hacer el push:Delete
-            del self.client_heaps[client_id]
+            del self.avg_count[client_id]
 
             self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
-        for client_id, heap_data in msg.data.items():
-            self.client_heaps[client_id] = [tuple(item) for item in heap_data]
+        """Carga el estado completo recibido en la réplica."""
+        state = msg.data
+
+        # Actualizar heaps por cliente
+        if "avg_count" in state:
+            for client_id, heap_data in state["avg_count"].items():
+                self.avg_count[client_id] = [tuple(item) for item in heap_data]
+            logging.info(f"Replica: Heaps de promedio actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]

@@ -44,6 +44,17 @@ class Middleware:
             logging.info(f"action: middleware declare_exchange | result: success | exchange: {exchange}")
         else:
             logging.error(f"action: middleware declare_exchange | result: fail | exchange: {exchange} already exist")
+
+    def declare_anonymous_queue(self, exchange_name, routing_key = ''):
+        """
+        Declara una cola anónima, exclusiva y vinculada al exchange especificado.
+        """
+        result = self.channel.queue_declare(queue='', exclusive=True)
+        queue_name = result.method.queue  # Obtiene el nombre generado automáticamente por el broker
+        self.queues.add(queue_name)
+        self.channel.queue_bind(queue=queue_name, exchange=exchange_name, routing_key=routing_key)
+        logging.info(f"action: middleware declare_anonymous_queue | result: success | queue_name: {queue_name}")
+        return queue_name
         
     def bind_queue(self, queue_name, exchange, key=None):
         if queue_name not in self.queues or exchange not in self.exchanges:
@@ -135,7 +146,8 @@ class Middleware:
             # Verifica si se excedió el tiempo de inactividad
             if current_time - last_message_time > inactivity_time:
                 logging.info(f"Tiempo de inactividad excedido: {inactivity_time} segundos.")
-                return True
+                self.channel.stop_consuming()
+                break
 
     def close(self):
         """

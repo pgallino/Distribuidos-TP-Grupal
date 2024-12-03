@@ -17,15 +17,13 @@ def initialize_log(logging_level):
     # Configurar el nivel de logging para pika
     logging.getLogger("pika").setLevel(logging.WARNING)
 
-
 def initialize_config(required_keys):
     """
     Generalized configuration initializer for nodes with varying environment variables.
     
     Args:
-    - required_keys (dict): A dictionary where the key is the parameter name and 
-                            the value is a tuple with environment variable name 
-                            and an optional default config file key.
+    - required_keys (list): A list of keys representing both environment variables
+                            and optional keys in a config file.
                             
     Returns:
     - dict: A dictionary with configuration parameters.
@@ -36,15 +34,16 @@ def initialize_config(required_keys):
         # print("Advertencia: config.ini no encontrado. Se utilizarán solo variables de entorno.")
 
     config_params = {}
-    for param, (env_var, config_key) in required_keys.items():
+    for key in required_keys:
         try:
-            config_params[param] = os.getenv(env_var) or config.get("DEFAULT", config_key)
+            # Intentar obtener el valor desde el entorno o desde el archivo de configuración
+            config_params[key] = os.getenv(key.upper()) or config.get("DEFAULT", key.upper())
             # Convertir a int si el valor es un número
-            if isinstance(config_params[param], str) and config_params[param].isdigit():
-                config_params[param] = int(config_params[param])
+            if isinstance(config_params[key], str) and config_params[key].isdigit():
+                config_params[key] = int(config_params[key])
         except KeyError:
-            raise KeyError(f"Configuración clave '{config_key}' no encontrada en entorno o archivo. Abortando.")
+            raise KeyError(f"Configuración clave '{key}' no encontrada en entorno o archivo. Abortando.")
         except ValueError as e:
-            raise ValueError(f"Valor para '{param}' no se pudo interpretar. Error: {e}. Abortando.")
+            raise ValueError(f"Valor para '{key}' no se pudo interpretar. Error: {e}. Abortando.")
     
     return config_params

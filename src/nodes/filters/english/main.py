@@ -1,34 +1,33 @@
+import logging
 from utils.initilization import initialize_config, initialize_log
+from utils.container_constants import ENGLISH_FILTER_CONFIG_KEYS, ENGLISH_FILTER_NEXT_NODES, ENGLISH_CONTAINER_NAME
 from english_filter import EnglishFilter
 
-def main():
-    # Claves de configuración requeridas para EnglishFilter
-    required_keys = {
-        "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
-        "english_instances": ("ENGLISH_INSTANCES", "ENGLISH_INSTANCES"),
-        "q4_joiner_instances": ("Q4_JOINER_INSTANCES", "Q4_JOINER_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
-    }
 
+def main():
     # Inicializar configuración y logging
-    config_params = initialize_config(required_keys)
+    config_params = initialize_config(ENGLISH_FILTER_CONFIG_KEYS)
     initialize_log(config_params["logging_level"])
 
-    # Extraer parámetros de configuración
-    instance_id = config_params["instance_id"]
-    english_instances = config_params["english_instances"]
-    q4_joiner_instances = config_params["q4_joiner_instances"]
+    # Crear lista de tuplas para los nodos siguientes
+    next_nodes = [
+        (node, config_params[f"{node}_instances"])
+        for node in ENGLISH_FILTER_NEXT_NODES
+    ]
 
-    # Crear una instancia de EnglishFilter con los parámetros configurados
+    # Crear una instancia de EnglishFilter
     english_filter = EnglishFilter(
-        instance_id,
-        english_instances,
-        [('Q4_JOINER', q4_joiner_instances)],  # Configuración de next_nodes con q4_joiner_instances
-        container_name="english"
+        id=config_params["instance_id"],
+        n_nodes=config_params["english_instances"],
+        n_next_nodes=next_nodes,
+        container_name=ENGLISH_CONTAINER_NAME
     )
 
-    # Iniciar el filtro, escuchando mensajes en la cola
+    logging.info(f"EnglishFilter {config_params['instance_id']} iniciado.")
+
+    # Ejecutar el EnglishFilter
     english_filter.run()
+
 
 if __name__ == "__main__":
     main()

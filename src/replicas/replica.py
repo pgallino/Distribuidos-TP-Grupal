@@ -1,33 +1,29 @@
 import logging
-from multiprocessing import Process, Manager
+from multiprocessing import Process
 import signal
 import socket
+import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from election.election_manager import ElectionManager
-from utils.constants import E_FROM_MASTER_PUSH, Q_MASTER_REPLICA, Q_REPLICA_MASTER, ELECTION_PORT
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_MASTER_REPLICA, Q_REPLICA_MASTER
+from utils.container_constants import LISTENER_PORT
 from utils.listener import ReplicaListener
-from utils.utils import TaskType, reanimate_container, recv_msg
-
-# Diseño: https://frill-bucket-81f.notion.site/Dise-o-Replicas-14d5c77282b880cca2d6f11f42c4d2de?pvs=4
-
-TIMEOUT = 5
+from utils.utils import simulate_random_failure, log_with_location
 
 class Replica:
-    def __init__(self, id: int, n_instances: int, ip_prefix: str, port: int, container_to_restart: str, timeout: int):
+    def __init__(self, id: int, ip_prefix: str, container_to_restart: str):
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
-        self.replica_ids = list(range(1, n_instances + 1))
         self.container_to_restart = container_to_restart
         self.state = None
         self.ip_prefix = ip_prefix
-        self.port = port
-
+        self.port = LISTENER_PORT
+        self.sincronizado = False
+        self.timestamp = time.time()  # Marca de tiempo al iniciar
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        self.timeout = timeout
         self._initialize_storage()
 
         if not ip_prefix:
@@ -36,45 +32,28 @@ class Replica:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
         self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
-        self.send_queue = Q_REPLICA_MASTER + f"_{container_to_restart}"
-        exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
+        self.send_queue = E_FROM_REPLICA_PULL
+        self.exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
         self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
-        self._middleware.declare_exchange(exchange_name, type = "fanout")
-        self._middleware.bind_queue(self.recv_queue, exchange_name) # -> bindeo al fanout de los push y pull
-        self._middleware.declare_queue(self.send_queue) # -> cola para enviar
+        self._middleware.declare_exchange(self.exchange_name, type = "fanout")
+        self._middleware.bind_queue(self.recv_queue, self.exchange_name) # -> bindeo al fanout de los push y pull
+        self._middleware.declare_exchange(E_FROM_REPLICA_PULL)
+        self.sync_exchange = "E_SYNC_STATE"
+        self._middleware.declare_exchange(self.sync_exchange)
         
-        # Inicializa el ElectionManager
-        self.election_manager = ElectionManager(
-            id=self.id,
-            ids=self.replica_ids,
-            ip_prefix=ip_prefix,
-            port=ELECTION_PORT
-        )
-
-        # Crear las variables compartidas
-        self.manager = Manager()
-        self.task_status = self.manager.dict({"intent": None, "completed": None})
-        self.task_condition = self.manager.Condition()
-        
-        task_coordination_vars = (self.task_status, self.task_condition)
-        self.listener = Process(target=init_listener, args=(id, self.replica_ids, ip_prefix, port, task_coordination_vars,))
+        self.listener = Process(target=init_listener, args=(id, ip_prefix, self.port,))
         self.listener.start()
-
-        # Determinar si esta réplica es el líder inicial
-        self.leader_id = max(self.replica_ids)  # El mayor ID es el líder inicial
-        if self.id == self.leader_id:
-            logging.info(f"Replica {self.id}: Soy el líder inicial.")
 
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
-        self.pull_procesado = False
         try:
             while not self.shutting_down:
-                self._middleware.receive_from_queue_with_timeout(self.recv_queue, self.process_replica_message, self.timeout, auto_ack=False)
-                self.ask_keepalive_master()
+                # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
+                self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
+                self.recover_state()  # Método para solicitar sincronización
         except Exception as e:
             if not self.shutting_down:
-                logging.error(f"action: shutdown_replica | result: fail | error: {e}")
+                logging.error(f"action: listening_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
     def _initialize_storage(self):
@@ -85,19 +64,28 @@ class Replica:
         """Procesa los datos de un mensaje de `PushDataMessage`."""
         pass
 
+    def _load_state(self, msg):
+        pass
+
     def _process_pull_data(self):
-        """Codifica el estado actual y envía una respuesta a `Q_REPLICA_RESPONSE`."""
+        """Procesa un mensaje de solicitud de pull de datos."""
 
-        # Crear el mensaje de respuesta con el estado actual
+        # ==================================================================
+        # CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA
+        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA"))
+        # ==================================================================
+        answer = self._create_pull_answer()
+        self._middleware.send_to_queue(self.send_queue, answer.encode())
+        logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
+        logging.info(f"envie: {answer}")
 
-        logging.info("Respondiendo solicitud de pull por master")
-        response_data = PushDataMessage( data=dict(self.state))
+        # ==================================================================
+        # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
+        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA"))
+        # ==================================================================
 
-        # Enviar el mensaje a Q_REPLICA_RESPONSE
-        self._middleware.send_to_queue(
-            self.send_queue, # Cola de respuesta
-            response_data.encode()
-        )
+    def _create_pull_answer(self):
+        pass
 
     def _shutdown(self):
         """Cierra la réplica de forma segura."""
@@ -106,9 +94,6 @@ class Replica:
 
         logging.info("action: shutdown_replica | result: in progress...")
         self.shutting_down = True
-
-        self.election_manager.cleanup()
-        self.manager.shutdown()
 
         if self.listener:
             self.listener.terminate()
@@ -131,75 +116,58 @@ class Replica:
     def process_replica_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_REPLICA`."""
         try:
+            # ==================================================================
+            # CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"))
+            # ==================================================================
             msg = decode_msg(raw_message)
-            # logging.info(f"Recibi un mensaje del tipo: {msg.type}")
 
-            if msg.type == MsgType.PUSH_DATA:
-                self._process_push_data(msg)
+            # Determinar si la réplica necesita sincronización
+            if msg.msg_id > 0 and not self.sincronizado:
+                # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
-            elif msg.type == MsgType.PULL_DATA:
-                if not self.pull_procesado:
-                    self.pull_procesado = True
-                    if self.leader_id == self.id:
-                        self.handle_pull()
-                    else:
-                        # Si no soy el líder, esperar a que lleguen los mensajes de INTENT y COMPLETED
-                        self.wait_for_task(task_type=TaskType.PULL)
-                        logging.info(f"Replica {self.id}: No soy el líder. Dejo que el líder responda.")
 
+                # ==================================================================
+                # CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK
+                simulate_random_failure(self, log_with_location("CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK"))
+                # ==================================================================
+
+                ch.stop_consuming()
+                logging.info(f"Replica {self.id}: Recibiendo primer mensaje con ID {msg.msg_id} de tipo {msg.type}. Iniciando sincronización.")
+                return # ya me sincronicé y me vuelvo a consumir por la cola principal
+            
+            if msg.type == MsgType.PULL_DATA: # respondo pull si estoy sincronizado
+                if self.sincronizado:
+                    self._process_pull_data()
+
+            elif msg.type == MsgType.SYNC_STATE_REQUEST: # Procesar siempre los mensajes SYNC_STATE_REQUEST
+                if msg.requester_id != self.id:  # Ignorar solicitudes propias
+                    if self.sincronizado: # respondo si se que estoy sincronizado
+                        self._process_sync_state_request(msg.requester_id)
+
+            elif msg.type == MsgType.PUSH_DATA:
+                # Procesar solo mensajes con un ID mayor al último procesado
+                if msg.msg_id > self.last_msg_id or msg.msg_id == 0:
+                    self.last_msg_id = msg.msg_id
+                    self.sincronizado = True
+                    self._process_push_data(msg)
+
+                    # ==================================================================
+                    # CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK
+                    simulate_random_failure(self, log_with_location("CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK"))
+                    # ==================================================================
+
+            # Confirmar la recepción del mensaje
             ch.basic_ack(delivery_tag=method.delivery_tag)
+
+            # ==================================================================
+            # CAIDA ACA POST PROCESAR MENSAJE Y DESPUES DE DAR EL ACK
+            simulate_random_failure(self, log_with_location("CAIDA ACA POST PROCESAR MENSAJE Y DESPUES DE DAR EL ACK"))
+            # ==================================================================
+
         except Exception as e:
-            logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
-
-    def ask_keepalive_master(self):
-        """Verifica si el contenedor maestro está vivo."""
-        master_ip = self.container_to_restart  # Dirección IP del contenedor maestro
-
-        if not self.check_node_status(master_ip, self.port):
-            logging.info("Master inactivo, manejando el fallo.")
-            self.handle_master_down()
-        else:
-            logging.info("Master activo y accesible.")
-
-    def ask_keepalive_leader(self):
-        leader_ip = f"{self.ip_prefix}_{self.leader_id}"
-        if not self.check_node_status(leader_ip, self.port):
-            logging.info("Leader no disponible, iniciando elección.")
-            self.leader_id = self.election_manager.manage_leadership()
-            logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id}")
-        else:
-            logging.info("Leader activo y accesible.")
-
-    def handle_master_down(self):
-        """Maneja la caída del maestro y coordina su reanimación."""
-        # Detectar al líder actual o realizar una nueva elección si el líder no responde
-
-        if self.leader_id != self.id:
-            self.ask_keepalive_leader()
-
-        if self.leader_id == self.id:  # Si soy el líder
-            self.handle_reanimate_master()
-        else:  # Si no soy el líder
-            # Esperar mensajes TASK_INTENT y TASK_COMPLETED
-            self.wait_for_task(task_type=TaskType.REANIMATE_MASTER)
-            logging.info(f"Replica {self.id}: Maestro reanimado por el líder.")
-
-        self.pull_procesado = False
-
-
-    def check_node_status(self, target_ip, target_port):
-        try:
-            with socket.create_connection((target_ip, target_port), timeout=self.timeout) as sock:
-                logging.info(f"Conexión exitosa a {target_ip}:{target_port}.")
-                msg = SimpleMessage(type=MsgType.KEEP_ALIVE, socket_compatible=True)
-                sock.sendall(msg.encode())
-                return True
-        except (socket.gaierror, socket.timeout, OSError) as e:
-            logging.info(f"Error conectando a {target_ip}:{target_port}: {e}")
-            return False
-        except Exception as e:
-            logging.error(f"Error inesperado conectando a {target_ip}:{target_port}: {e}")
-            return False
+            logging.error(f"action: process_replica_message | result: fail | error: {e}")
         
     def simulate_failure(self, id):
         """Simula la caída del id"""
@@ -207,126 +175,87 @@ class Replica:
         if self.id == id:
             self._shutdown()
             exit(0)
-
-    # TODO: Se puede hacer una sola funcion
-    def send_task_intent(self, task_type):
-        """Envía un mensaje TASK_INTENT a las réplicas."""
-        intent_msg = SimpleMessage(type=MsgType.TASK_INTENT, socket_compatible=True, node_id=self.id, task_type=task_type.value)
-        self.broadcast_to_replicas(intent_msg)
-        logging.info(f"Replica {self.id}: TASK_INTENT enviado para tarea '{task_type}'.")
-
-    def send_task_completed(self, task_type):
-        """Envía un mensaje TASK_COMPLETED a las réplicas."""
-        completed_msg = SimpleMessage(type=MsgType.TASK_COMPLETED, socket_compatible=True, node_id=self.id, task_type=task_type.value)
-        self.broadcast_to_replicas(completed_msg)
-        logging.info(f"Replica {self.id}: TASK_COMPLETED enviado para tarea '{task_type}'.")
-
-    def broadcast_to_replicas(self, message):
-        for replica_id in self.replica_ids:
-            if replica_id != self.id:  # No enviar a sí mismo
-                for _ in range(3):  # Reintentar 3 veces
-                    try:
-                        target_ip = f"{self.ip_prefix}_{replica_id}"
-                        with socket.create_connection((target_ip, self.port), timeout=1) as sock:
-                            sock.sendall(message.encode())
-                            logging.info(f"Replica {self.id}: Mensaje enviado a réplica {replica_id}.")
-                            break
-                    except Exception as e:
-                        logging.warning(f"Replica {self.id}: Reintento fallido para réplica {replica_id}: {e}")
-
-    def wait_for_task(self, task_type: TaskType):
+    
+    def recover_state(self):
         """
-        Espera a que el líder envíe TASK_INTENT y TASK_COMPLETED para una tarea específica.
-        Si el tiempo de espera excede el límite, se verifica el estado del líder.
+        Solicita el estado a las réplicas compañeras y se sincroniza.
         """
-        timeout_seconds = 5  # Tiempo máximo de espera antes de verificar keep_alive
-        with self.task_condition:
-            while self.task_status["intent"] != task_type.value or self.task_status["completed"] != task_type.value:
-                logging.info(f"Replica {self.id}: Esperando TASK_INTENT y TASK_COMPLETED para '{task_type.name}'...")
+        # logging.info(f"Replica {self.id}: Solicitando estado a réplicas compañeras.")
 
-                # Esperar con timeout
-                leader_responded = self.task_condition.wait(timeout=timeout_seconds)
+        # ==================================================================
+        # CAIDA LUEGO DE ENTRAR A RECOVER_STATE Y ANTES DE ENVIAR SYNC_MSG
+        simulate_random_failure(self, log_with_location("CAIDA LUEGO DE ENTRAR A RECOVER_STATE Y ANTES DE ENVIAR SYNC_MSG"))
+        # ==================================================================
 
-                if not leader_responded:  # Si se cumple el timeout
-                    logging.warning(f"Replica {self.id}: Timeout esperando TASK_INTENT y TASK_COMPLETED para '{task_type.name}'. Verificando líder.")
-                    
-                    # Verificar si el líder sigue activo
-                    leader_ip = f"{self.ip_prefix}_{self.leader_id}"
-                    if not self.check_node_status(leader_ip, self.port):
-                        logging.warning(f"Replica {self.id}: El líder no responde. Iniciando nueva elección.")
-                        self.leader_id = self.election_manager.manage_leadership()
-                        logging.info(f"NUEVO LEADER RECIBIDO: {self.leader_id}")
+        # Crear una cola anónima y vincularla al exchange E_SYNC_STATE con la routing key basada en el ID de la réplica
+        self.response_queue = self._middleware.declare_anonymous_queue(exchange_name=self.sync_exchange, routing_key=str(self.id))
 
-                        if self.leader_id == self.id:
-                            logging.info(f"Replica {self.id}: Soy el nuevo líder tras la elección. Procesando tarea '{task_type.name}'.")
-                            # Procesar la tarea como nuevo líder
-                            if task_type == TaskType.PULL:
-                                self.handle_pull()
-                            elif task_type == TaskType.REANIMATE_MASTER:
-                                self.handle_reanimate_master()
-                            return
-                    else:
-                        logging.info(f"Replica {self.id}: El líder sigue activo. Continuando espera.")
+        # Enviar Sync_state
+        sync_msg = SimpleMessage(type=MsgType.SYNC_STATE_REQUEST, requester_id=self.id)
+        # Lo envio a la cola de la que reciben todos
+        self._middleware.send_to_queue(self.exchange_name, sync_msg.encode())
 
-            logging.info(f"Replica {self.id}: TASK_INTENT y TASK_COMPLETED recibidos para '{task_type.name}'.")
+        # ==================================================================
+        # CAIDA LUEGO DE ENVIAR SYNC_MSG Y ANTES DE ESPERAR RESPUESTA
+        simulate_random_failure(self, log_with_location("CAIDA LUEGO DE ENVIAR SYNC_MSG Y ANTES DE ESPERAR RESPUESTA"))
+        # ==================================================================
 
-    def handle_pull(self):
+        # Esperar respuesta
+        def on_state_response(ch, method, properties, body):
+            msg = decode_msg(body)
+            if isinstance(msg, PushDataMessage):
+                self._load_state(msg)
+                # logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
+
+            # ==================================================================
+            # CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG"))
+            # ==================================================================
+
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            ch.stop_consuming()  # Terminar el consumo después de recibir una respuesta
+
+            # ==================================================================
+            # CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG"))
+            # ==================================================================
+
+        self._middleware.receive_from_queue(self.response_queue, on_state_response, auto_ack=False)
+        self.sincronizado = True
+
+    def _process_sync_state_request(self, requester_id):
         """
-        Maneja el proceso de PULL como líder.
-        Envía TASK_INTENT, realiza la sincronización y luego envía TASK_COMPLETED.
+        Responde al mensaje SYNC_STATE_REQUEST enviado por otra réplica.
+        Envía el estado actual al ID de la réplica que realizó la solicitud.
         """
-        # Verificar si el maestro está sincronizado
-        if not self.ask_master_connected():
-            logging.info(f"Replica {self.id}: Iniciando proceso de PULL como líder.")
-
-            # 1. Enviar TASK_INTENT a las otras réplicas
-            self.send_task_intent(task_type=TaskType.PULL)
-            # 2. Procesar el PULL (sincronización con el maestro)
-            self._process_pull_data()
-
-            # 3. Enviar TASK_COMPLETED a las otras réplicas
-            self.send_task_completed(task_type=TaskType.PULL)
-
-            logging.info(f"Replica {self.id}: Proceso de PULL completado y notificado a réplicas.")
-        else:
-            self.send_task_completed(task_type=TaskType.PULL)
-            logging.info(f"Replica {self.id}: Maestro ya sincronizado. No se necesita PULL.")
-
-    def handle_reanimate_master(self):
-        logging.info(f"Replica {self.id}: Soy el líder, iniciando reanimación del maestro.")
-        # 1. Enviar TASK_INTENT
-        self.send_task_intent(task_type=TaskType.REANIMATE_MASTER)
-
-        # 2. Reanimar el maestro
-        reanimate_container(self.container_to_restart)
-
-        # 3. Enviar TASK_COMPLETED
-        self.send_task_completed(task_type=TaskType.REANIMATE_MASTER)
-
-    def ask_master_connected(self):
-        """Consulta al maestro si está sincronizado."""
         try:
-            master_ip = self.container_to_restart  # Dirección IP del maestro
-            with socket.create_connection((master_ip, self.port), timeout=self.timeout) as sock:
-                # Enviar el mensaje ASK_MASTER_CONNECTED
-                ask_msg = SimpleMessage(type=MsgType.ASK_MASTER_CONNECTED, socket_compatible=True)
-                sock.sendall(ask_msg.encode())
+            logging.info(f"Replica {self.id}: Respondiendo estado a la réplica {requester_id}.")
 
-                # Recibir la respuesta
-                raw_response = recv_msg(sock)
-                response_msg = decode_msg(raw_response)
+            # ==================================================================
+            # CAIDA LUEGO DE RECIBIR SYNC_MSG Y ANTES DE ENVIARLO
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE RECIBIR SYNC_MSG Y ANTES DE ENVIARLO"))
+            # ==================================================================
+            
+            # Crear el mensaje de respuesta con el estado actual
+            response_data = self._create_pull_answer()
+            logging.info(f"envio esta data en la sincro: {response_data}")
 
-            if response_msg.type == MsgType.MASTER_CONNECTED:
-                is_connected = bool(response_msg.connected)  # Convertir 0/1 a booleano
-                logging.info(f"Recibido MASTER_CONNECTED: connected={is_connected}")
-                return is_connected
+            # Publicar el estado en el exchange con la routing key del solicitante
+            self._middleware.send_to_queue(
+                self.sync_exchange,
+                response_data.encode(),
+                str(requester_id)
+            )
+
+            # ==================================================================
+            # CAIDA LUEGO DE RECIBIR SYNC_MSG Y LUEGO DE ENVIARLO
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE RECIBIR SYNC_MSG Y LUEGO DE ENVIARLO"))
+            # ==================================================================
+
+            logging.info(f"Replica {self.id}: Estado enviado a la réplica {requester_id}.")
         except Exception as e:
-            logging.error(f"Replica {self.id}: Error consultando maestro: {e}")
-            # TODO: pasa que aun no se le levantó el listener y no llega a responder despues de una reanimacion
-            # TODO: habria que distinguir el caso en que no me respondio porque aun no se le levanto el listener post reanimacion o de si murió post reanimacion instantaneamente.
-            return False  # Por defecto, asumir que no está conectado
+            logging.error(f"Replica {self.id}: Error al procesar SYNC_STATE_REQUEST: {e}")
 
-
-def init_listener(id, replica_ids, ip_prefix, port, master_coordination_vars):
-    listener = ReplicaListener(id, replica_ids, ip_prefix, port, master_coordination_vars)
+def init_listener(id, ip_prefix, port):
+    listener = ReplicaListener(id, ip_prefix, port)
     listener.run()

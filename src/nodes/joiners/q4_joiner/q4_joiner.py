@@ -6,7 +6,7 @@ from messages.results_msg import Q4Result, QueryNumber
 from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
-from utils.constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.middleware_constants import E_FROM_SCORE, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 
 class Q4Joiner(Node):
 
@@ -32,6 +32,7 @@ class Q4Joiner(Node):
         self.games_per_client = defaultdict(lambda: {})  # Detalles de juegos de acción/shooter
         self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False))) # Guarda las reviews negativas de los juegos
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
+        self.last_msg_id = 0
 
     def run(self):
 
@@ -252,5 +253,9 @@ class Q4Joiner(Node):
             for client_id, fins in state["fins_per_client"].items():
                 self.fins_per_client[client_id] = fins
             logging.info(f"Replica: Estados FIN actualizados desde estado recibido.")
+
+        # Actualizar el último mensaje procesado (last_msg_id)
+        if "last_msg_id" in state:
+            self.last_msg_id = state["last_msg_id"]
 
         logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
