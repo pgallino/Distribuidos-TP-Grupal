@@ -10,7 +10,7 @@ from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_TO_PROP, E_FROM_REP
 from utils.listener import NodeListener
 from utils.utils import NodeType
 
-PROB_FALLA = 0.2
+PROB_FALLA = 0
 
 class Node:
     def __init__(self, id: int, n_nodes: int, container_name: str, n_next_nodes: list = []):

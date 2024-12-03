@@ -200,6 +200,19 @@ class NodeType(Enum):
             raise ValueError(f"'{node_type}' no es un miembro válido de NodeType.")
         return node_type.name.lower()
 
+    def get_next_nodes(node_type: 'NodeType') -> list['NodeType']:
+        if node_type == NodeType.TRIMMER:
+            return [NodeType.GENRE, NodeType.SCORE, NodeType.OS_COUNTER]
+        if node_type == NodeType.GENRE:
+            return [NodeType.RELEASE_DATE, NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER]
+        if node_type == NodeType.SCORE:
+            return [NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER]
+        if node_type == NodeType.RELEASE_DATE:
+            return [NodeType.AVG_COUNTER]
+        if node_type == NodeType.ENGLISH:
+            return [NodeType.Q4_JOINER]
+        raise ValueError(f"'{NodeType}' no tiene un nodo siguiente en el pipeline.")
+
 # Diccionario para mapeo manual
 _STRING_TO_NODE_TYPE = {
     "trimmer": NodeType.TRIMMER,
@@ -248,8 +261,8 @@ def simulate_random_failure(node, log_message, probability=0.1):
     if time_since_start < 20:  # Si han pasado menos de 5 segundos, no simular fallo
         return
     
-    if node.get_type() == NodeType.OS_COUNTER:
-        probability = 0.1
+    # if node.get_type() == NodeType.OS_COUNTER:
+    #     probability = 0.1
     if random.random() < probability:
         logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
         logging.warning(log_message)

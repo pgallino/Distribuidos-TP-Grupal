@@ -145,7 +145,8 @@ def generate_docker_compose(instances):
                     services[service_name]['depends_on'][f"trimmer_{k}"] = {
                         'condition': 'service_started'
                     }
-                services[service_name]['depends_on']['propagator_1'] = {
+                for k in range(1, instances['propagator'] + 1):
+                    services[service_name]['depends_on'][f"propagator_{k}"] = {
                         'condition': 'service_started'
                     }
 

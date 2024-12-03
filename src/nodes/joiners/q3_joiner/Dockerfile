@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY src/nodes/joiners/q3_joiner/main.py /
 COPY src/nodes/joiners/q3_joiner/q3_joiner.py /
 COPY src/nodes/node.py /
-COPY src/nodes/coordinator.py /
+
 
 # Copiar la carpeta completa middleware
 COPY src/middleware /middleware

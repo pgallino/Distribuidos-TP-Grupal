@@ -3,7 +3,6 @@ from multiprocessing import Condition, Process, Lock, Manager
 import socket
 import logging
 import signal
-from multiprocessing.synchronize import Lock as LockType
 
 from result_dispatcher import ResultDispatcher
 from connection_handler import ConnectionHandler

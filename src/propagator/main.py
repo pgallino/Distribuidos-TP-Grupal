@@ -1,4 +1,4 @@
-from messages.messages import NodeType
+from utils.utils import NodeType
 from utils.initilization import initialize_config, initialize_log
 import logging
 from propagator import Propagator

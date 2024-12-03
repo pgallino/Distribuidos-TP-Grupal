@@ -3,7 +3,7 @@ import signal
 import socket
 from messages.messages import MsgType, SimpleMessage, decode_msg
 from utils.container_constants import LISTENER_PORT
-from utils.utils import TaskType, recv_msg
+from utils.utils import recv_msg
 
 class Listener:
     def __init__(self, id, ip_prefix, port=LISTENER_PORT, backlog=5):
@@ -48,7 +48,7 @@ class Listener:
             try:
                 self.conn, addr = self.sock.accept()
                 self.process_msg(self.conn)
-                logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
+                # logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
                 self.conn.close()
             except Exception as e:
                 if not self.shutting_down:

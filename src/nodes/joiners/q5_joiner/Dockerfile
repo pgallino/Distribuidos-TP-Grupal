@@ -9,7 +9,7 @@ RUN pip install --no-cache-dir numpy
 COPY src/nodes/joiners/q5_joiner/main.py /
 COPY src/nodes/joiners/q5_joiner/q5_joiner.py /
 COPY src/nodes/node.py /
-COPY src/nodes/coordinator.py /
+
 
 # Copiar la carpeta completa middleware
 COPY src/middleware /middleware

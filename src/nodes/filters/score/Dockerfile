@@ -7,7 +7,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY src/nodes/filters/score/main.py /
 COPY src/nodes/filters/score/score_filter.py /
 COPY src/nodes/node.py /
-COPY src/nodes/coordinator.py /
+
 
 # Copiar la carpeta completa middleware
 COPY src/middleware /middleware

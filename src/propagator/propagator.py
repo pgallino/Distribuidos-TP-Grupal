@@ -3,11 +3,10 @@ import logging
 import signal
 from multiprocessing import Process
 import socket
-import time
-from messages.messages import MsgType, NodeType, PushDataMessage, SimpleMessage, decode_msg
+from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from utils.utils import recv_msg
-from utils.constants import E_FROM_MASTER_PUSH, E_FROM_PROP, K_FIN, K_NOTIFICATION, Q_REPLICA_MASTER, Q_TO_PROP
+from utils.utils import recv_msg, NodeType
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, K_FIN, K_NOTIFICATION, Q_REPLICA_MASTER, Q_TO_PROP
 
 class Propagator:
     def __init__(self, id: int, container_name: str, nodes_instances: dict[str, int], check_interval=5):

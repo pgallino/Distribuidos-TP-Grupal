@@ -2,7 +2,7 @@ import logging
 import signal
 from messages.messages import decode_msg, SimpleMessage, MsgType
 from middleware.middleware import Middleware
-from utils.constants import Q_TO_PROP
+from utils.middleware_constants import Q_TO_PROP
 
 
 
