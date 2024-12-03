@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.utils import NodeType
 
 class OsCounterReplica(Replica):
     def _initialize_storage(self):
@@ -14,6 +15,9 @@ class OsCounterReplica(Replica):
             "os_count": self.os_count,
         }
         logging.info("Replica: Almacenamiento inicializado para OsCounter.")
+
+    def get_type(self):
+        return NodeType.OS_COUNTER_REPLICA
 
     def _process_push_data(self, msg: PushDataMessage):
         """Procesa los datos de un mensaje `PushDataMessage`."""

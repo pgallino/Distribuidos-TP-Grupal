@@ -29,12 +29,13 @@ class Replica:
         if not container_to_restart:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
-        self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
+        # self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
         self.send_queue = E_FROM_REPLICA_PULL
         self.exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
-        self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
+        # self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
         self._middleware.declare_exchange(self.exchange_name, type = "fanout")
-        self._middleware.bind_queue(self.recv_queue, self.exchange_name) # -> bindeo al fanout de los push y pull
+        self.recv_queue = self._middleware.declare_anonymous_queue(exchange_name=self.exchange_name)
+        # self._middleware.bind_queue(self.recv_queue, self.exchange_name) # -> bindeo al fanout de los push y pull
         self._middleware.declare_exchange(E_FROM_REPLICA_PULL)
         self.sync_exchange = "E_SYNC_STATE"
         self._middleware.declare_exchange(self.sync_exchange)
