@@ -167,7 +167,7 @@ class Replica:
             # ==================================================================
 
         except Exception as e:
-            logging.error(f"action: process_replica_message | result: fail | error: {e}")
+            logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
         
     def simulate_failure(self, id):
         """Simula la caída del id"""

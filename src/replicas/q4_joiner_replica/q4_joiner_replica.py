@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.utils import NodeType
 
 class Q4JoinerReplica(Replica):
     def _initialize_storage(self):
@@ -20,6 +21,9 @@ class Q4JoinerReplica(Replica):
             "fins_per_client": self.fins_per_client,
         }
         logging.info("Replica: Almacenamiento inicializado.")
+
+    def get_type(self):
+        return NodeType.Q4_JOINER_REPLICA
 
     def _create_pull_answer(self):
         if not self.state:

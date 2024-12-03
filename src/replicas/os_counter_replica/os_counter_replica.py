@@ -14,10 +14,6 @@ class OsCounterReplica(Replica):
         self.os_count = defaultdict(lambda: (0, 0, 0))  # Diccionario con contadores para Windows, Mac y Linux
         self.last_msg_id = 0  # Último mensaje procesado
 
-        self.state = {
-            "last_msg_id": self.last_msg_id,
-            "os_count": self.os_count,
-        }
         logging.info("Replica: Almacenamiento inicializado para OsCounter.")
 
     def _process_push_data(self, msg: PushDataMessage):
@@ -32,8 +28,7 @@ class OsCounterReplica(Replica):
         if update_type == "os_count":
             updated_counters = state.get("update")
             if updated_counters:
-                self.state["os_count"][client_id] = updated_counters
-                # logging.info(f"Replica: Estado actualizado para client_id={client_id}: {self.state['os_count'][client_id]}")
+                self.os_count[client_id] = updated_counters
 
         elif update_type == "delete":
             self._delete_client_state(client_id)
@@ -42,8 +37,7 @@ class OsCounterReplica(Replica):
             logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
         # Actualizar last_msg_id después de procesar un mensaje válido
-        self.state["last_msg_id"] = msg.msg_id
-        #logging.info(f"Replica: Mensaje PUSH procesado con ID {msg.msg_id}. Estado actualizado.")
+        self.last_msg_id = msg.msg_id
 
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
@@ -55,8 +49,8 @@ class OsCounterReplica(Replica):
 
     def _delete_client_state(self, client_id):
         """Elimina el estado de un cliente específico."""
-        if client_id in self.state["os_count"]:
-            del self.state["os_count"][client_id]
+        if client_id in self.os_count:
+            del self.os_count[client_id]
             logging.info(f"Replica: Estado eliminado para cliente {client_id}.")
         else:
             logging.warning(f"Intento de eliminar estado inexistente para cliente {client_id}.")

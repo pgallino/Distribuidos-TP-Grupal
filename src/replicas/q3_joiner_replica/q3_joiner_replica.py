@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.utils import NodeType
 
 class Q3JoinerReplica(Replica):
         
@@ -19,6 +20,9 @@ class Q3JoinerReplica(Replica):
             "fins_per_client": self.fins_per_client,
         }
         logging.info("Replica: Almacenamiento inicializado.")
+
+    def get_type(self):
+        return NodeType.Q3_JOINER_REPLICA
 
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
