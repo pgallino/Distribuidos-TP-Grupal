@@ -3,6 +3,7 @@ import logging
 import struct
 import subprocess
 import time
+import inspect
 
 BYTES_HEADER = 4
 
@@ -217,3 +218,28 @@ _STRING_TO_NODE_TYPE = {
     "q4_joiner_replica": NodeType.Q4_JOINER_REPLICA,
     "q5_joiner_replica": NodeType.Q5_JOINER_REPLICA,
 }
+
+def log_with_location(message):
+    """Log message with dynamic file name and line number."""
+    frame = inspect.currentframe().f_back
+    file_name = frame.f_code.co_filename
+    line_number = frame.f_lineno
+    return f"{message} - {file_name} - LINE {line_number}"
+
+import random
+
+def simulate_random_failure(node, log_message, probability=0.1):
+    """
+    Simula una caída del sistema con una probabilidad dada.
+    
+    Args:
+        node (node): La instancia de la réplica en la que se ejecuta la simulación.
+        probability (float): Probabilidad de simular una caída (entre 0 y 1).
+    """
+
+    if node.id == 1: #SI ES EL NODO 1 NO LO TIRO NUNCA
+        return
+    if random.random() < probability:
+        logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
+        logging.warning(log_message)
+        node._shutdown()
