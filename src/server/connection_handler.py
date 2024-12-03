@@ -10,7 +10,6 @@ class ConnectionHandler:
     """Handles communication with a connected client in a separate process."""
 
     def __init__(self, id, client_sock, n_next_nodes, fins_lock):   
-        logging.info("entre a init la puta madre")
         self.id = id
         self.client_sock = client_sock
         self.n_next_nodes = n_next_nodes
