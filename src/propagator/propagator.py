@@ -95,9 +95,10 @@ class Propagator:
         
         # notificamos a los nodos que ya propagamos el fin
         logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
-        fin_propagated_msg = SimpleMessage(type=MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
-        self._middleware.send_to_queue(E_FROM_PROP, fin_propagated_msg.encode(), key=K_NOTIFICATION + f'_{NodeType.node_type_to_string(node)}')
-        self.nodes_fins_state[msg.client_id][node.name]['were_notify'] = True
+        if not nodes_client_fins['were_notify']:
+            fin_propagated_msg = SimpleMessage(type=MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
+            self._middleware.send_to_queue(E_FROM_PROP, fin_propagated_msg.encode(), key=K_NOTIFICATION + f'_{NodeType.node_type_to_string(node)}')
+            self.nodes_fins_state[msg.client_id][node.name]['were_notify'] = True
 
     def _process_delete_client(self, msg: SimpleMessage):
         logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
@@ -106,8 +107,8 @@ class Propagator:
             # pushear el cambio de estado a las replicas
 
     def _propagate_fins(self, nodes_client_fins: dict[int, bool], client_id: int, origin_node: NodeType):
-        logging.info(f'Se propagan los fins del cliente {client_id}, desde {origin_node.name}')
         fins_propagated = nodes_client_fins['fins_propagated'] # lo consigue gracias a las replicas
+        logging.info(f'Se propagan los fins del cliente {client_id}, desde {origin_node.name}. Ya habia {fins_propagated} fins propagados')
         next_nodes = NodeType.get_next_nodes(origin_node)
         
         aggregate = 0

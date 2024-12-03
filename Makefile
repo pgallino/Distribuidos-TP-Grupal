@@ -10,7 +10,7 @@ all:
 docker-image:
 	docker build -f ./src/server/Dockerfile -t "server:latest" .
 	docker build -f ./src/client/Dockerfile -t "client:latest" .
-	# docker build -f ./src/watchdog/Dockerfile -t "watchdog:latest" .
+	docker build -f ./src/watchdog/Dockerfile -t "watchdog:latest" .
 	docker build -f ./src/propagator/Dockerfile -t "propagator:latest" .
 	docker build -f ./src/nodes/trimmer/Dockerfile -t "trimmer:latest" .
 	docker build -f ./src/nodes/filters/genre/Dockerfile -t "genre:latest" .

@@ -69,6 +69,7 @@ class Q5Joiner(Node):
             self.push_update('games', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
+            logging.info("LLEGO FIN EN Q5 GAMES")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
@@ -98,6 +99,7 @@ class Q5Joiner(Node):
             self.push_update('reviews', msg.client_id, update)
 
         elif msg.type == MsgType.FIN:
+            logging.info("LLEGO FIN EN Q5")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 

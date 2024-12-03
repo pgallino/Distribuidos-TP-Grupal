@@ -60,7 +60,7 @@ class NodeType(Enum):
         """
         node_type_str = node_type_str.lower()
         if node_type_str in _STRING_TO_NODE_TYPE:
-            return  [node_type_str]
+            return _STRING_TO_NODE_TYPE[node_type_str]
         raise ValueError(f"'{node_type_str}' no es un tipo de nodo válido en NodeType.")
         
     @staticmethod

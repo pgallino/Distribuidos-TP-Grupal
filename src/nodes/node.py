@@ -12,6 +12,7 @@ from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER, Q_TO_PROP
 from utils.listener import NodeListener
 from utils.utils import recv_msg
 
+PROB_FALLA = 0.35
 
 class Node:
     def __init__(self, id: int, n_nodes: int, container_name: str, n_next_nodes: list = []):
@@ -85,10 +86,10 @@ class Node:
         logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(type=MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
-        if random.random() < 0.5:
+        if random.random() < PROB_FALLA:
             logging.warning(f"Se cae justo despues de mandarle al propagator el FIN del cliente {client_id}")
-            time.sleep(5)
-            return
+            self._shutdown()
+            exit(0)
         self.fin_to_ack = (client_id, ch, method.delivery_tag)
         ch.stop_consuming()
     
@@ -96,11 +97,10 @@ class Node:
         """Callback para procesar las notificaciones de fins propagados"""
         msg = decode_msg(raw_message)
 
-        if random.random() < 0.5:
+        if random.random() < PROB_FALLA:
             logging.warning(f"Se cae justo esperando la noti de la propagacion del FIN cliente {self.fin_to_ack[0]}")
-            time.sleep(5)
-            ch.stop_consuming()
-            return
+            self._shutdown()
+            exit(0)
 
         if msg.type == MsgType.FIN_PROPAGATED:
             if self.fin_to_ack:
@@ -110,10 +110,10 @@ class Node:
                     fin_ch.basic_ack(delivery_tag=tag)
                     self.fin_to_ack = None
                     ch.stop_consuming()
-                    if random.random() < 0.5:
+                    if random.random() < PROB_FALLA:
                         logging.warning(f"Se cae justo despues de hacer ack del FIN cliente {client_id}")
-                        time.sleep(5)
-                        return
+                        self._shutdown()
+                        exit(0)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
     
