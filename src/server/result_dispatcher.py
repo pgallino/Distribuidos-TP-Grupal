@@ -68,8 +68,8 @@ class ResultDispatcher:
                         with self.space_available:
                             del self.client_connections[client_id]
                             self.space_available.notify_all() # notifica que hay espacio libre
-                        client_close_msg = SimpleMessage(type=MsgType.CLIENT_CLOSE, client_id=client_id)
-                        self._middleware.send_to_queue(Q_TO_PROP, client_close_msg.encode())
+                        # client_close_msg = SimpleMessage(type=MsgType.CLIENT_CLOSE, client_id=client_id)
+                        # self._middleware.send_to_queue(Q_TO_PROP, client_close_msg.encode())
                 else:
                     # Raise an exception if there's no active connection for client_id
                     raise Exception(f"No active connection for client_id {client_id}")

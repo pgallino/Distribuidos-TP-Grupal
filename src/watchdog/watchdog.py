@@ -8,7 +8,7 @@ from messages.messages import ActiveNodesMessage, MsgType, NodeType, SimpleMessa
 from utils.utils import reanimate_container, recv_msg
 
 class WatchDog:
-    def __init__(self, id: int, n_watchdogs: int, container_name: str, n_nodes_instances: list[tuple[NodeType, int]] = [], check_interval=5):
+    def __init__(self, id: int, n_watchdogs: int, container_name: str, n_nodes_instances: list[tuple[NodeType, int]] = [], check_interval=2):
         """
         Inicializa el WatchDog.
         

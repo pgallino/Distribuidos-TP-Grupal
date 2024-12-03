@@ -7,12 +7,12 @@ import socket
 import time
 from middleware.middleware import Middleware
 from coordinator import CoordinatorNode
-from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
+from messages.messages import MsgType, NodeType, PushDataMessage, SimpleMessage, decode_msg
 from utils.constants import E_FROM_MASTER_PUSH, Q_REPLICA_MASTER, Q_TO_PROP
 from utils.listener import NodeListener
 from utils.utils import recv_msg
 
-PROB_FALLA = 0.35
+PROB_FALLA = 0.2
 
 class Node:
     def __init__(self, id: int, n_nodes: int, container_name: str, n_next_nodes: list = []):
@@ -76,7 +76,7 @@ class Node:
     def run(self):
         raise NotImplementedError("Debe implementarse en las subclases")
     
-    def get_type(self):
+    def get_type(self) -> NodeType:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _receive_message(self, queue_name, callback):
@@ -89,6 +89,7 @@ class Node:
         if random.random() < PROB_FALLA:
             logging.warning(f"Se cae justo despues de mandarle al propagator el FIN del cliente {client_id}")
             self._shutdown()
+            logging.info("Voy a exitiar con CODE 0")
             exit(0)
         self.fin_to_ack = (client_id, ch, method.delivery_tag)
         ch.stop_consuming()
@@ -100,6 +101,7 @@ class Node:
         if random.random() < PROB_FALLA:
             logging.warning(f"Se cae justo esperando la noti de la propagacion del FIN cliente {self.fin_to_ack[0]}")
             self._shutdown()
+            logging.info("Voy a exitiar con CODE 0")
             exit(0)
 
         if msg.type == MsgType.FIN_PROPAGATED:
@@ -113,6 +115,7 @@ class Node:
                     if random.random() < PROB_FALLA:
                         logging.warning(f"Se cae justo despues de hacer ack del FIN cliente {client_id}")
                         self._shutdown()
+                        logging.info("Voy a exitiar con CODE 0")
                         exit(0)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)

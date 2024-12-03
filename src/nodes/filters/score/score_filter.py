@@ -44,6 +44,7 @@ class ScoreFilter(Node):
         """Inicia la recepción de mensajes de la cola."""
         while not self.shutting_down:
             try:
+                logging.info("Empiezo a consumir de la cola de DATA")
                 self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
                 # Empieza a escuchar por la cola de notificaciones
                 self._middleware.receive_from_queue(self.notification_queue, self._process_notification, auto_ack=False)

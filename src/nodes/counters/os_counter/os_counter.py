@@ -50,6 +50,7 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
+            logging.info(f"Llego un FIN de cliente {msg.client_id}")
             self._process_fin_message(msg)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
