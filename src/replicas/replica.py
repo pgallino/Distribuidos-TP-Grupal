@@ -74,14 +74,10 @@ class Replica:
         # CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA
         simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA"))
         # ==================================================================
-
-        if self.last_msg_id == 0:
-            self._middleware.send_to_queue(self.send_queue, SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id).encode())
-            logging.info("Replica: Estado empty enviado en respuesta a PullDataMessage.")
-            return
-        
-        self._middleware.send_to_queue(self.send_queue, self._create_pull_answer().encode())
+        answer = self._create_pull_answer()
+        self._middleware.send_to_queue(self.send_queue, answer.encode())
         logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
+        logging.info(f"envie: {answer}")
 
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
@@ -129,7 +125,8 @@ class Replica:
             # Determinar si la réplica necesita sincronización
             if msg.msg_id > 0 and not self.sincronizado:
                 # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
-                ch.basic_nack(delivery_tag=method.delivery_tag)
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+
 
                 # ==================================================================
                 # CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK
@@ -140,8 +137,9 @@ class Replica:
                 logging.info(f"Replica {self.id}: Recibiendo primer mensaje con ID {msg.msg_id} de tipo {msg.type}. Iniciando sincronización.")
                 return # ya me sincronicé y me vuelvo a consumir por la cola principal
             
-            if msg.type == MsgType.PULL_DATA: # si es un pull respondo siempre, si no estoy sincronizado se responde un Empty y listo
-                self._process_pull_data()
+            if msg.type == MsgType.PULL_DATA: # respondo pull si estoy sincronizado
+                if self.sincronizado:
+                    self._process_pull_data()
 
             elif msg.type == MsgType.SYNC_STATE_REQUEST: # Procesar siempre los mensajes SYNC_STATE_REQUEST
                 if msg.requester_id != self.id:  # Ignorar solicitudes propias
@@ -150,7 +148,7 @@ class Replica:
 
             elif msg.type == MsgType.PUSH_DATA:
                 # Procesar solo mensajes con un ID mayor al último procesado
-                if msg.msg_id > self.last_msg_id or self.last_msg_id == 0:
+                if msg.msg_id > self.last_msg_id or msg.msg_id == 0:
                     self.last_msg_id = msg.msg_id
                     self.sincronizado = True
                     self._process_push_data(msg)

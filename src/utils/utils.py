@@ -247,6 +247,9 @@ def simulate_random_failure(node, log_message, probability=0.1):
 
     if time_since_start < 20:  # Si han pasado menos de 5 segundos, no simular fallo
         return
+    
+    if node.get_type() == NodeType.OS_COUNTER:
+        probability = 0
     if random.random() < probability:
         logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
         logging.warning(log_message)
