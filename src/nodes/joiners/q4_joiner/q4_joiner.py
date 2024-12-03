@@ -7,6 +7,7 @@ from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
 from utils.middleware_constants import E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.utils import NodeType
 
 class Q4Joiner(Node):
 
@@ -38,6 +39,9 @@ class Q4Joiner(Node):
         self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False))) # Guarda las reviews negativas de los juegos
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
         self.last_msg_id = 0
+
+    def get_type(self) -> NodeType:
+        return NodeType.Q3_JOINER
 
     def run(self):
 

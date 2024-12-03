@@ -5,6 +5,7 @@ from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # type: ignore # genera 7 pids en docker stats
 from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
+from utils.utils import NodeType
 
 class Q5Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
@@ -36,6 +37,9 @@ class Q5Joiner(Node):
         self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contador de reseñas negativas por `app_id`
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
         self.last_msg_id = 0
+
+    def get_type(self) -> NodeType:
+        return NodeType.Q5_JOINER
 
     def run(self):
 

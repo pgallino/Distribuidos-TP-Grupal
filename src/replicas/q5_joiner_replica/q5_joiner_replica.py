@@ -12,13 +12,6 @@ class Q5JoinerReplica(Replica):
         self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contador de reseñas negativas por `app_id`
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fins por cliente (client_id -> [fin_games, fin_reviews])
         self.last_msg_id = 0
-
-        self.state = {
-            "last_msg_id": self.last_msg_id,
-            "games_per_client": self.games_per_client,
-            "negative_review_counts_per_client": self.negative_review_counts_per_client,
-            "fins_per_client": self.fins_per_client,
-        }
         logging.info("Replica: Almacenamiento inicializado.")
 
     def get_type(self):
@@ -26,16 +19,8 @@ class Q5JoinerReplica(Replica):
 
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
-        if not self.state:
-            logging.warning("Replica: Estado no inicializado, enviando estado vacío.")
-            self.state = {
-                "last_msg_id": 0,
-                "games_per_client": {},
-                "negative_review_counts_per_client": {},
-                "fins_per_client": {}
-            }
         response_data = PushDataMessage( data={
-            'last_msg_id': self.state['last_msg_id'],
+            'last_msg_id': self.last_msg_id,
             "games_per_client": dict(self.games_per_client),
             "negative_review_counts_per_client": {k: dict(v) for k, v in self.negative_review_counts_per_client.items()},
             "fins_per_client": dict(self.fins_per_client),
@@ -63,7 +48,7 @@ class Q5JoinerReplica(Replica):
             logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
         # Actualizar last_msg_id después de procesar un mensaje válido
-        self.state["last_msg_id"] = msg.msg_id
+        self.last_msg_id = msg.msg_id
         # logging.info(f"Replica: Mensaje PUSH procesado con ID {msg.msg_id}. Estado actualizado.")
 
     def _update_games(self, client_id: int, updates: dict):
