@@ -12,7 +12,7 @@ class OsCounterReplica(Replica):
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
         self.os_count = defaultdict(lambda: (0, 0, 0))  # Diccionario con contadores para Windows, Mac y Linux
-        self.last_msg_id = 0  # Último mensaje procesado
+          # Último mensaje procesado
 
         self.state = {
             "last_msg_id": self.last_msg_id,

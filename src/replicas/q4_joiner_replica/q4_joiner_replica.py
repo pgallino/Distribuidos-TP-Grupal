@@ -10,7 +10,7 @@ class Q4JoinerReplica(Replica):
         self.games_per_client = defaultdict(dict)  # Detalles de juegos de acción/shooter (client_id -> {app_id: name})
         self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False)))  # Reviews negativas y estado (client_id -> app_id -> (reviews, processed))
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fines por cliente (client_id -> [fin_games, fin_reviews])
-        self.last_msg_id = 0
+        
 
         self.state = {
             "last_msg_id": self.last_msg_id,

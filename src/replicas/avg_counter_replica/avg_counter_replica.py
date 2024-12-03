@@ -8,7 +8,7 @@ class AvgCounterReplica(Replica):
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para AvgCounter."""
         self.avg_heap = defaultdict(list)  # Diccionario para almacenar un heap por cliente
-        self.last_msg_id = 0
+        
 
         self.state = {
             "last_msg_id": self.last_msg_id,

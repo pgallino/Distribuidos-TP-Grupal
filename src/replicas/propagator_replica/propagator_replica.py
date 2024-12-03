@@ -3,19 +3,11 @@ import logging
 from messages.messages import PushDataMessage
 from replica import Replica
 
-class Q5JoinerReplica(Replica):
+class PropagatorReplica(Replica):
         
     def _initialize_storage(self):
-        """Inicializa las estructuras de almacenamiento específicas para Q3Joiner."""
-        self.games_per_client = defaultdict(lambda: {})  # Almacena juegos por `app_id`, para cada cliente
-        self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contador de reseñas negativas por `app_id`
-        self.fins_per_client = defaultdict(lambda: [False, False])  # Fins por cliente (client_id -> [fin_games, fin_reviews])
-
-        self.state = {
-            "games_per_client": self.games_per_client,
-            "negative_review_counts_per_client": self.negative_review_counts_per_client,
-            "fins_per_client": self.fins_per_client,
-        }
+        """Inicializa las estructuras de almacenamiento específicas para Propagator."""
+        self.nodes_fins_state = {}
         logging.info("Replica: Almacenamiento inicializado.")
 
     def _process_pull_data(self):
@@ -38,44 +30,30 @@ class Q5JoinerReplica(Replica):
 
     def _process_push_data(self, msg: PushDataMessage):
         """Procesa los datos de un mensaje `PushDataMessage`."""
-        state = msg.data
+        update = msg.data
 
         # Identificar el tipo de actualización
-        update_type = state.get("type")
-        client_id = state.get("id")
+        update_type = update.get("type")
+        client_id = update.get("id")
 
-        if update_type == "games":
-            self._update_games(client_id, state.get("update", {}))
-        elif update_type == "reviews":
-            self._update_reviews(client_id, state.get("update", {}))
-        elif update_type == "fins":
-            self._update_fins(client_id, state.get("update", []))
-        elif update_type == "delete":
-            self._delete_client_state(client_id)
+        if update_type == "node_fin_state":
+            self._node_fin_state(client_id, update.get("update", {}))
+        if update_type == "delete":
+            self._delete_client_state(client_id, update.get("update", {}))
+        # alguno para crear client_state?
         else:
             logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
-    def _update_games(self, client_id: int, updates: dict):
+    def _node_fin_state(self, client_id: int, updates: dict):
         """Actualiza los juegos de un cliente en la réplica."""
+        node_type, node_instance, value = updates['node_type'], updates['node_instance'], updates['value']
+        if client_id not in self.nodes_fins_state:
+            self._add_new_client_state(client_id)
+        
         client_games = self.games_per_client[client_id]
         for app_id, name in updates.items():
             client_games[app_id] = name
         # logging.info(f"Replica: Juegos actualizados para client_id: {client_id} | updates: {updates}")
-
-    def _update_reviews(self, client_id: int, updates: dict):
-        """Actualiza las reseñas de un cliente en la réplica."""
-        client_reviews = self.negative_review_counts_per_client[client_id]
-        for app_id, count in updates.items():
-            client_reviews[app_id] = count
-        # logging.info(f"Replica: Reseñas actualizadas para client_id: {client_id} | updates: {updates}")
-
-    def _update_fins(self, client_id: int, updates: list):
-        """Actualiza los estados de FIN de un cliente en la réplica."""
-        if len(updates) != 2:
-            logging.warning(f"Replica: Formato inválido para actualización de fins: {updates}")
-            return
-        self.fins_per_client[client_id] = updates
-        # # logging.info(f"Replica: Estado de FIN actualizado para client_id: {client_id} | fins: {updates}")
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
@@ -83,3 +61,19 @@ class Q5JoinerReplica(Replica):
         self.negative_review_counts_per_client.pop(client_id, None)
         self.fins_per_client.pop(client_id, None)
         # logging.info(f"Replica: Estado borrado para client_id: {client_id}")
+
+    def _add_new_client_state(self, client_id: int):
+        """
+        Configura el estado inicial de los nodos.
+        """
+        initial_nodes_states = {}
+        for name, instances in self.nodes_instances.items():
+            initial_nodes_states[name] = {}
+            
+            for instance in range(1, instances+1):
+                initial_nodes_states[name][instance] = False
+
+            initial_nodes_states[name]['fins_propagated'] = 0
+        
+        logging.info(f'Se crea el diccionario {initial_nodes_states} para el cliente {client_id}')
+        self.nodes_fins_state[client_id] = initial_nodes_states

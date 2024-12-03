@@ -10,7 +10,6 @@ class Q5JoinerReplica(Replica):
         self.games_per_client = defaultdict(lambda: {})  # Almacena juegos por `app_id`, para cada cliente
         self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contador de reseñas negativas por `app_id`
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fins por cliente (client_id -> [fin_games, fin_reviews])
-        self.last_msg_id = 0
 
         self.state = {
             "last_msg_id": self.last_msg_id,

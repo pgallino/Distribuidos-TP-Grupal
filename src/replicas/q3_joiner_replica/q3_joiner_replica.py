@@ -10,7 +10,7 @@ class Q3JoinerReplica(Replica):
         self.games_per_client = defaultdict(dict)  # Juegos por cliente (client_id -> {app_id: name})
         self.review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Reseñas por cliente (client_id -> app_id -> count)
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fins por cliente (client_id -> [fin_games, fin_reviews])
-        self.last_msg_id = 0
+        
 
         self.state = {
             "last_msg_id": self.last_msg_id,

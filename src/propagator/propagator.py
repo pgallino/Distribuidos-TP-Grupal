@@ -9,7 +9,7 @@ from utils.utils import recv_msg, NodeType
 from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, K_FIN, K_NOTIFICATION, Q_REPLICA_MASTER, Q_TO_PROP
 
 class Propagator:
-    def __init__(self, id: int, container_name: str, nodes_instances: dict[str, int], check_interval=5):
+    def __init__(self, id: int, container_name: str, nodes_instances: dict[str, int]):
         """
         Inicializa el Propagator.
         
@@ -20,7 +20,6 @@ class Propagator:
         """
         self.id = id
         self.container_name = container_name
-        self.check_interval = check_interval
         self.shutting_down = False
         # self.listener_process = None
 
@@ -87,7 +86,7 @@ class Propagator:
         for fin_received in nodes_client_fins:
             # logging.info(f"Fin_received de {node.name} {fin_received} esta en {nodes_client_fins[fin_received]}")
             # logging.info(f"Primera condicion: {isinstance(nodes_client_fins[fin_received], bool)}")
-            if not fin_received in ['fins_propagated', 'were_notify'] and not nodes_client_fins[fin_received]: # no se puede
+            if not fin_received == 'fins_propagated' and not nodes_client_fins[fin_received]: # no se puede
                 return
         # se puede propagar el fin
         self._propagate_fins(nodes_client_fins, msg.client_id, node)
@@ -96,7 +95,6 @@ class Propagator:
         logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
         fin_propagated_msg = SimpleMessage(type=MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
         self._middleware.send_to_queue(E_FROM_PROP, fin_propagated_msg.encode(), key=K_NOTIFICATION + f'_{NodeType.node_type_to_string(node)}')
-        self.nodes_fins_state[msg.client_id][node.name]['were_notify'] = True
 
     def _process_delete_client(self, msg: SimpleMessage):
         logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
@@ -181,7 +179,6 @@ class Propagator:
                 initial_nodes_states[name][instance] = False
 
             initial_nodes_states[name]['fins_propagated'] = 0
-            initial_nodes_states[name]['were_notify'] = False
         
         logging.info(f'Se crea el diccionario {initial_nodes_states} para el cliente {client_id}')
         self.nodes_fins_state[client_id] = initial_nodes_states

@@ -20,6 +20,7 @@ class Replica:
         self.ip_prefix = ip_prefix
         self.port = LISTENER_PORT
         self.sincronizado = False
+        self.last_msg_id = 0
         self.timestamp = time.time()  # Marca de tiempo al iniciar
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
