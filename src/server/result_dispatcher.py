@@ -4,9 +4,6 @@ from messages.messages import decode_msg, SimpleMessage, MsgType
 from middleware.middleware import Middleware
 from utils.middleware_constants import Q_TO_PROP
 
-
-
-
 class ResultDispatcher:
     """Listens to RabbitMQ result queues and dispatches results to the correct client."""
     def __init__(self, client_sockets, lock, space_available, result_queue):
@@ -19,6 +16,7 @@ class ResultDispatcher:
         self._middleware.declare_queue(self.queue)
         self._middleware.declare_queue(Q_TO_PROP)
         self.shutting_down = False
+        self.client_ids = set()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _handle_sigterm(self, sig, frame):
@@ -52,8 +50,13 @@ class ResultDispatcher:
             # TODO: LLevar registro de los resultados recibidos para no procesar duplicados en caso de recibirlos.
             result_msg = decode_msg(body[4:])
 
+            # TODO: SERIA MEJOR TENER EN LOS JOINERS/COUNTERS UN CAMPO RESULT_ID SECUENCIAL Y SI SE RECIBE UN RESULT CON ID MENOR DESCARTARLO
             client_id = result_msg.client_id
+            if client_id in self.client_ids:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                return
 
+            self.client_ids.add(client_id)
             with self.lock:
                 if client_id in self.client_connections:
                     client_sock, n_results_sent = self.client_connections[client_id]

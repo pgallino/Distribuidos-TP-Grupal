@@ -259,7 +259,7 @@ def simulate_random_failure(node, log_message, probability=0.1):
     current_time = time.time()
     time_since_start = current_time - node.timestamp  # Calcular tiempo transcurrido
 
-    if time_since_start < 20:  # Si han pasado menos de 5 segundos, no simular fallo
+    if time_since_start < 60:  # Si han pasado menos de 5 segundos, no simular fallo
         return
     
     # Si es un master y no tiene réplicas, no simular fallo
