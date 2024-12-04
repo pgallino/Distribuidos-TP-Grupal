@@ -5,7 +5,7 @@ import socket
 import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_MASTER_REPLICA, Q_REPLICA_MASTER
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_MASTER_REPLICA
 from utils.container_constants import LISTENER_PORT
 from utils.listener import ReplicaListener
 from utils.utils import simulate_random_failure, log_with_location
@@ -32,13 +32,13 @@ class Replica:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
         self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
-        self.send_queue = E_FROM_REPLICA_PULL
+        self.send_queue = E_FROM_REPLICA_PULL + f'_{container_to_restart}'
         self.exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
         self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
         self._middleware.declare_exchange(self.exchange_name, type = "fanout")
         self._middleware.bind_queue(self.recv_queue, self.exchange_name) # -> bindeo al fanout de los push y pull
-        self._middleware.declare_exchange(E_FROM_REPLICA_PULL)
-        self.sync_exchange = "E_SYNC_STATE"
+        self._middleware.declare_exchange(self.send_queue)
+        self.sync_exchange = "E_SYNC_STATE" + f'_{self.ip_prefix}'
         self._middleware.declare_exchange(self.sync_exchange)
         
         self.listener = Process(target=init_listener, args=(id, ip_prefix, self.port,))
@@ -212,8 +212,11 @@ class Replica:
             simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG"))
             # ==================================================================
 
-            ch.basic_ack(delivery_tag=method.delivery_tag)
             ch.stop_consuming()  # Terminar el consumo después de recibir una respuesta
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            # Eliminar la cola después de procesar el mensaje
+            self._middleware.delete_queue(self.response_queue)
+            logging.info(f"Replica {self.id}: Cola anónima eliminada tras procesar el estado.")
 
             # ==================================================================
             # CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG

@@ -218,6 +218,19 @@ class Middleware:
         for queue in queues_list:
             self.declare_queue(queue)
 
+    def delete_queue(self, queue_name):
+        """
+        Elimina una cola específica del sistema de mensajería.
+        
+        :param queue_name: Nombre de la cola a eliminar.
+        """
+        try:
+            self.channel.queue_delete(queue=queue_name)
+            logging.info(f"Cola '{queue_name}' eliminada con éxito.")
+        except Exception as e:
+            logging.error(f"Error al eliminar la cola '{queue_name}': {e}")
+            raise
+
     def _connect_to_rabbitmq(self):
         retries = 10
         for i in range(retries):
