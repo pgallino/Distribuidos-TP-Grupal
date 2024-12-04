@@ -120,7 +120,7 @@ class Replica:
         try:
             # ==================================================================
             # CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK
-            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"))
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"), probability=0.001)
             # ==================================================================
             msg = decode_msg(raw_message)
 
@@ -131,7 +131,7 @@ class Replica:
 
                 # ==================================================================
                 # CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK
-                simulate_random_failure(self, log_with_location("CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK"))
+                simulate_random_failure(self, log_with_location("CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK"), probability=0.001)
                 # ==================================================================
 
                 ch.stop_consuming()
@@ -156,11 +156,11 @@ class Replica:
 
                     # ==================================================================
                     # CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK
-                    simulate_random_failure(self, log_with_location("CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK"))
+                    simulate_random_failure(self, log_with_location("CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK"), probability=0.001)
                     # ==================================================================
             
             elif msg.type == MsgType.FIN:
-                logging.info(f"RECIBI FIN CON ID: {msg.msg_id}")
+                # logging.info(f"RECIBI FIN CON ID: {msg.msg_id}")
                 if msg.msg_id > self.last_msg_id:
                     self.last_msg_id = msg.msg_id
                     self.sincronizado = True
@@ -171,7 +171,7 @@ class Replica:
 
             # ==================================================================
             # CAIDA ACA POST PROCESAR MENSAJE Y DESPUES DE DAR EL ACK
-            simulate_random_failure(self, log_with_location("CAIDA ACA POST PROCESAR MENSAJE Y DESPUES DE DAR EL ACK"))
+            simulate_random_failure(self, log_with_location("CAIDA ACA POST PROCESAR MENSAJE Y DESPUES DE DAR EL ACK"), probability=0.001)
             # ==================================================================
 
         except Exception as e:
@@ -192,7 +192,7 @@ class Replica:
 
         # ==================================================================
         # CAIDA LUEGO DE ENTRAR A RECOVER_STATE Y ANTES DE ENVIAR SYNC_MSG
-        simulate_random_failure(self, log_with_location("CAIDA LUEGO DE ENTRAR A RECOVER_STATE Y ANTES DE ENVIAR SYNC_MSG"))
+        simulate_random_failure(self, log_with_location("CAIDA LUEGO DE ENTRAR A RECOVER_STATE Y ANTES DE ENVIAR SYNC_MSG"), probability=0.001)
         # ==================================================================
 
         # Crear una cola anónima y vincularla al exchange E_SYNC_STATE con la routing key basada en el ID de la réplica
@@ -205,7 +205,7 @@ class Replica:
 
         # ==================================================================
         # CAIDA LUEGO DE ENVIAR SYNC_MSG Y ANTES DE ESPERAR RESPUESTA
-        simulate_random_failure(self, log_with_location("CAIDA LUEGO DE ENVIAR SYNC_MSG Y ANTES DE ESPERAR RESPUESTA"))
+        simulate_random_failure(self, log_with_location("CAIDA LUEGO DE ENVIAR SYNC_MSG Y ANTES DE ESPERAR RESPUESTA"), probability=0.001)
         # ==================================================================
 
         # Esperar respuesta
@@ -217,7 +217,7 @@ class Replica:
 
             # ==================================================================
             # CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG
-            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG"))
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG"), probability=0.001)
             # ==================================================================
 
             ch.stop_consuming()  # Terminar el consumo después de recibir una respuesta
@@ -228,7 +228,7 @@ class Replica:
 
             # ==================================================================
             # CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG
-            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG"))
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG"), probability=0.001)
             # ==================================================================
 
         self._middleware.receive_from_queue(self.response_queue, on_state_response, auto_ack=False)
@@ -244,7 +244,7 @@ class Replica:
 
             # ==================================================================
             # CAIDA LUEGO DE RECIBIR SYNC_MSG Y ANTES DE ENVIARLO
-            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE RECIBIR SYNC_MSG Y ANTES DE ENVIARLO"))
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE RECIBIR SYNC_MSG Y ANTES DE ENVIARLO"), probability=0.001)
             # ==================================================================
             
             # Crear el mensaje de respuesta con el estado actual
@@ -260,7 +260,7 @@ class Replica:
 
             # ==================================================================
             # CAIDA LUEGO DE RECIBIR SYNC_MSG Y LUEGO DE ENVIARLO
-            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE RECIBIR SYNC_MSG Y LUEGO DE ENVIARLO"))
+            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE RECIBIR SYNC_MSG Y LUEGO DE ENVIARLO"), probability=0.001)
             # ==================================================================
 
             logging.info(f"Replica {self.id}: Estado enviado a la réplica {requester_id}.")

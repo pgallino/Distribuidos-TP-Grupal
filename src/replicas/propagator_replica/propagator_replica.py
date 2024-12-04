@@ -47,7 +47,7 @@ class PropagatorReplica(Replica):
         if client_id in self.nodes_fins_state:
             self.nodes_fins_state[client_id][node_type][node_instance] = value
 
-        logging.info(f"Estado actualizado de cliente {client_id} para {node_type} {node_instance}")
+        # logging.info(f"Estado actualizado de cliente {client_id} para {node_type} {node_instance}")
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
@@ -68,7 +68,7 @@ class PropagatorReplica(Replica):
         if client_id in self.nodes_fins_state:
             self.nodes_fins_state[client_id][node.name]['fins_propagated'] += 1
         
-        logging.info(f"actualicé con el fin en: cliente {client_id} de {node.name} --> fins_propagated {self.nodes_fins_state[client_id][node.name]['fins_propagated']}")
+        # logging.info(f"actualicé con el fin en: cliente {client_id} de {node.name} --> fins_propagated {self.nodes_fins_state[client_id][node.name]['fins_propagated']}")
 
     def _load_state(self, msg: PushDataMessage):
         """Carga el estado completo recibido en la réplica."""

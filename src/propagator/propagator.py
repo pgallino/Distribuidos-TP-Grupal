@@ -90,7 +90,7 @@ class Propagator:
         self.push_update('node_fin_state', msg.client_id, update=(node.name, msg.node_instance, True))
         # ==================================================================
         # CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE
-        # simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"))
+        simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"))
         # ==================================================================
 
         # nos fijamos si se puede propagar el fin
@@ -101,11 +101,21 @@ class Propagator:
                 return
         # se puede propagar el fin
         self._propagate_fins(nodes_client_fins, msg.client_id, node)
+
+        # ==================================================================
+        # CAIDA POST PROPAGACION DE FINS DE CLIENTE
+        simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"))
+        # ==================================================================
         
         # notificamos a los nodos que ya propagamos el fin
         logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
         fin_propagated_msg = SimpleMessage(type=MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
         self._middleware.send_to_queue(E_FROM_PROP, fin_propagated_msg.encode(), key=K_NOTIFICATION + f'_{NodeType.node_type_to_string(node)}')
+
+        # ==================================================================
+        # CAIDA POST NOTIFICACION DE FINS CLIENTE
+        simulate_random_failure(self, log_with_location(f"CAIDA POST NOTIFICACION DE FINS DE CLIENTE {msg.client_id} A {node.name}"))
+        # ==================================================================
 
     def _process_delete_client(self, msg: SimpleMessage):
         logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
@@ -151,7 +161,7 @@ class Propagator:
             for _ in range(fins_to_propagate):
                 # ==================================================================
                 # CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE
-                simulate_random_failure(self, log_with_location(f"CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE {client_id} de {origin_node.name}"))
+                simulate_random_failure(self, log_with_location(f"CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE {client_id} de {origin_node.name}"), probability=0.05)
                 # ==================================================================
                 logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
                 self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'.{name}')

@@ -248,7 +248,7 @@ def log_with_location(message):
 
 import random
 
-def simulate_random_failure(node, log_message, probability=0):
+def simulate_random_failure(node, log_message, probability=0.1):
     """
     Simula una caída del sistema con una probabilidad dada.
     
@@ -272,12 +272,6 @@ def simulate_random_failure(node, log_message, probability=0):
     # Si es un master y no tiene réplicas, no simular fallo
     if (node.get_type() in masters) and node.n_replicas == 0:
         return
-    
-    if (node.get_type() == NodeType.PROPAGATOR):
-        probability = 0.1
-
-    if (node.get_type() == NodeType.PROPAGATOR_REPLICA):
-        probability = 0
 
     if random.random() < probability:
         logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
