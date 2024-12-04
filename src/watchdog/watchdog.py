@@ -1,7 +1,7 @@
 # Clase watchdog
 import logging
 import signal
-from multiprocessing import Condition, Lock, Process, Value
+from multiprocessing import Condition, Lock, Manager, Process, Value
 import socket
 import time
 from election.election_logic import initiate_election
@@ -29,11 +29,15 @@ class WatchDog:
         self.listener_process = None
 
         self.nodes_state = {}
-        self.leader_id = Value('i', -1)  # Inicializado con -1 (ningún líder)
-        self.election_in_progress = Value('i', False)  # 0 = No, 1 = Sí
-        self.election_condition = Condition()
-        self.waiting_ok = Value('i', False)  # 0 = No, 1 = Sí
-        self.ok_condition = Condition()
+        manager = Manager()
+
+        # Variables compartidas
+        self.election_in_progress = manager.Value('b', False)  # Booleano
+        self.election_condition = manager.Condition()  # Condición para sincronización
+        self.waiting_ok = manager.Value('b', False)  # Booleano para esperar OKs
+        self.ok_condition = manager.Condition()  # Condición para sincronización de OKs
+        self.leader_id = manager.Value('i', -1)  # ID del líder (-1 indica sin líder)
+
 
         self._set_nodes_state(nodes_to_monitor)
 
