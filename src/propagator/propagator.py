@@ -5,7 +5,7 @@ from multiprocessing import Process
 import socket
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from utils.listener import PropagatorListener
+from listener import Listener
 from utils.utils import log_with_location, recv_msg, NodeType, simulate_random_failure
 from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, E_FROM_REPLICA_PULL, K_FIN, K_NOTIFICATION, Q_TO_PROP
 
@@ -274,5 +274,5 @@ class Propagator:
 
 
 def init_listener(id, ip_prefix):
-    listener = PropagatorListener(id, ip_prefix)
+    listener = Listener(id, ip_prefix)
     listener.run()

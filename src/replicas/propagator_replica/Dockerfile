@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY src/replicas/propagator_replica/main.py /
 COPY src/replicas/propagator_replica/propagator_replica.py /
 COPY src/replicas/replica.py /
+COPY src/listener/listener.py /
 COPY src/replicas/config.ini /
 
 COPY src/middleware /middleware

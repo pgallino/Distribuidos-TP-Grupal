@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY src/nodes/filters/genre/main.py /
 COPY src/nodes/filters/genre/genre_filter.py /
 COPY src/nodes/node.py /
+COPY src/listener/listener.py /
 
 
 # Copiar la carpeta completa middleware

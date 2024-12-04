@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY src/replicas/q4_joiner_replica/main.py /
 COPY src/replicas/q4_joiner_replica/q4_joiner_replica.py /
 COPY src/replicas/replica.py /
+COPY src/listener/listener.py /
 COPY src/replicas/config.ini /
 
 COPY src/middleware /middleware

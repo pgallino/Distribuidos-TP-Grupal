@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copiamos los archivos necesarios
 COPY src/watchdog/main.py /
 COPY src/watchdog/watchdog.py /
+COPY src/listener /listener
 
 COPY src/messages /messages
 COPY src/utils /utils

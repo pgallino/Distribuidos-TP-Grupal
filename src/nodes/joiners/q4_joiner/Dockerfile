@@ -8,6 +8,7 @@ COPY src/nodes/joiners/q4_joiner/main.py /
 COPY src/nodes/joiners/q4_joiner/q4_joiner.py /
 COPY src/nodes/joiners/q4_joiner/config.ini /
 COPY src/nodes/node.py /
+COPY src/listener/listener.py /
 
 
 # Copiar la carpeta completa middleware

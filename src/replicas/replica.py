@@ -6,7 +6,7 @@ from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_ms
 from middleware.middleware import Middleware
 from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_REPLICA_PULL, Q_MASTER_REPLICA
 from utils.container_constants import LISTENER_PORT, REPLICAS_PROB_FAILURE
-from utils.listener import ReplicaListener
+from listener import Listener
 from utils.utils import simulate_random_failure, log_with_location
 
 class Replica:
@@ -268,5 +268,5 @@ class Replica:
             logging.error(f"Replica {self.id}: Error al procesar SYNC_STATE_REQUEST: {e}")
 
 def init_listener(id, container_name, port):
-    listener = ReplicaListener(id, container_name, port)
+    listener = Listener(id, container_name, port)
     listener.run()
