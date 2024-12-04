@@ -5,11 +5,12 @@ from multiprocessing import Process
 import socket
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from utils.utils import recv_msg, NodeType
-from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, K_FIN, K_NOTIFICATION, Q_REPLICA_MASTER, Q_TO_PROP
+from utils.listener import PropagatorListener
+from utils.utils import log_with_location, recv_msg, NodeType, simulate_random_failure
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, E_FROM_REPLICA_PULL, K_FIN, K_NOTIFICATION, Q_TO_PROP
 
 class Propagator:
-    def __init__(self, id: int, container_name: str, nodes_instances: dict[str, int]):
+    def __init__(self, id: int, container_name: str, nodes_instances: dict[str, int], n_replicas: int):
         """
         Inicializa el Propagator.
         
@@ -21,22 +22,24 @@ class Propagator:
         self.id = id
         self.container_name = container_name
         self.shutting_down = False
-        # self.listener_process = None
-
-        # self.manager = Manager()
-        # self.nodes_state = self.manager.dict()
-        # self.nodes_state_lock = Lock()
+        self.listener = None
+        self.n_replicas = n_replicas
 
         self.nodes_instances = nodes_instances
         self.nodes_fins_state = {}
         self._middleware = Middleware()
 
+        self.last_msg_id = 0
+
         # Configuracion de colas
         # hacerlo con las colas para la comunicacion con replicas: E_FROM_MASTER_PUSH, Q_REPLICA_MASTER
         self._middleware.declare_queue(Q_TO_PROP)
-        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
+
+    def get_type(self):
+        return NodeType.PROPAGATOR
 
     def run(self):
         """
@@ -44,9 +47,12 @@ class Propagator:
         - Inicia el listener en un proceso separado.
         - Periódicamente verifica si los nodos están vivos.
         """
-        # self.init_listener_process()
+        self.init_listener_process()
 
         try:
+
+            if self.n_replicas > 0: # verifico si se instanciaron replicas
+                self._synchronize_with_replicas()
             self._middleware.receive_from_queue(Q_TO_PROP, self._process_message, auto_ack=False)
             
         except Exception as e:
@@ -81,6 +87,11 @@ class Propagator:
 
         # logging.info(f'Se actualiza el diccionario: {self.nodes_fins_state[msg.client_id]}')
         # pusheamos el cambio de estado a las replicas
+        self.push_update('node_fin_state', msg.client_id, update=(node.name, msg.node_instance, True))
+        # ==================================================================
+        # CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE
+        # simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"))
+        # ==================================================================
 
         # nos fijamos si se puede propagar el fin
         for fin_received in nodes_client_fins:
@@ -101,6 +112,7 @@ class Propagator:
         if msg.client_id in self.nodes_fins_state:
             del self.nodes_fins_state[msg.client_id]
             # pushear el cambio de estado a las replicas
+            self.push_update('delete', msg.client_id)
 
     def _propagate_fins(self, nodes_client_fins: dict[int, bool], client_id: int, origin_node: NodeType):
         fins_propagated = nodes_client_fins['fins_propagated'] # lo consigue gracias a las replicas
@@ -135,10 +147,15 @@ class Propagator:
                 else:
                     name += '_reviews'
 
-            fin_msg = SimpleMessage(type=MsgType.FIN, client_id=client_id)
+            fin_msg = SimpleMessage(type=MsgType.FIN, client_id=client_id, node_type=origin_node.value, msg_id=self.last_msg_id)
             for _ in range(fins_to_propagate):
+                # ==================================================================
+                # CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE
+                simulate_random_failure(self, log_with_location(f"CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE {client_id} de {origin_node.name}"))
+                # ==================================================================
                 logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
-                self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'_{name}')
+                self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'.{name}')
+                self.last_msg_id += 1 # se le agrega 1
             aggregate += curr_instances
 
         nodes_client_fins['fins_propagated'] = aggregate
@@ -152,10 +169,16 @@ class Propagator:
         logging.info("action: shutdown_node | result: in progress...")
         self.shutting_down = True
 
-        # if self.listener_process:
-        #     self.listener_process.terminate()
-        #     self.listener_process.join()
-        logging.info("action: shutdown_node | result: success")
+        if self.listener:
+            self.listener.terminate()
+            self.listener.join()
+        try:
+            self._middleware.close()
+            logging.info("action: shutdown_node | result: success")
+        except Exception as e:
+            logging.error(f"action: shutdown_node | result: fail | error: {e}")
+        
+        self._middleware.check_closed()
 
     def _handle_sigterm(self, sig, frame):
         """Handle SIGTERM signal to close the node gracefully."""
@@ -182,70 +205,64 @@ class Propagator:
         
         logging.info(f'Se crea el diccionario {initial_nodes_states} para el cliente {client_id}')
         self.nodes_fins_state[client_id] = initial_nodes_states
-
-    def update_node_state(self, node_type: NodeType, instance_id: int, is_alive: bool):
-        """
-        Actualiza el estado de un nodo específico.
-
-        :param node_type: Tipo de nodo (por ejemplo, "GENRE", "SCORE").
-        :param instance_id: ID de la instancia del nodo.
-        :param is_alive: Nuevo estado del nodo (`True` para vivo, `False` para muerto).
-        """
-        with self.nodes_state_lock:
-            if node_type in self.nodes_state:
-                if instance_id in self.nodes_state[node_type]:
-                    self.nodes_state[node_type][instance_id] = is_alive
-                    # logging.info(f"Updated state for {node_type} instance {instance_id} to {'alive' if is_alive else 'dead'}.")
-                else:
-                    logging.warning(f"Instance ID {instance_id} not found for node type {node_type}.")
-            else:
-                logging.warning(f"Node type {node_type} not found in nodes_state.")
+        self.push_update('new_client', client_id, update=initial_nodes_states)
 
     def _synchronize_with_replicas(self):
-        # Declarar las colas necesarias
+        """Solicita el estado a las réplicas y sincroniza el nodo."""
+        logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
+
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
-        self.replica_queue = Q_REPLICA_MASTER + f'_{self.container_name}_{self.id}'
-        self._middleware.declare_exchange(self.push_exchange_name, type="fanout") # -> exchange para broadcast de push y pull
-        self._middleware.declare_queue(self.replica_queue) # -> cola para recibir respuestas
+        self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
+        self.pull_exchange_name = E_FROM_REPLICA_PULL + f'_{self.container_name}_{self.id}'
+        self._middleware.declare_exchange(self.pull_exchange_name)
+        self.recv_queue = self._middleware.declare_anonymous_queue(self.pull_exchange_name)
 
-        # Función de callback para procesar la respuesta
-        def on_replica_response(ch, method, properties, body):
-            msg = decode_msg(body)
-            if isinstance(msg, PushDataMessage):
-                self.load_state(msg)
-                logging.info(f"action: Sincronizado con réplica | Datos recibidos: {msg.data}")
-            ch.basic_ack(delivery_tag=method.delivery_tag)
-            logging.info("Callback terminado.")
-            ch.stop_consuming()
-
-        # Enviar un mensaje `PullDataMessage`
+        # Enviar un PULL_DATA a todas las réplicas
         pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
         self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
-        self._middleware.receive_from_queue(self.replica_queue, on_replica_response, auto_ack=False)          
-        self.connected = 1
+        logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
+
+        def on_response(ch, method, properties, body):
+            """Callback para manejar las respuestas de las réplicas."""
+            msg = decode_msg(body)
+
+            if isinstance(msg, PushDataMessage):
+                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id}. con {msg.data}")
+                self.load_state(msg)
+            ch.basic_ack(delivery_tag=method.delivery_tag)
+            ch.stop_consuming()
+
+        # Escuchar respuestas hasta recibir de todas las réplicas
+        # TODO: ver si hacer reintentos
+        # TODO: ver inactivity_time
+        self._middleware.receive_from_queue_with_timeout(self.recv_queue, on_response, inactivity_time=5, auto_ack=False)
+        # Eliminar la cola anonima después de procesar el mensaje
+        self._middleware.delete_queue(self.recv_queue)
+
+    def load_state(self, msg: PushDataMessage):
+        self.nodes_fins_state = msg.data["nodes_fins_state"]
+        self.last_msg_id = msg.data["last_msg_id"]
+        logging.info(f"Estado sicronizado a {self.nodes_fins_state}")
+
+    def push_update(self, type: str, client_id: int, update = None):
+
+        if self.n_replicas > 0:
+            if update:
+                data = {'type': type, 'id': client_id, 'update': update}
+            else:
+                data = {'type': type, 'id': client_id}
+
+            push_msg = PushDataMessage(data=data, msg_id=self.last_msg_id)
+            self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
+
+        self.last_msg_id += 1
 
     def init_listener_process(self):
-        process = Process(target=handle_listener_process, args=(f'propagator_{self.id}', self.id, 12345, 5, self.nodes_state, self.nodes_state_lock))
+        process = Process(target=init_listener, args=(self.id, 'propagator',))
         process.start()
-        self.listener_process = process
+        self.listener = process
 
 
-def handle_listener_process(container_name, id, port, n_conn, nodes_state, lock_nodes_state): # n_conn es la cantidad de clases que existen de nodos filtro
-
-    #TODO: Armarle en handlesigterm y shutdown
-
-    try:
-        listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        logging.info(f"me bindee a {container_name}")
-        listener_socket.bind((container_name, port))
-        listener_socket.listen(n_conn)
-        logging.info(f"node {id}: Escuchando en el puerto {port}.")
-
-        while True:
-            conn, addr = listener_socket.accept()
-            logging.info(f"me llego una conexion de {addr}")
-            raw_msg = recv_msg(conn)
-            msg = decode_msg(raw_msg)
-            conn.close()
-    except Exception as e:
-        logging.error(f"node {id}: Error iniciando el servidor socket: {e.with_traceback()}")
+def init_listener(id, ip_prefix):
+    listener = PropagatorListener(id, ip_prefix)
+    listener.run()

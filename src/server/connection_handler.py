@@ -3,7 +3,7 @@ import signal
 from messages.messages import Data, MsgType, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from utils.middleware_constants import Q_GATEWAY_TRIMMER
-from utils.utils import recv_msg
+from utils.utils import NodeType, recv_msg
 
 
 class ConnectionHandler:
@@ -47,7 +47,7 @@ class ConnectionHandler:
                     data_msg = Data( client_id=self.id, rows=msg.rows, dataset=msg.dataset)
                     self._middleware.send_to_queue(Q_GATEWAY_TRIMMER, data_msg.encode())
                 elif msg.type == MsgType.CLIENT_FIN:
-                    fin_msg = SimpleMessage(type=MsgType.FIN, client_id=self.id)
+                    fin_msg = SimpleMessage(type=MsgType.FIN, client_id=self.id, node_type=NodeType.GATEWAY.value)
                     with self.fins_lock:
                         logging.info(f"Con el lock empiezo a mandar los FINs del cliente {self.id}")
                         for _ in range(self.n_next_nodes):

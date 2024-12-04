@@ -211,7 +211,7 @@ class SimpleMessage(BaseMessage):
                             el tipo esperado.
         """
         ATTRIBUTE_MAPPING = {
-            MsgType.FIN: ["client_id"],
+            MsgType.FIN: ["client_id", "node_type"],
             MsgType.ELECTION: ["node_id"],
             MsgType.OK_ELECTION: ["node_id"],
             MsgType.LEADER_ELECTION: ["node_id"],

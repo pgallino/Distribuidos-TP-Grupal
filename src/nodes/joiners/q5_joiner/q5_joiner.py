@@ -22,11 +22,11 @@ class Q5Joiner(Node):
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
         
-        self._middleware.declare_exchange(E_FROM_PROP)
-        fin_games_key = K_FIN+f'_{container_name}_games'
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        fin_games_key = K_FIN+f'.{container_name}_games'
         logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_games_key}')
         self._middleware.bind_queue(Q_GENRE_Q5_JOINER, E_FROM_PROP, key=fin_games_key) # hay que modificarlo en el propagator
-        fin_reviews_key = K_FIN+f'_{container_name}_reviews'
+        fin_reviews_key = K_FIN+f'.{container_name}_reviews'
         logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_reviews_key}')
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_PROP, key=fin_reviews_key)
 

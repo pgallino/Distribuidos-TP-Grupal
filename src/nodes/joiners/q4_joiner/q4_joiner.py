@@ -28,10 +28,10 @@ class Q4Joiner(Node):
         self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_GENRE, K_SHOOTER_GAMES)
         self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_SCORE, K_NEGATIVE_TEXT)
 
-        self._middleware.declare_exchange(E_FROM_PROP)
-        self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_games') # hay que modificarlo en el propagator
-        self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_reviews')
-        self._middleware.bind_queue(Q_ENGLISH_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_english')
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'.{container_name}_games') # hay que modificarlo en el propagator
+        self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'.{container_name}_reviews')
+        self._middleware.bind_queue(Q_ENGLISH_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'.{container_name}_english')
 
         # Estructuras de almacenamiento
         self.negative_reviews_count_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas negativas en inglés, para cada cliente

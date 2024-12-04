@@ -1,7 +1,6 @@
 import logging
 from multiprocessing import Process
 import signal
-import socket
 import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
@@ -11,13 +10,13 @@ from utils.listener import ReplicaListener
 from utils.utils import simulate_random_failure, log_with_location
 
 class Replica:
-    def __init__(self, id: int, ip_prefix: str, container_to_restart: str):
+    def __init__(self, id: int, container_name: str, container_to_restart: str):
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
         self.container_to_restart = container_to_restart
         self.state = None
-        self.ip_prefix = ip_prefix
+        self.container_name = container_name
         self.port = LISTENER_PORT
         self.sincronizado = False
         self.last_msg_id = 0
@@ -25,24 +24,24 @@ class Replica:
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        self._initialize_storage()
-
-        if not ip_prefix:
-            raise ValueError("ip_prefix no puede ser None o vacío.")
+        if not container_name:
+            raise ValueError("container_name no puede ser None o vacío.")
         if not container_to_restart:
             raise ValueError("container_to_restart no puede ser None o vacío.")
 
-        self.recv_queue = Q_MASTER_REPLICA + f"_{ip_prefix}_{self.id}"
+        self.recv_queue = Q_MASTER_REPLICA + f"_{container_name}_{self.id}"
         self.send_queue = E_FROM_REPLICA_PULL + f'_{container_to_restart}'
         self.exchange_name = E_FROM_MASTER_PUSH + f"_{container_to_restart}"
         self._middleware.declare_queue(self.recv_queue) # -> cola por donde recibo pull y push
         self._middleware.declare_exchange(self.exchange_name, type = "fanout")
         self._middleware.bind_queue(self.recv_queue, self.exchange_name) # -> bindeo al fanout de los push y pull
         self._middleware.declare_exchange(self.send_queue)
-        self.sync_exchange = "E_SYNC_STATE" + f'_{self.ip_prefix}'
+        self.sync_exchange = "E_SYNC_STATE" + f'_{self.container_name}'
         self._middleware.declare_exchange(self.sync_exchange)
+
+        self._initialize_storage()
         
-        self.listener = Process(target=init_listener, args=(id, ip_prefix, self.port,))
+        self.listener = Process(target=init_listener, args=(id, container_name, self.port,))
         self.listener.start()
 
     def run(self):
@@ -68,6 +67,9 @@ class Replica:
     def _load_state(self, msg):
         pass
 
+    def _process_fin_message(self, msg):
+        pass
+
     def _process_pull_data(self):
         """Procesa un mensaje de solicitud de pull de datos."""
 
@@ -78,7 +80,6 @@ class Replica:
         answer = self._create_pull_answer()
         self._middleware.send_to_queue(self.send_queue, answer.encode())
         logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
-        # logging.info(f"envie: {answer}")
 
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
@@ -128,7 +129,6 @@ class Replica:
                 # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
-
                 # ==================================================================
                 # CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK
                 simulate_random_failure(self, log_with_location("CAIDA LUEGO DE DEVOLVER A LA COLA CON NACK"))
@@ -158,6 +158,13 @@ class Replica:
                     # CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK
                     simulate_random_failure(self, log_with_location("CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK"))
                     # ==================================================================
+            
+            elif msg.type == MsgType.FIN:
+                logging.info(f"RECIBI FIN CON ID: {msg.msg_id}")
+                if msg.msg_id > self.last_msg_id:
+                    self.last_msg_id = msg.msg_id
+                    self.sincronizado = True
+                    self._process_fin_message(msg)
 
             # Confirmar la recepción del mensaje
             ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -260,6 +267,6 @@ class Replica:
         except Exception as e:
             logging.error(f"Replica {self.id}: Error al procesar SYNC_STATE_REQUEST: {e}")
 
-def init_listener(id, ip_prefix, port):
-    listener = ReplicaListener(id, ip_prefix, port)
+def init_listener(id, container_name, port):
+    listener = ReplicaListener(id, container_name, port)
     listener.run()

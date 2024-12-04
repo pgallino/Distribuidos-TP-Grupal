@@ -50,10 +50,6 @@ class Node:
         logging.info("action: shutdown_node | result: in progress...")
         self.shutting_down = True
 
-        if self.coordination_process:
-            self.coordination_process.terminate()
-            self.coordination_process.join()
-
         if self.listener:
             self.listener.terminate()
             self.listener.join()
@@ -124,6 +120,8 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
+
+        #TODO: PODRIA ENVIARSE UN PULL A CADA REPLICA Y LA PRIMERA QUE RESPONDE ME LO QUEDO
         """Solicita el estado a las réplicas y sincroniza el nodo."""
         logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
 

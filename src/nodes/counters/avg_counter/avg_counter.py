@@ -16,8 +16,8 @@ class AvgCounter(Node):
         self.n_replicas = n_replicas
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
-        self._middleware.declare_exchange(E_FROM_PROP)
-        self._middleware.bind_queue(Q_RELEASE_DATE_AVG_COUNTER, E_FROM_PROP, key=K_FIN+f'_{container_name}')
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        self._middleware.bind_queue(Q_RELEASE_DATE_AVG_COUNTER, E_FROM_PROP, key=K_FIN+f'.{container_name}')
 
         # Diccionario para almacenar un heap por cada cliente
         self.avg_count = defaultdict(list)  # client_id -> heap

@@ -25,9 +25,9 @@ class Q3Joiner(Node):
 
         self._middleware.declare_queue(Q_QUERY_RESULT_3)
 
-        self._middleware.declare_exchange(E_FROM_PROP)
-        self._middleware.bind_queue(Q_GENRE_Q3_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_games') # hay que modificarlo en el propagator
-        self._middleware.bind_queue(Q_SCORE_Q3_JOINER, E_FROM_PROP, key=K_FIN+f'_{container_name}_reviews')
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        self._middleware.bind_queue(Q_GENRE_Q3_JOINER, E_FROM_PROP, key=K_FIN+f'.{container_name}_games') # hay que modificarlo en el propagator
+        self._middleware.bind_queue(Q_SCORE_Q3_JOINER, E_FROM_PROP, key=K_FIN+f'.{container_name}_reviews')
 
         # Estructuras para almacenar datos
         self.games_per_client = defaultdict(lambda: {})  # Almacenará juegos por `app_id`, para cada cliente

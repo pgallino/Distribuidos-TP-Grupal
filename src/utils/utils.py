@@ -173,6 +173,10 @@ class NodeType(Enum):
     Q3_JOINER_REPLICA = 12
     Q4_JOINER_REPLICA = 13
     Q5_JOINER_REPLICA = 14
+    PROPAGATOR = 15
+    PROPAGATOR_REPLICA = 16
+    WATCHDOG = 17
+    GATEWAY = 18
 
     def string_to_node_type(node_type_str: str) -> 'NodeType':
         """
@@ -230,6 +234,9 @@ _STRING_TO_NODE_TYPE = {
     "q3_joiner_replica": NodeType.Q3_JOINER_REPLICA,
     "q4_joiner_replica": NodeType.Q4_JOINER_REPLICA,
     "q5_joiner_replica": NodeType.Q5_JOINER_REPLICA,
+    "propagator": NodeType.PROPAGATOR,
+    "propagator_replica": NodeType.PROPAGATOR_REPLICA,
+    "watchdog": NodeType.WATCHDOG
 }
 
 def log_with_location(message):
@@ -241,7 +248,7 @@ def log_with_location(message):
 
 import random
 
-def simulate_random_failure(node, log_message, probability=0.1):
+def simulate_random_failure(node, log_message, probability=0):
     """
     Simula una caída del sistema con una probabilidad dada.
     
@@ -250,21 +257,27 @@ def simulate_random_failure(node, log_message, probability=0.1):
         log_message (str): Mensaje de log que describe la simulación.
         probability (float): Probabilidad de simular una caída (entre 0 y 1).
     """
-    replicas = {NodeType.AVG_COUNTER_REPLICA, NodeType.OS_COUNTER_REPLICA, NodeType.Q3_JOINER_REPLICA, NodeType.Q4_JOINER_REPLICA, NodeType.Q5_JOINER_REPLICA}
+    replicas = {NodeType.AVG_COUNTER_REPLICA, NodeType.OS_COUNTER_REPLICA, NodeType.Q3_JOINER_REPLICA, NodeType.Q4_JOINER_REPLICA, NodeType.Q5_JOINER_REPLICA, NodeType.PROPAGATOR_REPLICA}
     masters = {NodeType.AVG_COUNTER, NodeType.OS_COUNTER, NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER}
     if (node.get_type() in replicas) and node.id == 1: #SI ES EL NODO 1 NO LO TIRO NUNCA SI ES UNA REPLICA
         return
 
-    # Verificar si el nodo inició hace menos de 5 segundos
-    current_time = time.time()
-    time_since_start = current_time - node.timestamp  # Calcular tiempo transcurrido
+    # # Verificar si el nodo inició hace menos de 5 segundos
+    # current_time = time.time()
+    # time_since_start = current_time - node.timestamp  # Calcular tiempo transcurrido
 
-    if time_since_start < 30:  # Si han pasado menos de 5 segundos, no simular fallo
-        return
+    # if time_since_start < 30:  # Si han pasado menos de 5 segundos, no simular fallo
+    #     return
     
     # Si es un master y no tiene réplicas, no simular fallo
     if (node.get_type() in masters) and node.n_replicas == 0:
         return
+    
+    if (node.get_type() == NodeType.PROPAGATOR):
+        probability = 0.1
+
+    if (node.get_type() == NodeType.PROPAGATOR_REPLICA):
+        probability = 0
 
     if random.random() < probability:
         logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
