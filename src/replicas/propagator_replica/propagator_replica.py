@@ -12,17 +12,8 @@ class PropagatorReplica(Replica):
 
     def _process_pull_data(self):
         """Procesa un mensaje de solicitud de pull de datos."""
-        if not self.state:
-            logging.warning("Replica: Estado no inicializado, enviando estado vacío.")
-            self.state = {
-                "games_per_client": {},
-                "negative_review_counts_per_client": {},
-                "fins_per_client": {}
-            }
         response_data = PushDataMessage( data={
-            "games_per_client": dict(self.games_per_client),
-            "negative_review_counts_per_client": {k: dict(v) for k, v in self.negative_review_counts_per_client.items()},
-            "fins_per_client": dict(self.fins_per_client),
+            "node_fin_state": self.nodes_fins_state
         })
         self._middleware.send_to_queue(self.send_queue, response_data.encode())
         logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
@@ -57,9 +48,7 @@ class PropagatorReplica(Replica):
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
-        self.games_per_client.pop(client_id, None)
-        self.negative_review_counts_per_client.pop(client_id, None)
-        self.fins_per_client.pop(client_id, None)
+        self.nodes_fins_state.pop(client_id, None)
         # logging.info(f"Replica: Estado borrado para client_id: {client_id}")
 
     def _add_new_client_state(self, client_id: int):

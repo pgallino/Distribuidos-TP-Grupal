@@ -19,7 +19,7 @@ set +a
 VARIABLES=(
     trimmer genre score release_date english client
     os_counter_replica avg_counter_replica
-    q3_joiner_replica q4_joiner_replica q5_joiner_replica watchdog
+    q3_joiner_replica q4_joiner_replica q5_joiner_replica watchdog propagator_replica
 )
 
 # Verificar que todas las variables estén definidas

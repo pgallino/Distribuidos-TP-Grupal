@@ -12,7 +12,6 @@ class Q4JoinerReplica(Replica):
         self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False)))  # Reviews negativas y estado (client_id -> app_id -> (reviews, processed))
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fines por cliente (client_id -> [fin_games, fin_reviews])
         
-
         logging.info("Replica: Almacenamiento inicializado.")
 
     def get_type(self):

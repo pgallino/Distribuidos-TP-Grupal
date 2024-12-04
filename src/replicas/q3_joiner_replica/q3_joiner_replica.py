@@ -12,7 +12,6 @@ class Q3JoinerReplica(Replica):
         self.review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Reseñas por cliente (client_id -> app_id -> count)
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fins por cliente (client_id -> [fin_games, fin_reviews])
         
-
         logging.info("Replica: Almacenamiento inicializado.")
 
     def get_type(self):
