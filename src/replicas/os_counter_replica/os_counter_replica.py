@@ -1,7 +1,9 @@
 from collections import defaultdict
 import logging
+from multiprocessing import Process
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.listener import ReplicaListener
 from utils.utils import NodeType
 
 class OsCounterReplica(Replica):
@@ -70,3 +72,12 @@ class OsCounterReplica(Replica):
             self.last_msg_id = state.get('last_msg_id')
 
         logging.info(f"last_id actualizado {self.last_msg_id}")
+
+    def start_listener(self):
+        self.listener = Process(target=init_listener, args=(id, self.container_name, self.os_count, self.lock, self.port,))
+        self.listener.start()
+
+
+def init_listener(id, container_name, port, state, lock_state):
+    listener = ReplicaListener(id, container_name, state, lock_state, port, )
+    listener.run()

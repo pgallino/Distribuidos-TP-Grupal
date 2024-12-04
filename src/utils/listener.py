@@ -58,11 +58,19 @@ class Listener:
 
 class ReplicaListener(Listener):
 
+    def __init__(self, id, ip_prefix, state, lock_state, port=LISTENER_PORT, backlog=5 ):
+        super().__init__(id, ip_prefix, port, backlog)
+        self.state = state
+        self.lock_state = lock_state
+
     def process_msg(self, conn):
         raw_msg = recv_msg(conn)
         msg = decode_msg(raw_msg)
 
         if msg.type == MsgType.KEEP_ALIVE:
+            pass
+
+        if msg.type == MsgType.SYNC_STATE_REQUEST:
             pass
 
             
