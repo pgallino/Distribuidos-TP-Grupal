@@ -21,9 +21,9 @@ class ReleaseDateFilter(Node):
         self._middleware.declare_queue(Q_TO_PROP)
         self.notification_queue = Q_NOTIFICATION + f'_{container_name}_{id}'
         self._middleware.declare_queue(self.notification_queue)
-        self._middleware.declare_exchange(E_FROM_PROP)
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
         self._middleware.bind_queue(self.notification_queue, E_FROM_PROP, key=K_NOTIFICATION+f'_{container_name}')
-        self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_PROP, key=K_FIN+f'_{container_name}')
+        self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_PROP, key=K_FIN+f'.{container_name}')
 
     def get_type(self):
         return NodeType.RELEASE_DATE

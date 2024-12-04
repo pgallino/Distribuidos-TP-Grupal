@@ -83,3 +83,12 @@ class NodeListener(Listener):
             response_msg = SimpleMessage(type=MsgType.MASTER_CONNECTED, socket_compatible=True, connected=self.connected.value) # 0 para False, 1 para True
             conn.sendall(response_msg.encode())
             logging.info(f"NodeListener: Respondí con estado 'connected={self.connected}'.")
+
+class PropagatorListener(Listener):
+
+    def process_msg(self, conn):
+        raw_msg = recv_msg(conn)
+        msg = decode_msg(raw_msg)
+
+        if msg.type == MsgType.KEEP_ALIVE:
+            pass

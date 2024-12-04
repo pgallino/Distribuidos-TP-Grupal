@@ -13,7 +13,7 @@ def main():
         # Crear una instancia de OsCounterReplica con un ID único
         replica = OsCounterReplica(
             id=config_params["instance_id"],
-            ip_prefix="os_counter_replica",
+            container_name="os_counter_replica",
             container_to_restart="os_counter_1",
         )
         

@@ -5,6 +5,7 @@ from messages.results_msg import Q2Result, QueryNumber
 import heapq
 
 from node import Node
+from utils.container_constants import ENDPOINTS_PROB_FAILURE
 from utils.middleware_constants import E_FROM_PROP, K_FIN, Q_RELEASE_DATE_AVG_COUNTER, Q_QUERY_RESULT_2
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
@@ -16,8 +17,8 @@ class AvgCounter(Node):
         self.n_replicas = n_replicas
         self._middleware.declare_queue(Q_RELEASE_DATE_AVG_COUNTER)
         self._middleware.declare_queue(Q_QUERY_RESULT_2)
-        self._middleware.declare_exchange(E_FROM_PROP)
-        self._middleware.bind_queue(Q_RELEASE_DATE_AVG_COUNTER, E_FROM_PROP, key=K_FIN+f'_{container_name}')
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        self._middleware.bind_queue(Q_RELEASE_DATE_AVG_COUNTER, E_FROM_PROP, key=K_FIN+f'.{container_name}')
 
         # Diccionario para almacenar un heap por cada cliente
         self.avg_count = defaultdict(list)  # client_id -> heap
@@ -33,7 +34,7 @@ class AvgCounter(Node):
             if self.n_replicas > 0:
                 # ==================================================================
                 # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
-                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"))
+                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
                 # ==================================================================
                 self._synchronize_with_replicas()  # Sincronizar con la réplica al inicio
 
@@ -58,14 +59,14 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA ANTES DE HACER EL ACK AL MENSAJE
-        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"))
+        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK AL MENSAJE
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK AL MENSAJE"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK AL MENSAJE"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
     
     def _process_game_message(self, msg):
@@ -82,7 +83,7 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Enviar los datos actualizados a la réplica
@@ -94,7 +95,7 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA
-        # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA"))
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
     
     def _process_fin_message(self, msg):
@@ -114,14 +115,14 @@ class AvgCounter(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO
-            simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO"))
+            simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self._middleware.send_to_queue(Q_QUERY_RESULT_2, result_message.encode())
 
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
@@ -136,7 +137,7 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA ANTES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA ANTES DE CARGAR EL ESTADO"))
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         state = msg.data
@@ -149,7 +150,7 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Actualizar el último mensaje procesado

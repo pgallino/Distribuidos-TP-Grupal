@@ -7,21 +7,16 @@ def main():
 
         required_keys = {
             "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
-            "n_instances": ("PROPAGATOR_REPLICA_INSTANCES", "PROPAGATOR_REPLICA_INSTANCES"),
-            "id": ("INSTANCE_ID", "INSTANCE_ID"),
-            "timeout": ("TIMEOUT", "TIMEOUT"),
-            "port": ("PORT", "PORT")
+            "propagator_replica_instances": ("PROPAGATOR_REPLICA_INSTANCES", "PROPAGATOR_REPLICA_INSTANCES"),
+            "instance_id": ("INSTANCE_ID", "INSTANCE_ID"),
         }
 
         # Inicializar configuración y logging
         config_params = initialize_config(required_keys)
         initialize_log(config_params["logging_level"])
         # Crear una instancia de PropagatorReplica con un ID único
-        replica_id = config_params["id"]
-        n_instances = config_params["n_instances"]
-        timeout = config_params["timeout"]
-        port = config_params["port"]
-        replica = PropagatorReplica(replica_id, n_instances, "propagator_replica", port, "propagator_1", timeout)
+        replica_id = config_params["instance_id"]
+        replica = PropagatorReplica(replica_id, container_name="propagator_replica", container_to_restart="propagator_1")
         
         logging.info(f"PropagatorReplica {replica_id} iniciada. Esperando mensajes...")
         

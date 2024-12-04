@@ -1,85 +1,85 @@
-from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.middleware_constants import E_FROM_PROP, K_FIN
+from utils.utils import NodeType
 
-class Q5JoinerReplica(Replica):
-        
+class PropagatorReplica(Replica):
+
     def _initialize_storage(self):
-        """Inicializa las estructuras de almacenamiento específicas para Q3Joiner."""
-        self.games_per_client = defaultdict(lambda: {})  # Almacena juegos por `app_id`, para cada cliente
-        self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))  # Contador de reseñas negativas por `app_id`
-        self.fins_per_client = defaultdict(lambda: [False, False])  # Fins por cliente (client_id -> [fin_games, fin_reviews])
-
-        self.state = {
-            "games_per_client": self.games_per_client,
-            "negative_review_counts_per_client": self.negative_review_counts_per_client,
-            "fins_per_client": self.fins_per_client,
-        }
+        """Inicializa las estructuras de almacenamiento específicas para Propagator."""
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        self._middleware.bind_queue(self.recv_queue, E_FROM_PROP, key=K_FIN+'.#')
+        self.nodes_fins_state = {}
         logging.info("Replica: Almacenamiento inicializado.")
 
-    def _process_pull_data(self):
-        """Procesa un mensaje de solicitud de pull de datos."""
-        if not self.state:
-            logging.warning("Replica: Estado no inicializado, enviando estado vacío.")
-            self.state = {
-                "games_per_client": {},
-                "negative_review_counts_per_client": {},
-                "fins_per_client": {}
-            }
-        response_data = PushDataMessage( data={
-            "games_per_client": dict(self.games_per_client),
-            "negative_review_counts_per_client": {k: dict(v) for k, v in self.negative_review_counts_per_client.items()},
-            "fins_per_client": dict(self.fins_per_client),
-        })
-        self._middleware.send_to_queue(self.send_queue, response_data.encode())
-        logging.info("Replica: Estado completo enviado en respuesta a PullDataMessage.")
+    def get_type(self):
+        return NodeType.PROPAGATOR_REPLICA
 
+    def _create_pull_answer(self):
+        response_data = PushDataMessage( data={
+            "nodes_fins_state": self.nodes_fins_state,
+            "last_msg_id": self.last_msg_id
+        }, node_id=self.id)
+        return response_data
 
     def _process_push_data(self, msg: PushDataMessage):
         """Procesa los datos de un mensaje `PushDataMessage`."""
-        state = msg.data
+        update = msg.data
 
         # Identificar el tipo de actualización
-        update_type = state.get("type")
-        client_id = state.get("id")
+        update_type = update.get("type")
+        client_id = update.get("id")
 
-        if update_type == "games":
-            self._update_games(client_id, state.get("update", {}))
-        elif update_type == "reviews":
-            self._update_reviews(client_id, state.get("update", {}))
-        elif update_type == "fins":
-            self._update_fins(client_id, state.get("update", []))
+        if update_type == "new_client":
+            self._new_client(client_id, update.get("update", {}))
+        elif update_type == "node_fin_state":
+            self._node_fin_state(client_id, update.get("update", {}))
         elif update_type == "delete":
             self._delete_client_state(client_id)
         else:
             logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
-    def _update_games(self, client_id: int, updates: dict):
+    def _node_fin_state(self, client_id: int, update):
         """Actualiza los juegos de un cliente en la réplica."""
-        client_games = self.games_per_client[client_id]
-        for app_id, name in updates.items():
-            client_games[app_id] = name
-        # logging.info(f"Replica: Juegos actualizados para client_id: {client_id} | updates: {updates}")
+        node_type, node_instance, value = update
+        
+        if client_id in self.nodes_fins_state:
+            self.nodes_fins_state[client_id][node_type][node_instance] = value
 
-    def _update_reviews(self, client_id: int, updates: dict):
-        """Actualiza las reseñas de un cliente en la réplica."""
-        client_reviews = self.negative_review_counts_per_client[client_id]
-        for app_id, count in updates.items():
-            client_reviews[app_id] = count
-        # logging.info(f"Replica: Reseñas actualizadas para client_id: {client_id} | updates: {updates}")
-
-    def _update_fins(self, client_id: int, updates: list):
-        """Actualiza los estados de FIN de un cliente en la réplica."""
-        if len(updates) != 2:
-            logging.warning(f"Replica: Formato inválido para actualización de fins: {updates}")
-            return
-        self.fins_per_client[client_id] = updates
-        # # logging.info(f"Replica: Estado de FIN actualizado para client_id: {client_id} | fins: {updates}")
+        # logging.info(f"Estado actualizado de cliente {client_id} para {node_type} {node_instance}")
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
-        self.games_per_client.pop(client_id, None)
-        self.negative_review_counts_per_client.pop(client_id, None)
-        self.fins_per_client.pop(client_id, None)
-        # logging.info(f"Replica: Estado borrado para client_id: {client_id}")
+        if client_id in self.nodes_fins_state:
+            del self.nodes_fins_state[client_id]
+
+    def _new_client(self, client_id: int, update: dict):
+        if not client_id in self.nodes_fins_state:
+            self.nodes_fins_state[client_id] = update
+
+    def _process_fin_message(self, msg):
+        client_id = msg.client_id
+        try:
+            node = NodeType(msg.node_type)
+        except:
+            logging.warning(f"No existe enum de NodeType para valor {msg.node_type}")
+
+        if client_id in self.nodes_fins_state:
+            self.nodes_fins_state[client_id][node.name]['fins_propagated'] += 1
+        
+        # logging.info(f"actualicé con el fin en: cliente {client_id} de {node.name} --> fins_propagated {self.nodes_fins_state[client_id][node.name]['fins_propagated']}")
+
+    def _load_state(self, msg: PushDataMessage):
+        """Carga el estado completo recibido en la réplica."""
+        state = msg.data
+
+        # Actualizar contadores de sistemas operativos por cliente
+        if 'nodes_fins_state' in state:
+            self.nodes_fins_state = state['nodes_fins_state']
+
+        # Actualizar el último mensaje procesado
+        if "last_msg_id" in state:
+            self.last_msg_id = state.get('last_msg_id')
+
+        logging.info(f"estado actualizado a: {self.nodes_fins_state}, con last_id {self.last_msg_id}")

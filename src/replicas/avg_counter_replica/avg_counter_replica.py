@@ -9,7 +9,7 @@ class AvgCounterReplica(Replica):
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para AvgCounter."""
         self.avg_count = defaultdict(list)  # Diccionario para almacenar un count por cliente
-        self.last_msg_id = 0
+
         logging.info("Replica: Almacenamiento inicializado.")
 
     def get_type(self):

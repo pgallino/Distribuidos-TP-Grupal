@@ -13,7 +13,7 @@ def main():
         # Crear una instancia de Q3JoinerReplica con un ID único
         replica = Q3JoinerReplica(
             id=config_params["instance_id"],
-            ip_prefix="q3_joiner_replica",
+            container_name="q3_joiner_replica",
             container_to_restart="q3_joiner_1",
         )
         

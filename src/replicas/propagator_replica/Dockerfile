@@ -1,16 +1,11 @@
 FROM python:3.9.7-slim
 
-# Instalar Docker CLI y solo las dependencias esenciales
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    docker.io \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
 # Instalar la librería pika directamente usando pip
 RUN pip install --no-cache-dir pika==1.2.0
 
 # Copiamos los archivos necesarios
-COPY src/replicas/q5_joiner_replica/main.py /
-COPY src/replicas/q5_joiner_replica/q5_joiner_replica.py /
+COPY src/replicas/propagator_replica/main.py /
+COPY src/replicas/propagator_replica/propagator_replica.py /
 COPY src/replicas/replica.py /
 COPY src/replicas/config.ini /
 

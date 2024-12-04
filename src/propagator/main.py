@@ -13,7 +13,8 @@ def main():
         "score_instances": ("SCORE_INSTANCES", "SCORE_INSTANCES"),
         "release_date_instances": ("RELEASE_DATE_INSTANCES", "RELEASE_DATE_INSTANCES"),
         "english_instances": ("ENGLISH_INSTANCES", "ENGLISH_INSTANCES"),
-        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL")
+        "logging_level": ("LOGGING_LEVEL", "LOGGING_LEVEL"),
+        "propagator_replica_instances": ("PROPAGATOR_REPLICA_INSTANCES", "PROPAGATOR_REPLICA_INSTANCES")
     }
 
     # Inicializar la configuración
@@ -24,14 +25,15 @@ def main():
     # Crear una instancia de Trimmer con los parámetros configurados
     propagator = Propagator(
         instance_id,
-        container_name = f"propagator_{instance_id}",
+        container_name = "propagator",
         nodes_instances = {
             NodeType.TRIMMER.name: config_params["trimmer_instances"],
             NodeType.GENRE.name: config_params["genre_instances"],
             NodeType.SCORE.name: config_params["score_instances"],
             NodeType.RELEASE_DATE.name: config_params["release_date_instances"],
             NodeType.ENGLISH.name: config_params["english_instances"]   
-        }
+        },
+        n_replicas = config_params["propagator_replica_instances"]
     )
 
     # Iniciar el propagador, escuchando mensajes en la cola

@@ -8,9 +8,8 @@ from middleware.middleware import Middleware
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_TO_PROP, E_FROM_REPLICA_PULL
 from utils.listener import NodeListener
-from utils.utils import NodeType
-
-PROB_FALLA = 0
+from utils.utils import NodeType, simulate_random_failure, log_with_location
+from utils.container_constants import FILTERS_PROB_FAILURE
 
 class Node:
     def __init__(self, id: int, n_nodes: int, container_name: str, n_next_nodes: list = []):
@@ -50,10 +49,6 @@ class Node:
         logging.info("action: shutdown_node | result: in progress...")
         self.shutting_down = True
 
-        if self.coordination_process:
-            self.coordination_process.terminate()
-            self.coordination_process.join()
-
         if self.listener:
             self.listener.terminate()
             self.listener.join()
@@ -86,11 +81,10 @@ class Node:
         logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(type=MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
-        if random.random() < PROB_FALLA:
-            logging.warning(f"Se cae justo despues de mandarle al propagator el FIN del cliente {client_id}")
-            self._shutdown()
-            logging.info("Voy a exitiar con CODE 0")
-            exit(0)
+        # ==================================================================
+        # CAIDA POST NOTIFICION DE FIN CLIENTE
+        simulate_random_failure(self, log_with_location(f"CAIDA POST NOTIFICION DE FIN CLIENTE {client_id}"), probability=FILTERS_PROB_FAILURE)
+        # ==================================================================
         self.fin_to_ack = (client_id, ch, method.delivery_tag)
         ch.stop_consuming()
     
@@ -98,11 +92,10 @@ class Node:
         """Callback para procesar las notificaciones de fins propagados"""
         msg = decode_msg(raw_message)
 
-        if random.random() < PROB_FALLA:
-            logging.warning(f"Se cae justo esperando la noti de la propagacion del FIN cliente {self.fin_to_ack[0]}")
-            self._shutdown()
-            logging.info("Voy a exitiar con CODE 0")
-            exit(0)
+        # ==================================================================
+        # CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE
+        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {client_id}"), probability=FILTERS_PROB_FAILURE)
+        # ==================================================================
 
         if msg.type == MsgType.FIN_PROPAGATED:
             if self.fin_to_ack:
@@ -112,11 +105,10 @@ class Node:
                     fin_ch.basic_ack(delivery_tag=tag)
                     self.fin_to_ack = None
                     ch.stop_consuming()
-                    if random.random() < PROB_FALLA:
-                        logging.warning(f"Se cae justo despues de hacer ack del FIN cliente {client_id}")
-                        self._shutdown()
-                        logging.info("Voy a exitiar con CODE 0")
-                        exit(0)
+                    # ==================================================================
+                    # CAIDA POST ACK DE FIN CLIENTE
+                    simulate_random_failure(self, log_with_location(f"CAIDA POST ACK DE FIN CLIENTE {client_id}"), probability=FILTERS_PROB_FAILURE)
+                    # ==================================================================
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -124,6 +116,8 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
+
+        #TODO: PODRIA ENVIARSE UN PULL A CADA REPLICA Y LA PRIMERA QUE RESPONDE ME LO QUEDO
         """Solicita el estado a las réplicas y sincroniza el nodo."""
         logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
 

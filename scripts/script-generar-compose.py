@@ -21,6 +21,7 @@ def parse_args():
             'q4_joiner_replica': int(args[9]),
             'q5_joiner_replica': int(args[10]),
             'watchdog': int(args[11]),
+            'propagator_replica': int(args[12]),
             'q3_joiner': 1,
             'q4_joiner': 1,
             'q5_joiner': 1,
@@ -37,8 +38,8 @@ def parse_args():
 def generate_docker_compose(instances):
     services = {}
     # Lista de nodos que requieren el volumen del socket de Docker
-    replica_nodes = {'os_counter_replica', 'avg_counter_replica', 'q3_joiner_replica', 'q4_joiner_replica', 'q5_joiner_replica'}
-    master_nodes = {'os_counter', 'avg_counter', 'q3_joiner', 'q4_joiner', 'q5_joiner'}
+    replica_nodes = {'os_counter_replica', 'avg_counter_replica', 'q3_joiner_replica', 'q4_joiner_replica', 'q5_joiner_replica', 'propagator_replica'}
+    master_nodes = {'os_counter', 'avg_counter', 'q3_joiner', 'q4_joiner', 'q5_joiner', 'propagator'}
 
     # Definición del servicio RabbitMQ
     services['rabbitmq'] = {

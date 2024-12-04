@@ -4,6 +4,7 @@ from messages.messages import MsgType, ResultMessage, decode_msg, PushDataMessag
 from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # type: ignore # genera 7 pids en docker stats
+from utils.container_constants import ENDPOINTS_PROB_FAILURE
 from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
@@ -22,11 +23,11 @@ class Q5Joiner(Node):
         self._middleware.declare_exchange(E_FROM_SCORE)
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
         
-        self._middleware.declare_exchange(E_FROM_PROP)
-        fin_games_key = K_FIN+f'_{container_name}_games'
+        self._middleware.declare_exchange(E_FROM_PROP, type='topic')
+        fin_games_key = K_FIN+f'.{container_name}_games'
         logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_games_key}')
         self._middleware.bind_queue(Q_GENRE_Q5_JOINER, E_FROM_PROP, key=fin_games_key) # hay que modificarlo en el propagator
-        fin_reviews_key = K_FIN+f'_{container_name}_reviews'
+        fin_reviews_key = K_FIN+f'.{container_name}_reviews'
         logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_reviews_key}')
         self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_PROP, key=fin_reviews_key)
 
@@ -48,7 +49,7 @@ class Q5Joiner(Node):
             if self.n_replicas > 0: # verifico si se instanciaron replicas
                 # ==================================================================
                 # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
-                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"))
+                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
                 # ==================================================================
                 self._synchronize_with_replicas()
 
@@ -76,14 +77,14 @@ class Q5Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('games', msg.client_id, update)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
@@ -93,14 +94,14 @@ class Q5Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('fins', msg.client_id, client_fins)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             if client_fins[0] and client_fins[1]:
@@ -110,7 +111,7 @@ class Q5Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK EN GAMES
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
@@ -131,14 +132,14 @@ class Q5Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
             
             self.push_update('reviews', msg.client_id, update)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
@@ -148,14 +149,14 @@ class Q5Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('fins', msg.client_id, client_fins)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             if client_fins[0] and client_fins[1]:
@@ -165,7 +166,7 @@ class Q5Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK EN REVIEWS
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
     def join_results(self, client_id):
@@ -194,14 +195,14 @@ class Q5Joiner(Node):
 
         # ==================================================================
         # CAIDA ANTES DE ENVIAR RESULTADO Q5
-        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q5"))
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q5"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         self._middleware.send_to_queue(Q_QUERY_RESULT_5, result_message.encode())
 
         # ==================================================================
         # CAIDA DESPUES DE ENVIAR RESULTADO Q5
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q5 ⚠️"))
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q5 ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos
@@ -244,5 +245,5 @@ class Q5Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
