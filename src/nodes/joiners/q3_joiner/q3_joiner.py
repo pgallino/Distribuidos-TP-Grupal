@@ -6,6 +6,7 @@ from node import Node
 import heapq
 
 from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
+from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q3Joiner(Node):
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
@@ -34,11 +35,19 @@ class Q3Joiner(Node):
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
         self.last_msg_id = 0
 
+    def get_type(self) -> NodeType:
+        return NodeType.Q3_JOINER
+
     def run(self):
 
         try:
 
             if self.n_replicas > 0: # verifico si se instanciaron replicas
+
+                # ==================================================================
+                # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
+                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"))
+                # ==================================================================
                 self._synchronize_with_replicas()
 
             # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo
@@ -63,14 +72,34 @@ class Q3Joiner(Node):
                 # Registrar el cambio en el diccionario de actualizaciones
                 update[game.app_id] = game.name
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('games', msg.client_id, update)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"))
+            # ==================================================================
 
         elif msg.type == MsgType.FIN:
             logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('fins', msg.client_id, client_fins)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"))
+            # ==================================================================
 
             if client_fins[0] and client_fins[1]:
                 self.join_results(msg.client_id)
@@ -79,6 +108,11 @@ class Q3Joiner(Node):
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
         # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # ==================================================================
+        # CAIDA DESPUES DE HACER EL ACK EN GAMES
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"))
+        # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
         """Procesa mensajes de la cola `Q_SCORE_Q3_JOINER`."""
@@ -96,19 +130,44 @@ class Q3Joiner(Node):
                     client_reviews[review.app_id] += 1
                     update[review.app_id] = client_reviews[review.app_id]
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('reviews', msg.client_id, update)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"))
+            # ==================================================================
 
         elif msg.type == MsgType.FIN:
             logging.info(f"Llego FIN REVIEWs de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
+            # ==================================================================
+            # CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"))
+            # ==================================================================
+
             self.push_update('fins', msg.client_id, client_fins)
+
+            # ==================================================================
+            # CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"))
+            # ==================================================================
 
             if client_fins[0] and client_fins[1]:
                 self.join_results(msg.client_id)
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
+
+        # ==================================================================
+        # CAIDA DESPUES DE HACER EL ACK EN REVIEWS
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"))
+        # ==================================================================
     
     def join_results(self, client_id: int):
 
@@ -131,7 +190,18 @@ class Q3Joiner(Node):
         # Crear y enviar el mensaje Q3Result
         q3_result = Q3Result(top_indie_games=top_5_sorted)
         result_message = ResultMessage(client_id=client_id, result_type=QueryNumber.Q3, result=q3_result)
+
+        # ==================================================================
+        # CAIDA ANTES DE ENVIAR RESULTADO Q3
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q3"))
+        # ==================================================================
+
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
+
+        # ==================================================================
+        # CAIDA DESPUES DE ENVIAR RESULTADO Q3
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q3 ⚠️"))
+        # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos
         del self.games_per_client[client_id]
@@ -172,6 +242,11 @@ class Q3Joiner(Node):
             self.last_msg_id = state["last_msg_id"]
 
         logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
+
+        # ==================================================================
+        # CAIDA DESPUES DE CARGAR EL ESTADO
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"))
+        # ==================================================================
 
 
 

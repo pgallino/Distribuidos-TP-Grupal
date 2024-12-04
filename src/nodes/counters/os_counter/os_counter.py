@@ -93,13 +93,12 @@ class OsCounter(Node):
         # Guardar los contadores actualizados
         self.os_count[msg.client_id] = (windows, mac, linux)
 
-        # Enviar los datos actualizados a la réplica
-
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA
         simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA"))
         # ==================================================================
 
+        # Enviar los datos actualizados a la réplica
         self.push_update('os_count', msg.client_id, self.os_count[msg.client_id])
 
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
@@ -122,18 +121,24 @@ class OsCounter(Node):
             q1_result = Q1Result(windows_count=windows_count, mac_count=mac_count, linux_count=linux_count)
             result_message = ResultMessage(client_id=msg.client_id, result_type=QueryNumber.Q1, result=q1_result)
 
-            # Enviar el mensaje codificado a la cola de resultados}
-            # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
-            # TODO: Descartar mensajes repetidos en el dispatcher
-
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO
             simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO"))
             # ==================================================================
+
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
-        del self.os_count[msg.client_id]
-        self.push_update('delete', msg.client_id)
+            # ==================================================================
+            # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"))
+            # ==================================================================
+
+            # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
+            # TODO: Descartar mensajes repetidos en el dispatcher
+            
+            # Limpiar el heap para este cliente
+            del self.os_count[msg.client_id]
+            self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
         """Carga el estado completo recibido en la réplica."""

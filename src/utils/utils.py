@@ -246,11 +246,12 @@ def simulate_random_failure(node, log_message, probability=0.1):
     Simula una caída del sistema con una probabilidad dada.
     
     Args:
-        node (node): La instancia de la réplica en la que se ejecuta la simulación.
+        node (node): La instancia de la réplica/nodo en la que se ejecuta la simulación.
+        log_message (str): Mensaje de log que describe la simulación.
         probability (float): Probabilidad de simular una caída (entre 0 y 1).
     """
     replicas = {NodeType.AVG_COUNTER_REPLICA, NodeType.OS_COUNTER_REPLICA, NodeType.Q3_JOINER_REPLICA, NodeType.Q4_JOINER_REPLICA, NodeType.Q5_JOINER_REPLICA}
-
+    masters = {NodeType.AVG_COUNTER, NodeType.OS_COUNTER, NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER}
     if (node.get_type() in replicas) and node.id == 1: #SI ES EL NODO 1 NO LO TIRO NUNCA SI ES UNA REPLICA
         return
 
@@ -258,11 +259,13 @@ def simulate_random_failure(node, log_message, probability=0.1):
     current_time = time.time()
     time_since_start = current_time - node.timestamp  # Calcular tiempo transcurrido
 
-    if time_since_start < 20:  # Si han pasado menos de 5 segundos, no simular fallo
+    if time_since_start < 30:  # Si han pasado menos de 5 segundos, no simular fallo
         return
     
-    # if node.get_type() == NodeType.OS_COUNTER:
-    #     probability = 0.1
+    # Si es un master y no tiene réplicas, no simular fallo
+    if (node.get_type() in masters) and node.n_replicas == 0:
+        return
+
     if random.random() < probability:
         logging.warning(f"Simulando caída con probabilidad {probability * 100}% en la réplica {node.id}.")
         logging.warning(log_message)
