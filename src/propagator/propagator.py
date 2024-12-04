@@ -90,7 +90,7 @@ class Propagator:
         self.push_update('node_fin_state', msg.client_id, update=(node.name, msg.node_instance, True))
         # ==================================================================
         # CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"))
+        simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"), probability=0.01)
         # ==================================================================
 
         # nos fijamos si se puede propagar el fin
@@ -104,7 +104,7 @@ class Propagator:
 
         # ==================================================================
         # CAIDA POST PROPAGACION DE FINS DE CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"))
+        simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"), probability=0.01)
         # ==================================================================
         
         # notificamos a los nodos que ya propagamos el fin
@@ -114,7 +114,7 @@ class Propagator:
 
         # ==================================================================
         # CAIDA POST NOTIFICACION DE FINS CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST NOTIFICACION DE FINS DE CLIENTE {msg.client_id} A {node.name}"))
+        simulate_random_failure(self, log_with_location(f"CAIDA POST NOTIFICACION DE FINS DE CLIENTE {msg.client_id} A {node.name}"), probability=0.01)
         # ==================================================================
 
     def _process_delete_client(self, msg: SimpleMessage):
@@ -161,7 +161,7 @@ class Propagator:
             for _ in range(fins_to_propagate):
                 # ==================================================================
                 # CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE
-                simulate_random_failure(self, log_with_location(f"CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE {client_id} de {origin_node.name}"), probability=0.05)
+                simulate_random_failure(self, log_with_location(f"CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE {client_id} de {origin_node.name}"), probability=0.001)
                 # ==================================================================
                 logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
                 self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'.{name}')

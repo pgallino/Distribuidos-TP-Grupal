@@ -5,6 +5,7 @@ from messages.results_msg import Q3Result, QueryNumber
 from node import Node
 import heapq
 
+from utils.container_constants import ENDPOINTS_PROB_FAILURE
 from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
@@ -46,7 +47,7 @@ class Q3Joiner(Node):
 
                 # ==================================================================
                 # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
-                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"))
+                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
                 # ==================================================================
                 self._synchronize_with_replicas()
 
@@ -74,14 +75,14 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('games', msg.client_id, update)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
@@ -91,14 +92,14 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('fins', msg.client_id, client_fins)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             if client_fins[0] and client_fins[1]:
@@ -111,7 +112,7 @@ class Q3Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK EN GAMES
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
@@ -132,14 +133,14 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('reviews', msg.client_id, update)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
@@ -149,14 +150,14 @@ class Q3Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"))
+            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('fins', msg.client_id, client_fins)
 
             # ==================================================================
             # CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             if client_fins[0] and client_fins[1]:
@@ -166,7 +167,7 @@ class Q3Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK EN REVIEWS
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
     
     def join_results(self, client_id: int):
@@ -193,14 +194,14 @@ class Q3Joiner(Node):
 
         # ==================================================================
         # CAIDA ANTES DE ENVIAR RESULTADO Q3
-        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q3"))
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q3"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
         # ==================================================================
         # CAIDA DESPUES DE ENVIAR RESULTADO Q3
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q3 ⚠️"))
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q3 ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos
@@ -245,7 +246,7 @@ class Q3Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
 

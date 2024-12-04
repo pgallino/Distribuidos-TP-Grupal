@@ -4,6 +4,7 @@ from messages.results_msg import Q1Result, QueryNumber
 
 from node import Node
 
+from utils.container_constants import ENDPOINTS_PROB_FAILURE
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 from utils.middleware_constants import E_FROM_PROP, E_FROM_TRIMMER, K_FIN, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
 
@@ -36,7 +37,7 @@ class OsCounter(Node):
 
                 # ==================================================================
                 # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
-                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"))
+                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
                 # ==================================================================
                 self._synchronize_with_replicas()  # Sincronizar con la réplica al inicio
             
@@ -63,14 +64,14 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA ANTES DE HACER EL ACK AL MENSAJE
-        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"))
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA ANTES DE HACER EL ACK AL MENSAJE ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK AL MENSAJE
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK AL MENSAJE"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK AL MENSAJE"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
     
@@ -95,7 +96,7 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y ANTES DE ENVIAR A LA REPLICA"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Enviar los datos actualizados a la réplica
@@ -107,7 +108,7 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA
-        # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA"))
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
 
@@ -123,14 +124,14 @@ class OsCounter(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO
-            simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO"))
+            simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y ANTES DE ENVIARLO"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self._middleware.send_to_queue(Q_QUERY_RESULT_1, result_message.encode())
 
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
@@ -145,7 +146,7 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA ANTES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA ANTES DE CARGAR EL ESTADO"))
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         state = msg.data
@@ -158,7 +159,7 @@ class OsCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"))
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Actualizar el último mensaje procesado

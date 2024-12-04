@@ -75,7 +75,7 @@ def handle_encode_error(func):
             raise EncodeError(f"Error in {func.__name__}: {e}")
     return wrapper
 
-def reanimate_container(container_name, sleep_seconds=1):
+def reanimate_container(container_name, sleep_seconds=0):
     """Reanima un contenedor Docker específico.
     
     Verifica si el contenedor está activo, lo detiene si es necesario y luego lo reinicia.
@@ -248,7 +248,7 @@ def log_with_location(message):
 
 import random
 
-def simulate_random_failure(node, log_message, probability=0.1):
+def simulate_random_failure(node, log_message, probability=0.01):
     """
     Simula una caída del sistema con una probabilidad dada.
     
