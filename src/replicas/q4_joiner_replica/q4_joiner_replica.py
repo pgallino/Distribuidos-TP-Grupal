@@ -2,6 +2,7 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.utils import NodeType
 
 class Q4JoinerReplica(Replica):
     def _initialize_storage(self):
@@ -12,25 +13,14 @@ class Q4JoinerReplica(Replica):
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fines por cliente (client_id -> [fin_games, fin_reviews])
         
 
-        self.state = {
-            "last_msg_id": self.last_msg_id,
-            "negative_reviews_count_per_client": self.negative_reviews_count_per_client,
-            "games_per_client": self.games_per_client,
-            "negative_reviews_per_client": self.negative_reviews_per_client,
-            "fins_per_client": self.fins_per_client,
-        }
         logging.info("Replica: Almacenamiento inicializado.")
 
+    def get_type(self):
+        return NodeType.Q4_JOINER_REPLICA
+
     def _create_pull_answer(self):
-        if not self.state:
-            logging.warning("Replica: Estado no inicializado, enviando estado vacío.")
-            self.state = {
-                "negative_reviews_count_per_client": {},
-                "games_per_client": {},
-                "negative_reviews_per_client": {},
-                "fins_per_client": {}
-            }
         response_data = PushDataMessage( data={
+            'last_msg_id': self.last_msg_id,
             "negative_reviews_count_per_client": {
                 k: dict(v) for k, v in self.negative_reviews_count_per_client.items()
             },
@@ -66,7 +56,7 @@ class Q4JoinerReplica(Replica):
             logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
         # Actualizar last_msg_id después de procesar un mensaje válido
-        self.state["last_msg_id"] = msg.msg_id
+        self.last_msg_id = msg.msg_id
         # logging.info(f"Replica: Mensaje PUSH procesado con ID {msg.msg_id}. Estado actualizado.")
 
     def _update_negative_reviews(self, client_id: int, updates: dict):

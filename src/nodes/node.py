@@ -129,7 +129,9 @@ class Node:
 
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
-        self.recv_queue = self._middleware.declare_anonymous_queue(E_FROM_REPLICA_PULL)
+        self.pull_exchange_name = E_FROM_REPLICA_PULL + f'_{self.container_name}_{self.id}'
+        self._middleware.declare_exchange(self.pull_exchange_name)
+        self.recv_queue = self._middleware.declare_anonymous_queue(self.pull_exchange_name)
 
         # Enviar un PULL_DATA a todas las réplicas
         pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
@@ -141,7 +143,7 @@ class Node:
             msg = decode_msg(body)
 
             if isinstance(msg, PushDataMessage):
-                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id} con {msg.data}.")
+                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id}.")
                 self.load_state(msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
@@ -149,6 +151,8 @@ class Node:
         # TODO: ver si hacer reintentos
         # TODO: ver inactivity_time
         self._middleware.receive_from_queue_with_timeout(self.recv_queue, on_response, inactivity_time=5, auto_ack=False)
+        # Eliminar la cola anonima después de procesar el mensaje
+        self._middleware.delete_queue(self.recv_queue)
 
     def push_update(self, type: str, client_id: int, update = None):
 
