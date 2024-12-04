@@ -307,7 +307,7 @@ class Q4Joiner(Node):
         self._middleware.send_to_queue(Q_QUERY_RESULT_4, result_message.encode())
 
         # ==================================================================
-        # CAIDA ANTES DE ENVIAR RESULTADO Q4
+        # CAIDA DESPUES DE ENVIAR RESULTADO Q4
         # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q4 ⚠️"))
         # ==================================================================
 

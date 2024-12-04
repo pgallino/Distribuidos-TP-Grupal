@@ -130,7 +130,7 @@ class OsCounter(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO
-            simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO"))
+            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"))
             # ==================================================================
 
             # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
