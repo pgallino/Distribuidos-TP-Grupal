@@ -17,7 +17,7 @@ def main():
         initialize_log(config_params["logging_level"])
         # Crear una instancia de PropagatorReplica con un ID único
         replica_id = config_params["instance_id"]
-        replica = PropagatorReplica(replica_id, container_name="propagator_replica", container_to_restart="propagator_1", n_replicas=config_params["propagator_replica_instances"])
+        replica = PropagatorReplica(replica_id, container_name="propagator_replica", master_name="propagator_1", n_replicas=config_params["propagator_replica_instances"])
         
         logging.info(f"PropagatorReplica {replica_id} iniciada. Esperando mensajes...")
         

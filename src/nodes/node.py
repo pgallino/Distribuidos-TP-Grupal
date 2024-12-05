@@ -5,7 +5,7 @@ from multiprocessing import Process, Value, Condition
 import time
 from middleware.middleware import Middleware
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
-from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_TO_PROP, E_FROM_REPLICA_PULL
+from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_TO_PROP, E_FROM_REPLICA_PULL_ANS
 from utils.listener import NodeListener
 from utils.utils import NodeType, simulate_random_failure, log_with_location
 from utils.container_constants import FILTERS_PROB_FAILURE
@@ -93,7 +93,7 @@ class Node:
 
         # ==================================================================
         # CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {client_id}"), probability=FILTERS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {msg.client_id}"), probability=FILTERS_PROB_FAILURE)
         # ==================================================================
 
         if msg.type == MsgType.FIN_PROPAGATED:
@@ -121,7 +121,7 @@ class Node:
 
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
-        self.pull_exchange_name = E_FROM_REPLICA_PULL + f'_{self.container_name}_{self.id}'
+        self.pull_exchange_name = E_FROM_REPLICA_PULL_ANS + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.pull_exchange_name)
         self.recv_queue = self._middleware.declare_anonymous_queue(self.pull_exchange_name)
 
@@ -150,7 +150,8 @@ class Node:
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
             # Detener el consumo si ya se recibió una respuesta de cada réplica compañera
-            if len(responses) >= self.n_replicas - 1:
+            if len(responses) >= self.n_replicas:
+
                 ch.stop_consuming()
 
         # Escuchar respuestas hasta recibir de todas las réplicas
@@ -170,6 +171,7 @@ class Node:
             push_msg = PushDataMessage(data=data, msg_id=self.last_msg_id)
             self._middleware.send_to_queue(self.push_exchange_name, push_msg.encode())
 
+        # logging.info(f"envie push de id: {self.last_msg_id}")
         self.last_msg_id += 1
 
 def init_listener(id, ip_prefix, connected):

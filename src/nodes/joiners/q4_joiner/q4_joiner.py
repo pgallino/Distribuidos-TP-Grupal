@@ -89,7 +89,7 @@ class Q4Joiner(Node):
             # ==================================================================
                 
         elif msg.type == MsgType.FIN:
-            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
+            # logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
@@ -161,7 +161,7 @@ class Q4Joiner(Node):
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
-            logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
+            # logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 
@@ -273,7 +273,7 @@ class Q4Joiner(Node):
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
-            logging.info(f"Llego FIN ENGLISH de cliente {msg.client_id}")
+            # logging.info(f"Llego FIN ENGLISH de cliente {msg.client_id}")
             # TODO: Enviar a las replicas la recepcion de este FIN.
             self.join_results(msg.client_id)
 

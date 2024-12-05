@@ -14,7 +14,7 @@ def main():
         replica = OsCounterReplica(
             id=config_params["instance_id"],
             container_name="os_counter_replica",
-            container_to_restart="os_counter_1",
+            master_name="os_counter_1",
             n_replicas=config_params["os_counter_replica_instances"]
         )
         
