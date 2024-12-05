@@ -6,23 +6,23 @@ from collections import defaultdict
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from replica import Replica
-from utils.utils import NodeType
+from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class OsCounterReplica(Replica):
 
     def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
-        manager = Manager()
-        super().__init__(id, container_name, master_name, n_replicas, manager)
-
+        super().__init__(id, container_name, master_name, n_replicas)
         # Estado específico inicializado con Manager para compartir entre procesos
-        self.shared_state["os_count"] = manager.dict()
 
         # Proceso separado para escuchar SYNC_STATE_REQUESTS
         self.sync_listener_process = Process(
             target=_run_sync_listener,
-            args=(self.id, self.sync_request_listener_exchange, self.sync_request_listener_queue, self.sync_exchange, self.shared_state, self.lock)
+            args=(self.id, self.sync_request_listener_exchange, self.sync_request_listener_queue, self.sync_exchange, self.shared_state, self.lock, )
         )
         self.sync_listener_process.start()
+
+    def setState(self):
+        self.shared_state["os_count"] = self.manager.dict()
 
     def get_type(self):
         return NodeType.OS_COUNTER_REPLICA
@@ -37,7 +37,11 @@ class OsCounterReplica(Replica):
             update_type = state.get("type")
             client_id = state.get("id")
 
+            if msg.msg_id == 14000 and self.id == 2 or self.id == 3:
+                simulate_random_failure(self, log_with_location("CAIDA SI O SI MISMO TIEMPO 2"), probability=1)
+
             with self.lock:
+
                 if update_type == "os_count":
                     updated_counters = state.get("update")
                     if updated_counters:
@@ -87,6 +91,33 @@ class OsCounterReplica(Replica):
 
             self.shared_state["sincronizado"] = True
 
+    def _shutdown(self):
+        """Cierra la réplica de forma segura."""
+        if self.shutting_down:
+            return
+
+        logging.info("action: shutdown_replica | result: in progress...")
+        self.shutting_down = True
+
+        # if self.listener:
+        #     self.listener.terminate()
+        #     self.listener.join()
+
+        if self.sync_listener_process:
+            self.sync_listener_process.terminate()
+            self.listener.join()
+
+        self.lock.release()
+
+        try:
+            self._middleware.close()
+            logging.info("action: shutdown_replica | result: success")
+        except Exception as e:
+            logging.error(f"action: shutdown_replica | result: fail | error: {e}")
+
+        self._middleware.check_closed()
+        exit(0)
+
 def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exchange, shared_state, lock):
     """
     Proceso dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
@@ -94,6 +125,7 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
     sync_middleware = Middleware()
 
     def handle_sigterm(signal_received, frame):
+        nonlocal sync_middleware
         """Manejador de señal SIGTERM para salir limpiamente."""
         logging.info(f"Replica {replica_id}: Señal SIGTERM recibida. Cerrando listener SYNC_STATE.")
         sync_middleware.close()
@@ -146,5 +178,3 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
         )
     except Exception as e:
         logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
-    finally:
-        sync_middleware.close()

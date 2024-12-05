@@ -10,25 +10,27 @@ from utils.listener import ReplicaListener
 from utils.utils import simulate_random_failure, log_with_location
 
 class Replica:
-    def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int, manager = None):
+    def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
         self.id = id
         self.n_replicas = n_replicas
         self.shutting_down = False
         self._middleware = Middleware()
         self.master_name = master_name
         self.sync_listener_process = None
+        self.listener = None
         self.container_name = container_name
         self.port = LISTENER_PORT
         self.sincronizado = False
         self.last_msg_id = 0
         self.timestamp = time.time()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
+        self.manager = Manager()
+        self.shared_state = self.manager.dict()
+        self.shared_state["sincronizado"] = False
+        self.shared_state["last_msg_id"] = 0
 
         # Lock para proteger el acceso al estado compartido
         self.lock = Lock()
-        self.shared_state = manager.dict()
-        self.shared_state["sincronizado"] = False
-        self.shared_state["last_msg_id"] = 0
 
         # Validación de nombres de contenedor
         if not container_name:
@@ -69,6 +71,7 @@ class Replica:
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
         try:
+            self.setState()
             while not self.shutting_down:
                 # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
                 self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
@@ -78,6 +81,8 @@ class Replica:
                 logging.error(f"action: listening_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
+    def setState(self):
+        pass
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas."""
         pass
@@ -119,13 +124,9 @@ class Replica:
         logging.info("action: shutdown_replica | result: in progress...")
         self.shutting_down = True
 
-        if self.listener:
-            self.listener.terminate()
-            self.listener.join()
-
-        if self.sync_listener_process:
-            self.sync_listener_process.terminate()
-            self.listener.join()
+        # if self.listener:
+        #     self.listener.terminate()
+        #     self.listener.join()
 
         try:
             self._middleware.close()
@@ -149,7 +150,8 @@ class Replica:
             simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"), probability=REPLICAS_PROB_FAILURE)
             # ==================================================================
             msg = decode_msg(raw_message)
-
+            if msg.msg_id == 14000:
+                logging.info(f"RECIBO MENSAJE Y ESTOY EN ESTADO {self.shared_state['sincronizado']}")
             # Determinar si la réplica necesita sincronización
             if msg.msg_id > 0 and not self.shared_state['sincronizado']:
                 # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
