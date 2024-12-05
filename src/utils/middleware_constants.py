@@ -41,6 +41,7 @@ Q_REPLICA_MASTER = 'replica_master'
 Q_MASTER_REPLICA = 'master_replica'
 Q_TO_PROP = 'propagation'
 Q_NOTIFICATION = 'notification'
+Q_REPLICA_SYNC_REQUEST_LISTENER = 'replica-sync-request-listener'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'
@@ -52,8 +53,10 @@ E_COORD_SCORE = 'from-coord-score'
 E_COORD_RELEASE_DATE = 'from-coord-release_date'
 E_COORD_ENGLISH = 'from-coord-english'
 E_FROM_MASTER_PUSH = 'from-master-push'
-E_FROM_REPLICA_PULL = 'from-replica-pull'
+E_FROM_REPLICA_PULL_ANS = 'from-replica-pull-ans'
 E_FROM_PROP = 'from-propagator'
+E_REPLICA_SYNC_REQUEST_LISTENER = 'from-replica-sync-listener'
+E_SYNC_STATE = 'sync'
 
 # Routing Keys
 K_GENREGAME = 'genregame'
