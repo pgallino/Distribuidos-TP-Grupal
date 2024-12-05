@@ -14,8 +14,7 @@ def main():
         replica = AvgCounterReplica(
             id=config_params["instance_id"],
             container_name="avg_counter_replica",
-            master_name="avg_counter_1",
-            n_replicas=config_params["avg_counter_replica_instances"]
+            container_to_restart="avg_counter_1",
         )
         
         logging.info(f"AvgCounterReplica {config_params['instance_id']} iniciada. Esperando mensajes...")
