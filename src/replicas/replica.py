@@ -70,7 +70,7 @@ class Replica:
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
         try:
-            self.setState()
+            self._initialize_storage()
             while not self.shutting_down:
                 # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
                 self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
@@ -80,8 +80,6 @@ class Replica:
                 logging.error(f"action: listening_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
-    def setState(self):
-        pass
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas."""
         pass

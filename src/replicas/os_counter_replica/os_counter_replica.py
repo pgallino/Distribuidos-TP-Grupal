@@ -21,7 +21,7 @@ class OsCounterReplica(Replica):
         )
         self.sync_listener_process.start()
 
-    def setState(self):
+    def _initialize_storage(self):
         self.shared_state["os_count"] = self.manager.dict()
 
     def get_type(self):
