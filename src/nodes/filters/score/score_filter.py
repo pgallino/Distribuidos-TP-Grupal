@@ -10,7 +10,14 @@ from utils.middleware_constants import E_FROM_PROP, E_FROM_SCORE, E_FROM_TRIMMER
 
 
 class ScoreFilter(Node):
+    """
+    Clase del nodo ScoreFilter.
+    """
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
+        """
+        Inicializa el nodo ScoreFilter.
+        Declara colas y exchanges necesarios.
+        """
         # Inicializa la clase base Node
         super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
         
@@ -30,9 +37,15 @@ class ScoreFilter(Node):
         self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_FROM_PROP, key=fin_key)
 
     def get_type(self):
+        """
+        Devuelve el tipo de nodo correspondiente al ScoreFilter.
+        """
         return NodeType.SCORE
     
     def get_keys(self):
+        """
+        Obtiene un listado de keys de los siguientes nodos.
+        """
         keys = []
         for node, n_nodes in self.n_next_nodes:
             if node == Q3_JOINER_CONTAINER_NAME:
@@ -44,7 +57,9 @@ class ScoreFilter(Node):
         return keys
     
     def run(self):
-        """Inicia la recepción de mensajes de la cola."""
+        """
+        Inicia la recepción de mensajes de la cola principal.
+        """
         while not self.shutting_down:
             try:
                 logging.info("Empiezo a consumir de la cola de DATA")
@@ -58,7 +73,9 @@ class ScoreFilter(Node):
                     self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
-        """Callback para procesar mensajes de la cola."""
+        """
+        Callback para procesar mensajes de la cola.
+        """
         msg = decode_msg(raw_message)
 
         
@@ -74,7 +91,9 @@ class ScoreFilter(Node):
         
 
     def _process_reviews_message(self, msg):
-        """Procesa mensajes de tipo REVIEWS y distribuye según el score."""
+        """
+        Procesa mensajes de tipo REVIEWS y distribuye según el score.
+        """
         negative_textreviews, positive_reviews, negative_reviews = [], [], []
 
         for review in msg.items:

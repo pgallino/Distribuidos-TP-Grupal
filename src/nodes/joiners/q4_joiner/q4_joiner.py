@@ -11,8 +11,15 @@ from utils.middleware_constants import E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGAT
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q4Joiner(Node):
+    """
+    Clase del nodo Q4Joiner.
+    """
 
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], batch_size: int, n_reviews: int, container_name: str, n_replicas: int):
+        """
+        Inicializa el nodo Q4Joiner.
+        Declara colas y exchanges necesarios e instancia su estado interno.
+        """
         super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
 
         self.n_replicas = n_replicas
@@ -42,9 +49,16 @@ class Q4Joiner(Node):
         self.last_msg_id = 0
 
     def get_type(self) -> NodeType:
+        """
+        Devuelve el tipo de nodo correspondiente al Q4 Joiner.
+        """
         return NodeType.Q3_JOINER
 
     def run(self):
+        """
+        Inicia la lógica del Q4 Joiner.
+        Se sincroniza con sus réplicas y comienza a recibir mensajes por su cola principal.
+        """
 
         try:
             if self.n_replicas > 0: # verifico si se instanciaron replicas
@@ -63,7 +77,10 @@ class Q4Joiner(Node):
                 self._shutdown()
 
     def process_game_message(self, ch, method, properties, raw_message):
-        """Procesa mensajes de la cola `Q_GENRE_Q4_JOINER`."""
+        """
+        Procesa mensajes de la cola `Q_GENRE_Q4_JOINER`.
+        Envía mensaje push a las réplicas con el estado actualizado.
+        """
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.GAMES:
@@ -125,7 +142,10 @@ class Q4Joiner(Node):
         # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
-        """Procesa mensajes de la cola `Q_ENGLISH_Q4_JOINER`."""
+        """
+        Procesa mensajes de la cola `Q_ENGLISH_Q4_JOINER`.
+        Envía mensaje push a las réplicas con el estado actualizado.
+        """
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.REVIEWS:
@@ -195,6 +215,10 @@ class Q4Joiner(Node):
         # ==================================================================
 
     def send_reviews_v2(self, client_id, app_id, reviews):
+        """
+        Envía las reviews al filtro de inglés para su filtrado.
+        """
+
         # manda las reviews del juego al filtro de ingles
         reviews_batch = []
         curr_reviews_batch_size = 0
@@ -216,6 +240,10 @@ class Q4Joiner(Node):
             self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
 
     def send_reviews(self, client_id):
+        """
+        Envía las reviews al filtro de inglés para su filtrado, únicamente si su juego correspondiente tiene más de 5000 reseñas negativas.
+        """
+
         client_reviews = self.negative_reviews_per_client[client_id]
 
         # Revisa que juego tiene mas de 5000 resenia negativas
@@ -246,6 +274,10 @@ class Q4Joiner(Node):
         client_reviews.clear() #limpio el diccionario
                             
     def process_negative_review_message(self, ch, method, properties, raw_message):
+        """
+        Procesa mensajes de la cola `Q_SCORE_Q4_JOINER`.
+        Envía mensaje push a las réplicas con el estado actualizado.
+        """
 
         msg = decode_msg(raw_message)
 
@@ -280,6 +312,11 @@ class Q4Joiner(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def join_results(self, client_id: int):
+        """
+        Calcula los resultados de la query para un cliente ante la llegada de un mensaje FIN.
+        Para ello, une los juegos y reviews filtrados y obtiene los primeros 25 juegos con más de 5000 reseñas negativas en inglés.
+        Envía un mensaje push a las réplicas para eliminar a ese cliente.
+        """
 
         client_reviews_count = self.negative_reviews_count_per_client[client_id]
         client_games = self.games_per_client[client_id]
@@ -321,7 +358,9 @@ class Q4Joiner(Node):
         # PERO SI LLEGASTE HASTA ACA ES PORQUE YA ENVIASTE LA RESPUESTA AL CLIENTE POR LO QUE NO TE IMPORTA PERDERLO
 
     def load_state(self, msg: PushDataMessage):
-        """Carga el estado completo recibido en la réplica."""
+        """
+        Carga el estado completo recibido en la réplica.
+        """
         state = msg.data
 
         # Actualizar juegos por cliente

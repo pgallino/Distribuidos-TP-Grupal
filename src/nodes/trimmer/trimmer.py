@@ -29,11 +29,21 @@ REVIEW_FIELD_NAMES = ['app_id','app_name','review_text','review_score','review_v
 csv.field_size_limit(sys.maxsize)  # Esto establece el límite en el tamaño máximo permitido por el sistema
 
 def get_genres(genres_string: str):
+    """
+    Obtiene un listado de géneros a partir de una string.
+    """
     values = genres_string.split(',')
     return [genre for value in values if (genre := Genre.from_string(value)) != Genre.OTHER]
 
 class Trimmer(Node):
+    """
+    Clase del nodo Trimmer.
+    """
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
+        """
+        Inicializa el nodo Trimmer.
+        Declara colas y exchanges necesarios.
+        """
         super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
 
         # Configura las colas y los intercambios específicos para Trimmer
@@ -47,9 +57,15 @@ class Trimmer(Node):
         self._middleware.bind_queue(self.notification_queue, E_FROM_PROP, key=K_NOTIFICATION+f'_{container_name}')
 
     def get_type(self):
+        """
+        Devuelve el tipo de nodo correspondiente al Trimmer.
+        """
         return NodeType.TRIMMER
 
     def get_keys(self):
+        """
+        Obtiene un listado de keys de los siguientes nodos.
+        """
         keys = []
         for node, n_nodes in self.n_next_nodes:
             if node == GENRE_CONTAINER_NAME:
@@ -61,7 +77,9 @@ class Trimmer(Node):
         return keys
         
     def run(self):
-        """Inicia la recepción de mensajes de la cola."""
+        """
+        Inicia la recepción de mensajes de la cola principal.
+        """
         while not self.shutting_down:
             try:
                 logging.info("Empiezo a consumir de la cola de DATA")
@@ -75,7 +93,9 @@ class Trimmer(Node):
                     self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
-        """Callback para procesar mensajes de la cola"""
+        """
+        Callback para procesar mensajes de la cola.
+        """
 
         msg = decode_msg(raw_message)
         
@@ -89,7 +109,9 @@ class Trimmer(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_data_message(self, msg):
-        """Procesa mensajes de tipo DATA, filtrando juegos y reseñas."""
+        """
+        Procesa mensajes de tipo DATA, filtrando juegos y reseñas.
+        """
         genre_games_batch, q1_games_batch, reviews_batch = [], [], []
         
         if msg.dataset == Dataset.GAME:
@@ -98,7 +120,9 @@ class Trimmer(Node):
             self._process_review_data(msg, reviews_batch)
 
     def _process_game_data(self, msg, genre_games_batch, q1_games_batch):
-        """Procesa datos GAME y envía a las colas correspondientes."""
+        """
+        Procesa datos GAME y envía a las colas correspondientes.
+        """
         reader = csv.DictReader(msg.rows, fieldnames=GAME_FIELD_NAMES)
         for values in reader:
             q1_game, genre_game = self._get_game(values)
@@ -116,7 +140,9 @@ class Trimmer(Node):
             self._middleware.send_to_queue(E_FROM_TRIMMER, genre_games_msg.encode(), key=K_GENREGAME)
 
     def _process_review_data(self, msg, reviews_batch):
-        """Procesa datos del dataset REVIEW y envía a la cola correspondiente."""
+        """
+        Procesa datos del dataset REVIEW y envía a la cola correspondiente.
+        """
         reader = csv.DictReader(msg.rows, fieldnames=REVIEW_FIELD_NAMES)
         for values in reader:
             review = self._get_review(values)
@@ -161,6 +187,9 @@ class Trimmer(Node):
 
 
     def _get_review(self, values):
+        """
+        Crea una instancia de Review a partir de los datos, descartando aquellas filas con valores vacíos.
+        """
         required_keys = ['app_id', 'review_text', 'review_score']
         for key in required_keys:
             if key not in values or values[key] == "":
