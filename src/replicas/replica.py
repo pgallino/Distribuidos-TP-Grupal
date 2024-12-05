@@ -21,7 +21,6 @@ class Replica:
         self.container_name = container_name
         self.port = LISTENER_PORT
         self.sincronizado = False
-        self.last_msg_id = 0
         self.timestamp = time.time()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
         self.manager = Manager()
@@ -124,9 +123,15 @@ class Replica:
         logging.info("action: shutdown_replica | result: in progress...")
         self.shutting_down = True
 
-        # if self.listener:
-        #     self.listener.terminate()
-        #     self.listener.join()
+        if self.listener:
+            self.listener.terminate()
+            self.listener.join()
+
+        if self.sync_listener_process:
+            self.sync_listener_process.terminate()
+            self.sync_listener_process.join()
+
+        self.manager.shutdown()
 
         try:
             self._middleware.close()
@@ -135,7 +140,6 @@ class Replica:
             logging.error(f"action: shutdown_replica | result: fail | error: {e}")
 
         self._middleware.check_closed()
-        exit(0)
 
     def _handle_sigterm(self, sig, frame):
         """Maneja la señal SIGTERM para cerrar la réplica de forma segura."""
@@ -150,10 +154,10 @@ class Replica:
             simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"), probability=REPLICAS_PROB_FAILURE)
             # ==================================================================
             msg = decode_msg(raw_message)
-            if msg.msg_id == 14000:
-                logging.info(f"RECIBO MENSAJE Y ESTOY EN ESTADO {self.shared_state['sincronizado']}")
             # Determinar si la réplica necesita sincronización
             if msg.msg_id > 0 and not self.shared_state['sincronizado']:
+
+                logging.info(f"NO ESTABA SINCRONIZADO Y LLEGO MSG ID: {msg.msg_id}")
                 # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
@@ -237,7 +241,7 @@ class Replica:
 
             elif isinstance(msg, PushDataMessage):
                 logging.info(f"Master {self.id}: Recibido estado completo de réplica {msg.node_id}.")
-                if msg.data["last_msg_id"] > self.last_msg_id:
+                if msg.data["last_msg_id"] > self.shared_state['last_msg_id']:
                     self._load_state(msg)
                 responses.add(msg.node_id)
                 # logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")

@@ -10,12 +10,7 @@ from utils.utils import NodeType
 class AvgCounterReplica(Replica):
 
     def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
-
-        manager = Manager()
-        super().__init__(id, container_name, master_name, n_replicas, manager)
-
-        # Estado específico inicializado con Manager para compartir entre procesos
-        self.shared_state["avg_count"] = manager.dict()
+        super().__init__(id, container_name, master_name, n_replicas)
 
         # Proceso separado para escuchar SYNC_STATE_REQUESTS
         self.sync_listener_process = Process(
@@ -23,6 +18,9 @@ class AvgCounterReplica(Replica):
             args=(self.id, self.sync_request_listener_exchange, self.sync_request_listener_queue, self.sync_exchange, self.shared_state, self.lock)
         )
         self.sync_listener_process.start()
+
+    def setState(self):
+        self.shared_state["avg_count"] = self.manager.dict()
 
     def get_type(self):
         return NodeType.AVG_COUNTER_REPLICA
@@ -90,7 +88,6 @@ class AvgCounterReplica(Replica):
             # Actualizar el último mensaje procesado
             if "last_msg_id" in state:
                 self.shared_state["last_msg_id"] = state["last_msg_id"]
-                logging.info(f"Actualicé mi last_msg_id a -> {self.shared_state['last_msg_id']}")
             
             self.shared_state['sincronizado'] = True
 
@@ -99,12 +96,14 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
     Proceso dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
     """
     sync_middleware = Middleware()
+    sigterm_received = False
 
     def handle_sigterm(signal_received, frame):
+        nonlocal sync_middleware, sigterm_received
         """Manejador de señal SIGTERM para salir limpiamente."""
         logging.info(f"Replica {replica_id}: Señal SIGTERM recibida. Cerrando listener SYNC_STATE.")
+        sigterm_received = True  # Indica que el cierre es intencionado
         sync_middleware.close()
-        sys.exit(0)
 
     signal.signal(signal.SIGTERM, handle_sigterm)
 
@@ -154,6 +153,7 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
             auto_ack=False
         )
     except Exception as e:
-        logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
-    finally:
-        sync_middleware.close()
+        if not sigterm_received:
+            logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
+        else:
+            logging.info(f"Replica {replica_id}: Listener SYNC_STATE cerrado de forma intencionada.")
