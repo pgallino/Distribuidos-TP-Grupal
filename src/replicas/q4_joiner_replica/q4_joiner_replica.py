@@ -1,11 +1,11 @@
 from collections import defaultdict
 import logging
-from multiprocessing import Process
+import threading
 import signal
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from replica import Replica
-from utils.utils import NodeType
+from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 
 class Q4JoinerReplica(Replica):
@@ -13,8 +13,8 @@ class Q4JoinerReplica(Replica):
     def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
         super().__init__(id, container_name, master_name, n_replicas)
 
-        # Proceso separado para escuchar SYNC_STATE_REQUESTS
-        self.sync_listener_process = Process(
+        # Hilo separado para escuchar SYNC_STATE_REQUESTS
+        self.sync_listener_thread = threading.Thread(
             target=_run_sync_listener,
             args=(
                 self.id,
@@ -23,16 +23,17 @@ class Q4JoinerReplica(Replica):
                 self.sync_exchange,
                 self.shared_state,
                 self.lock,
-            )
+            ),
+            daemon=True
         )
-        self.sync_listener_process.start()
+        self.sync_listener_thread.start()
 
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para Q4Joiner."""
-        self.shared_state["negative_reviews_count_per_client"] = self.manager.dict()
-        self.shared_state["games_per_client"] = self.manager.dict()
-        self.shared_state["negative_reviews_per_client"] = self.manager.dict()
-        self.shared_state["fins_per_client"] = self.manager.dict()
+        self.shared_state["negative_reviews_count_per_client"] = defaultdict(lambda: defaultdict(int))
+        self.shared_state["games_per_client"] = defaultdict(dict)
+        self.shared_state["negative_reviews_per_client"] = defaultdict(lambda: defaultdict(lambda: ([], False)))
+        self.shared_state["fins_per_client"] = defaultdict(lambda: [False, False])
         logging.info("Replica: Almacenamiento inicializado.")
 
     def get_type(self):
@@ -144,19 +145,10 @@ class Q4JoinerReplica(Replica):
 
 def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exchange, shared_state, lock):
     """
-    Proceso dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
+    Hilo dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
     """
     sync_middleware = Middleware()
     sigterm_received = False
-
-    def handle_sigterm(signal_received, frame):
-        nonlocal sync_middleware, sigterm_received
-        """Manejador de señal SIGTERM para salir limpiamente."""
-        logging.info(f"Replica {replica_id}: Señal SIGTERM recibida. Cerrando listener SYNC_STATE.")
-        sigterm_received = True
-        sync_middleware.close()
-
-    signal.signal(signal.SIGTERM, handle_sigterm)
 
     def _process_sync_message(ch, method, properties, raw_message):
         """Procesa mensajes de tipo SYNC_STATE_REQUEST."""

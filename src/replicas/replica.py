@@ -1,6 +1,7 @@
 import logging
-from multiprocessing import Lock, Manager, Process
+from multiprocessing import Process
 import signal
+import threading
 import time
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
@@ -23,13 +24,12 @@ class Replica:
         self.sincronizado = False
         self.timestamp = time.time()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
-        self.manager = Manager()
-        self.shared_state = self.manager.dict()
+        self.shared_state = {}
         self.shared_state["sincronizado"] = False
         self.shared_state["last_msg_id"] = 0
 
         # Lock para proteger el acceso al estado compartido
-        self.lock = Lock()
+        self.lock = threading.Lock()
 
         # Validación de nombres de contenedor
         if not container_name:
@@ -99,7 +99,7 @@ class Replica:
 
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA
-        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA"))
+        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA"), probability=REPLICAS_PROB_FAILURE)
         # ==================================================================
 
         answer = self._create_pull_answer() if self.shared_state['sincronizado'] else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
@@ -107,7 +107,7 @@ class Replica:
 
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
-        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA"))
+        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA"), probability=REPLICAS_PROB_FAILURE)
         # ==================================================================
 
     def _create_pull_answer(self):
@@ -125,11 +125,10 @@ class Replica:
             self.listener.terminate()
             self.listener.join()
 
-        if self.sync_listener_process:
-            self.sync_listener_process.terminate()
-            self.sync_listener_process.join()
-
-        self.manager.shutdown()
+        # Detener y unir el hilo de sincronización si está en ejecución
+        if self.sync_listener_thread.is_alive():
+            logging.info("action: shutdown_replica | stopping sync listener thread")
+            self.sync_listener_thread.join()
 
         try:
             self._middleware.close()
