@@ -25,7 +25,7 @@ class WatchDogListener(Listener):
         msg = decode_msg(raw_msg)
 
         if msg.type == MsgType.KEEP_ALIVE:
-            pass
+            conn.sendall(SimpleMessage(type=MsgType.ALIVE, socket_compatible=True).encode())
 
         elif msg.type == MsgType.ELECTION:
             self._handle_election_message(msg)
@@ -34,16 +34,23 @@ class WatchDogListener(Listener):
             self._handle_leader_election_message(msg)
 
         elif msg.type == MsgType.OK_ELECTION:
-            self._handle_ok_election_message()
+            self._handle_ok_election_message(msg.node_id)
     
     def _handle_election_message(self, msg):
         """Procesa un mensaje de tipo ELECTION."""
         logging.info(f"[Listener] Llego un mensaje Election de {msg.node_id}")
         try:
-            with socket.create_connection((f'{self.ip_prefix}_{msg.node_id}', self.port), timeout=3) as response_socket:
-                ok_msg = SimpleMessage(type=MsgType.OK_ELECTION, socket_compatible=True, node_id=self.id)
-                response_socket.sendall(ok_msg.encode())
-                logging.info(f"[Listener] Enviado OK a {self.ip_prefix}_{msg.node_id}:{self.port}")
+            if self.leader_id.value == self.id:
+                with socket.create_connection((f'{self.ip_prefix}_{msg.node_id}', self.port), timeout=3) as response_socket:
+                    ok_msg = SimpleMessage(type=MsgType.LEADER_ELECTION, socket_compatible=True, node_id=self.id)
+                    response_socket.sendall(ok_msg.encode())
+                    logging.info(f"[Listener] Enviado Leader a {self.ip_prefix}_{msg.node_id}:{self.port}")
+                    return
+            else: 
+                with socket.create_connection((f'{self.ip_prefix}_{msg.node_id}', self.port), timeout=3) as response_socket:
+                    ok_msg = SimpleMessage(type=MsgType.OK_ELECTION, socket_compatible=True, node_id=self.id)
+                    response_socket.sendall(ok_msg.encode())
+                    logging.info(f"[Listener] Enviado OK a {self.ip_prefix}_{msg.node_id}:{self.port}")
         except socket.gaierror as e:
             logging.warning(f"[Listener] Error en resolución de nombre al responder a {msg.node_id}: {e}")
         except (socket.timeout, ConnectionRefusedError) as e:
@@ -57,30 +64,43 @@ class WatchDogListener(Listener):
             if not self.election_in_progress.value:
                 self.election_in_progress.value = True
                 start_election = True
+                # habria que hacer un notify?
 
         if start_election:
             logging.info("[Listener] Inicializo el proceso de eleccion de leader")
+            if self.election_process:
+                self.election_process.terminate()
+                self.election_process.join()
             self.election_process = Process(target=initiate_election, args=(self.id,  [id for id in range(1, self.n_watchdogs+1)], self.ip_prefix, self.election_in_progress, self.election_condition, self.waiting_ok, self.ok_condition, self.leader_id))
             self.election_process.start()
 
     def _handle_leader_election_message(self, msg):
         """Procesa un mensaje de tipo LEADER_ELECTION."""
-        logging.info(f"[Listener] Llego un mensaje Leader")
+        logging.info(f"[Listener] Llego un mensaje Leader {msg.node_id}")
+
+        with self.ok_condition:
+            # logging.info(f"[Listener] Aviso que ya no se espera el OK")
+            self.leader_id.value = msg.node_id
+            self.waiting_ok.value = False
+            self.ok_condition.notify_all()
+
         with self.election_condition:
-            logging.info(f"[Listener] Seteo el id del leader y aviso que termino la eleccion")
+            # logging.info(f"[Listener] Seteo el id del leader y aviso que termino la eleccion")
             self.leader_id.value = msg.node_id
             self.election_in_progress.value = False
             self.election_condition.notify_all()
 
         if self.election_process:
-            logging.info(f"[Listener] Joineo el proceso de eleccion")
+            # logging.info(f"[Listener] Joineo el proceso de eleccion")
+            self.election_process.terminate()
             self.election_process.join()
+            self.election_process = None
 
-    def _handle_ok_election_message(self):
+    def _handle_ok_election_message(self, node_id: int):
         """Procesa un mensaje de tipo OK_ELECTION."""
-        logging.info(f"[Listener] Llego un mensaje Ok")
+        logging.info(f"[Listener] Llego un mensaje Ok de {node_id}")
         with self.ok_condition:
-            logging.info(f"[Listener] Notifico el Ok")
+            # logging.info(f"[Listener] Notifico el Ok")
             self.waiting_ok.value = False
             self.ok_condition.notify_all()
 

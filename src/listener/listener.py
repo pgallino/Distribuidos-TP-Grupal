@@ -44,18 +44,17 @@ class Listener:
         msg = decode_msg(raw_msg)
 
         if msg.type == MsgType.KEEP_ALIVE:
-            pass
+            conn.sendall(SimpleMessage(type=MsgType.ALIVE, socket_compatible=True).encode())
     
     def run(self):
         """Proceso dedicado a manejar mensajes de Keep Alive."""
 
         while not self.shutting_down:
             try:
-                self.conn, addr = self.sock.accept()
-                logging.info(f"[Listener] Conexion recibida de {addr}")
-                self.process_msg(self.conn)
-                # logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
-                self.conn.close()
+                conn, addr = self.sock.accept()
+                # logging.info(f"[Listener] Conexion recibida")
+                self.process_msg(conn)
+                conn.close()
             except Exception as e:
                 if not self.shutting_down:
                     logging.error(f"KeepAliveHandler: Error manejando conexión: {e}")

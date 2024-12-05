@@ -1,4 +1,5 @@
 import logging
+import signal
 import socket
 from messages.messages import MsgType, SimpleMessage
 from utils.container_constants import LISTENER_PORT
@@ -7,6 +8,11 @@ TIMEOUT = 5
 
 def initiate_election(node_id, node_ids: list[int], ip_prefix, election_in_progress, election_condition, waiting_ok, ok_condition, leader_id):
     """Inicia el algoritmo de elección Bully."""
+
+    def handle_sigterm(sig, frame):
+        exit(0)
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     logging.info(f"[Manager] Iniciando elección.")
     higher_node_ids = [nid for nid in node_ids if nid > node_id]
 
@@ -38,7 +44,7 @@ def initiate_election(node_id, node_ids: list[int], ip_prefix, election_in_progr
 def _wait_for_ok_or_leader(node_id, node_ids, ip_prefix, election_in_progress, election_condition, waiting_ok, ok_condition, leader_id):
     """Espera una confirmación OK o una notificación de liderazgo."""
     with ok_condition:
-        logging.info(f"[Manager] Entre a esperar los Oks")
+        # logging.info(f"[Manager] Entre a esperar los Oks")
         # Validar si el OK ya fue recibido antes de esperar
         if not waiting_ok.value:
             logging.info(f"[Manager] OK ya recibido antes de esperar. Continuando.")
@@ -52,9 +58,8 @@ def _wait_for_ok_or_leader(node_id, node_ids, ip_prefix, election_in_progress, e
 
     # Si se recibe el OK, continuar con la lógica de esperar el anuncio del líder
     with election_condition:
-        logging.info(f"[Manager] Me quedo esperando el anuncio de eleccion terminada")
         election_condition.wait_for(lambda: not election_in_progress.value)
-        logging.info(f"[Manager] Anuncio de líder recibido. Continuando ejecución.")
+        # logging.info(f"[Manager] Anuncio de líder recibido. Continuando ejecución.")
 
 def declare_leader(node_id, node_ids, ip_prefix, election_in_progress, election_condition, leader_id):
     """Se declara líder y ejecuta la acción proporcionada."""
@@ -63,6 +68,7 @@ def declare_leader(node_id, node_ids, ip_prefix, election_in_progress, election_
     with election_condition:
         leader_id.value = node_id
 
+    # logging.info(f"[Manager] Entro a notificar que soy el leader.")
     # Notificar a los nodos que es el líder
     _notify_leader_selected(node_id, node_ids, ip_prefix, election_in_progress, election_condition, leader_id)
 
@@ -74,7 +80,7 @@ def _notify_leader_selected(node_id, node_ids, ip_prefix, election_in_progress, 
                 with socket.create_connection((f'{ip_prefix}_{nid}', LISTENER_PORT), timeout=TIMEOUT) as sock:
                     leader_msg = SimpleMessage(type=MsgType.LEADER_ELECTION, socket_compatible=True, node_id=node_id)
                     sock.sendall(leader_msg.encode())
-                    logging.info(f"[Manager] Notificación de liderazgo enviada a Node {nid}.")
+                    # logging.info(f"[Manager] Notificación de liderazgo enviada a Node {nid}.")
             except (ConnectionRefusedError, socket.timeout, socket.gaierror):
                 logging.warning(f"[Manager] No se pudo contactar a Node {nid} (timeout o nodo caido).")
             except Exception as e:

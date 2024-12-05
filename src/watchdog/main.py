@@ -1,6 +1,5 @@
 from utils.container_constants import WATCHDOG_CONFIG_KEYS, WATCHDOG_CONTAINER_NAME, WATCHDOG_NODES_TO_MONITOR
 from utils.initilization import initialize_config, initialize_log
-from utils.utils import NodeType
 from watchdog import WatchDog
 
 def main():
@@ -17,7 +16,7 @@ def main():
 
     # Crear lista de tuplas para n_nodes_instances
     nodes_to_monitor = [
-        (NodeType.string_to_node_type(node), config_params[f"{node}_instances"])
+        (node, config_params[f"{node}_instances"])
         for node in WATCHDOG_NODES_TO_MONITOR
     ]
 

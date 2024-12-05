@@ -765,6 +765,7 @@ MESSAGE_CLASSES = {
     MsgType.COORDFIN: SimpleMessage,
     MsgType.COORDFIN_ACK: SimpleMessage,
     MsgType.KEEP_ALIVE: SimpleMessage,
+    MsgType.ALIVE: SimpleMessage,
     MsgType.TASK_INTENT: SimpleMessage,
     MsgType.TASK_COMPLETED: SimpleMessage,
     MsgType.MASTER_CONNECTED: SimpleMessage,

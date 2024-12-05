@@ -92,7 +92,7 @@ class Node:
 
         # ==================================================================
         # CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {client_id}"), probability=FILTERS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {msg.client_id}"), probability=FILTERS_PROB_FAILURE)
         # ==================================================================
 
         if msg.type == MsgType.FIN_PROPAGATED:
