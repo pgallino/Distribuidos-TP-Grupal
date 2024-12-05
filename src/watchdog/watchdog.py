@@ -52,7 +52,9 @@ class WatchDog:
 
         self.init_listener_process()
         time.sleep(10)
+        logging.info("[Main] Pase el sleep")
         self.election_leader()
+        logging.info("[Main] Pase el election_leader")
 
         if self.leader_id.value == self.id:
             while not self.shutting_down:
@@ -149,6 +151,7 @@ class WatchDog:
         process = Process(target=init_listener, args=(self.id, self.container_name, self.n_watchdogs, self.election_in_progress, self.election_condition, self.waiting_ok, self.ok_condition, self.leader_id,))
         process.start()
         self.listener_process = process
+        logging.info("[Main] Inicializo listener")
 
     def election_leader(self):
         with self.election_condition:
