@@ -123,10 +123,9 @@ class Replica:
 
         self._middleware.send_to_queue(self.sync_request_listener_exchange, SimpleMessage(type=MsgType.CLOSE).encode(), str(self.id))
 
-        logging.info("ENVIE CLOSE A THREAD")
         # Detener y unir el hilo de sincronización si está en ejecución
         if self.sync_listener_process and self.sync_listener_thread.is_alive():
-            logging.info("action: shutdown_replica | stopping sync listener thread")
+            logging.info("action: shutdown_replica | stopping sync listener")
             self.sync_listener_thread.join()
 
         if self.listener:
@@ -157,7 +156,6 @@ class Replica:
             # Determinar si la réplica necesita sincronización
             if msg.msg_id > 0 and not self.synchronized:
 
-                logging.info(f"NO ESTABA SINCRONIZADO Y LLEGO MSG ID: {msg.msg_id}")
                 # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
                 ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
@@ -183,7 +181,6 @@ class Replica:
                 # ==================================================================
             
             elif msg.type == MsgType.FIN:
-                # logging.info(f"RECIBI FIN CON ID: {msg.msg_id}")
                 self._process_fin_message(msg)
 
             # Confirmar la recepción del mensaje
@@ -208,7 +205,7 @@ class Replica:
         """
         Solicita el estado a las réplicas compañeras y se sincroniza.
         """
-        # logging.info(f"Replica {self.id}: Solicitando estado a réplicas compañeras.")
+        logging.info(f"Replica {self.id}: Solicitando estado a réplicas compañeras.")
 
         # ==================================================================
         # CAIDA LUEGO DE ENTRAR A RECOVER_STATE Y ANTES DE ENVIAR SYNC_MSG
@@ -258,8 +255,6 @@ class Replica:
             # CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG
             simulate_random_failure(self, log_with_location("CAIDA LUEGO DE HACER LOAD Y ANTES DE DAR ACK AL SYNC_MSG"), probability=REPLICAS_PROB_FAILURE)
             # ==================================================================
-
-            logging.info(f"Replica {self.id}: Cola anónima eliminada tras procesar el estado.")
 
             # ==================================================================
             # CAIDA LUEGO DE HACER LOAD Y LUEGO DE DAR ACK AL SYNC_MSG

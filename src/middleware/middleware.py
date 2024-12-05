@@ -226,7 +226,7 @@ class Middleware:
         """
         try:
             self.channel.queue_delete(queue=queue_name)
-            logging.info(f"Cola '{queue_name}' eliminada con éxito.")
+            # logging.info(f"Cola '{queue_name}' eliminada con éxito.")
         except Exception as e:
             logging.error(f"Error al eliminar la cola '{queue_name}': {e}")
             raise
