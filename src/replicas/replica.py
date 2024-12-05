@@ -24,6 +24,7 @@ class Replica:
         self.sincronizado = False
         self.timestamp = time.time()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
+
         self.shared_state = {}
         self.shared_state["sincronizado"] = False
         self.shared_state["last_msg_id"] = 0
@@ -118,17 +119,21 @@ class Replica:
         if self.shutting_down:
             return
 
+
         logging.info("action: shutdown_replica | result: in progress...")
         self.shutting_down = True
 
-        if self.listener:
-            self.listener.terminate()
-            self.listener.join()
+        self._middleware.send_to_queue(self.sync_request_listener_exchange, SimpleMessage(type=MsgType.CLOSE).encode())
 
+        logging.info("ENVIE CLOSE A THREAD")
         # Detener y unir el hilo de sincronización si está en ejecución
         if self.sync_listener_thread.is_alive():
             logging.info("action: shutdown_replica | stopping sync listener thread")
             self.sync_listener_thread.join()
+
+        if self.listener:
+            self.listener.terminate()
+            self.listener.join()
 
         try:
             self._middleware.close()

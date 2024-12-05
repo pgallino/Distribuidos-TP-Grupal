@@ -1,5 +1,6 @@
 from collections import defaultdict
 import logging
+from multiprocessing.pool import CLOSE
 import threading
 import signal
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
@@ -22,7 +23,7 @@ class Q4JoinerReplica(Replica):
                 self.sync_request_listener_queue,
                 self.sync_exchange,
                 self.shared_state,
-                self.lock,
+                self.lock
             ),
             daemon=True
         )
@@ -147,13 +148,18 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
     """
     Hilo dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
     """
+
     sync_middleware = Middleware()
-    sigterm_received = False
 
     def _process_sync_message(ch, method, properties, raw_message):
         """Procesa mensajes de tipo SYNC_STATE_REQUEST."""
         try:
             msg = decode_msg(raw_message)
+
+            if msg.type == MsgType.CLOSE:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                ch.stop_consuming()
+                return
             if msg.type == MsgType.SYNC_STATE_REQUEST and msg.requester_id != replica_id:
                 logging.info(f"Replica {replica_id}: Procesando mensaje de sincronización de réplica {msg.requester_id}.")
 
@@ -187,10 +193,9 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
         sync_middleware.declare_exchange(listening_exchange, type="fanout")
         sync_middleware.declare_queue(listening_queue)
         sync_middleware.bind_queue(listening_queue, listening_exchange)
-
         sync_middleware.receive_from_queue(listening_queue, _process_sync_message, auto_ack=False)
+        logging.info("SALI CON CLOSE")
     except Exception as e:
-        if not sigterm_received:
-            logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
-        else:
-            logging.info(f"Replica {replica_id}: Listener SYNC_STATE cerrado de forma intencionada.")
+        logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
+    finally:
+        sync_middleware.close()

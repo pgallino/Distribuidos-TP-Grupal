@@ -38,6 +38,7 @@ class MsgType(Enum):
     FIN_NOTIFICATION = 25
     CLIENT_CLOSE = 26
     FIN_PROPAGATED = 27
+    CLOSE = 28
 
 class Dataset(Enum):
     GAME = 0
@@ -225,7 +226,7 @@ class SimpleMessage(BaseMessage):
             MsgType.EMPTY_STATE: ["node_id"],
             MsgType.FIN_NOTIFICATION: ["client_id", "node_type", "node_instance"],
             MsgType.CLIENT_CLOSE: ["client_id"],
-            MsgType.FIN_PROPAGATED: ["client_id", "node_type"]
+            MsgType.FIN_PROPAGATED: ["client_id", "node_type"],
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -802,7 +803,8 @@ MESSAGE_CLASSES = {
     MsgType.EMPTY_STATE: SimpleMessage,
     MsgType.FIN_NOTIFICATION: SimpleMessage,
     MsgType.CLIENT_CLOSE: SimpleMessage,
-    MsgType.FIN_PROPAGATED: SimpleMessage
+    MsgType.FIN_PROPAGATED: SimpleMessage,
+    MsgType.CLOSE: SimpleMessage
 }
 
 
