@@ -14,7 +14,16 @@ class Q4JoinerReplica(Replica):
     def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
         super().__init__(id, container_name, master_name, n_replicas)
 
-        # Hilo separado para escuchar SYNC_STATE_REQUESTS
+    def _initialize_storage(self):
+        """Inicializa las estructuras de almacenamiento específicas para Q4Joiner."""
+        self.negative_reviews_count_per_client = defaultdict(lambda: defaultdict(int))
+        self.games_per_client = defaultdict(dict)
+        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False)))
+        self.fins_per_client = defaultdict(lambda: [False, False])
+        self.state_vars = (self.synchronized, self.last_msg_id, self.negative_reviews_count_per_client, self.games_per_client, self.negative_reviews_per_client, self.fins_per_client)
+        logging.info("Replica: Almacenamiento inicializado.")
+
+        # Hilo para manejar solicitudes de sincronización
         self.sync_listener_thread = threading.Thread(
             target=_run_sync_listener,
             args=(
@@ -22,20 +31,12 @@ class Q4JoinerReplica(Replica):
                 self.sync_request_listener_exchange,
                 self.sync_request_listener_queue,
                 self.sync_exchange,
-                self.shared_state,
-                self.lock
+                self.state_vars,
+                self.lock,
             ),
             daemon=True
         )
         self.sync_listener_thread.start()
-
-    def _initialize_storage(self):
-        """Inicializa las estructuras de almacenamiento específicas para Q4Joiner."""
-        self.shared_state["negative_reviews_count_per_client"] = defaultdict(lambda: defaultdict(int))
-        self.shared_state["games_per_client"] = defaultdict(dict)
-        self.shared_state["negative_reviews_per_client"] = defaultdict(lambda: defaultdict(lambda: ([], False)))
-        self.shared_state["fins_per_client"] = defaultdict(lambda: [False, False])
-        logging.info("Replica: Almacenamiento inicializado.")
 
     def get_type(self):
         return NodeType.Q4_JOINER_REPLICA
@@ -45,16 +46,16 @@ class Q4JoinerReplica(Replica):
         with self.lock:
             response_data = PushDataMessage(
                 data={
-                    "last_msg_id": self.shared_state["last_msg_id"],
+                    "last_msg_id": self.last_msg_id,
                     "negative_reviews_count_per_client": {
-                        k: dict(v) for k, v in self.shared_state["negative_reviews_count_per_client"].items()
+                        k: dict(v) for k, v in self.negative_reviews_count_per_client.items()
                     },
-                    "games_per_client": dict(self.shared_state["games_per_client"]),
+                    "games_per_client": dict(self.games_per_client),
                     "negative_reviews_per_client": {
                         k: {app_id: (list(reviews), processed) for app_id, (reviews, processed) in v.items()}
-                        for k, v in self.shared_state["negative_reviews_per_client"].items()
+                        for k, v in self.negative_reviews_per_client.items()
                     },
-                    "fins_per_client": dict(self.shared_state["fins_per_client"]),
+                    "fins_per_client": dict(self.fins_per_client),
                 },
                 node_id=self.id,
             )
@@ -64,7 +65,7 @@ class Q4JoinerReplica(Replica):
         """Procesa los datos de un mensaje `PushDataMessage`."""
         state = msg.data
 
-        if msg.msg_id > self.shared_state["last_msg_id"] or msg.msg_id == 0:
+        if msg.msg_id > self.last_msg_id or msg.msg_id == 0:
             update_type = state.get("type")
             client_id = state.get("id")
 
@@ -82,43 +83,43 @@ class Q4JoinerReplica(Replica):
                 else:
                     logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
-                self.shared_state["last_msg_id"] = msg.msg_id
-                self.shared_state["sincronizado"] = True
+                self.last_msg_id = msg.msg_id
+                self.synchronized = True
 
     def _update_negative_reviews(self, client_id: int, updates: dict):
         """Actualiza las reseñas negativas de un cliente en la réplica."""
-        client_reviews = self.shared_state["negative_reviews_per_client"].get(client_id, {})
+        client_reviews = self.negative_reviews_per_client.get(client_id, {})
         for app_id, value in updates.items():
             client_reviews[app_id] = value
-        self.shared_state["negative_reviews_per_client"][client_id] = client_reviews
+        self.negative_reviews_per_client[client_id] = client_reviews
 
     def _update_negative_reviews_count(self, client_id: int, updates: dict):
         """Actualiza la cantidad de reseñas negativas de un cliente en la réplica."""
-        client_reviews = self.shared_state["negative_reviews_count_per_client"].get(client_id, {})
+        client_reviews = self.negative_reviews_count_per_client.get(client_id, {})
         for app_id, count in updates.items():
             client_reviews[app_id] = count
-        self.shared_state["negative_reviews_count_per_client"][client_id] = client_reviews
+        self.negative_reviews_count_per_client[client_id] = client_reviews
 
     def _update_games(self, client_id: int, updates: dict):
         """Actualiza los juegos de un cliente en la réplica."""
-        client_games = self.shared_state["games_per_client"].get(client_id, {})
+        client_games = self.games_per_client.get(client_id, {})
         for app_id, name in updates.items():
             client_games[app_id] = name
-        self.shared_state["games_per_client"][client_id] = client_games
+        self.games_per_client[client_id] = client_games
 
     def _update_fins(self, client_id: int, updates: list):
         """Actualiza los estados de FIN de un cliente en la réplica."""
         if len(updates) == 2:
-            self.shared_state["fins_per_client"][client_id] = updates
+            self.fins_per_client[client_id] = updates
         else:
             logging.warning(f"Replica: Formato inválido para actualización de fins: {updates}")
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
-        self.shared_state["negative_reviews_count_per_client"].pop(client_id, None)
-        self.shared_state["games_per_client"].pop(client_id, None)
-        self.shared_state["negative_reviews_per_client"].pop(client_id, None)
-        self.shared_state["fins_per_client"].pop(client_id, None)
+        self.negative_reviews_count_per_client.pop(client_id, None)
+        self.games_per_client.pop(client_id, None)
+        self.negative_reviews_per_client.pop(client_id, None)
+        self.fins_per_client.pop(client_id, None)
         logging.info(f"Replica: Estado borrado para client_id: {client_id}")
 
     def _load_state(self, msg: PushDataMessage):
@@ -138,18 +139,19 @@ class Q4JoinerReplica(Replica):
                 for client_id, fins in state["fins_per_client"].items():
                     self._update_fins(client_id, fins)
             if "last_msg_id" in state:
-                self.shared_state["last_msg_id"] = state["last_msg_id"]
+                self.last_msg_id = state["last_msg_id"]
 
-            self.shared_state["sincronizado"] = True
-            logging.info(f"Replica: Estado completo cargado con last_msg_id {self.shared_state['last_msg_id']}.")
+            self.synchronized = True
+            logging.info(f"Replica: Estado completo cargado con last_msg_id {state['last_msg_id']}.")
 
 
-def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exchange, shared_state, lock):
+def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exchange, state_vars, lock):
     """
     Hilo dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
     """
 
     sync_middleware = Middleware()
+    synchronized, last_msg_id, negative_reviews_count_per_client, games_per_client, negative_reviews_per_client, fins_per_client = state_vars
 
     def _process_sync_message(ch, method, properties, raw_message):
         """Procesa mensajes de tipo SYNC_STATE_REQUEST."""
@@ -164,19 +166,19 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
                 logging.info(f"Replica {replica_id}: Procesando mensaje de sincronización de réplica {msg.requester_id}.")
 
                 with lock:
-                    if shared_state["sincronizado"]:
+                    if synchronized:
                         answer = PushDataMessage(
                             data={
-                                "last_msg_id": shared_state["last_msg_id"],
+                                "last_msg_id": last_msg_id,
                                 "negative_reviews_count_per_client": {
-                                    k: dict(v) for k, v in shared_state["negative_reviews_count_per_client"].items()
+                                    k: dict(v) for k, v in negative_reviews_count_per_client.items()
                                 },
-                                "games_per_client": dict(shared_state["games_per_client"]),
+                                "games_per_client": dict(games_per_client),
                                 "negative_reviews_per_client": {
                                     k: {app_id: (list(reviews), processed) for app_id, (reviews, processed) in v.items()}
-                                    for k, v in shared_state["negative_reviews_per_client"].items()
+                                    for k, v in negative_reviews_per_client.items()
                                 },
-                                "fins_per_client": dict(shared_state["fins_per_client"]),
+                                "fins_per_client": dict(fins_per_client),
                             },
                             node_id=replica_id,
                         )
@@ -190,9 +192,10 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
 
     try:
         sync_middleware.declare_exchange(sync_exchange, type='fanout')
-        sync_middleware.declare_exchange(listening_exchange, type="fanout")
+        sync_middleware.declare_exchange(listening_exchange)
         sync_middleware.declare_queue(listening_queue)
-        sync_middleware.bind_queue(listening_queue, listening_exchange)
+        sync_middleware.bind_queue(listening_queue, listening_exchange, "sync")
+        sync_middleware.bind_queue(listening_queue, listening_exchange, str(replica_id))
         sync_middleware.receive_from_queue(listening_queue, _process_sync_message, auto_ack=False)
         logging.info("SALI CON CLOSE")
     except Exception as e:

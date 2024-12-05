@@ -1,7 +1,6 @@
 from collections import defaultdict
 import logging
-from multiprocessing import Process
-import signal
+import threading
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
 from replica import Replica
@@ -12,26 +11,37 @@ class Q5JoinerReplica(Replica):
     def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
         super().__init__(id, container_name, master_name, n_replicas)
 
-        # Proceso separado para escuchar SYNC_STATE_REQUESTS
-        self.sync_listener_process = Process(
+    def _initialize_storage(self):
+        """Inicializa las estructuras de almacenamiento específicas para Q5Joiner."""
+        # Inicialización de almacenamiento
+        self.games_per_client = defaultdict(dict)
+        self.negative_review_counts_per_client = defaultdict(lambda: defaultdict(int))
+        self.fins_per_client = defaultdict(lambda: [False, False])
+
+        # Variables de estado compartido
+        self.state_vars = (
+            self.synchronized,
+            self.last_msg_id,
+            self.games_per_client,
+            self.negative_review_counts_per_client,
+            self.fins_per_client
+        )
+        logging.info("Replica: Almacenamiento inicializado.")
+
+        # Hilo para manejar solicitudes de sincronización
+        self.sync_listener_thread = threading.Thread(
             target=_run_sync_listener,
             args=(
                 self.id,
                 self.sync_request_listener_exchange,
                 self.sync_request_listener_queue,
                 self.sync_exchange,
-                self.shared_state,
+                self.state_vars,
                 self.lock,
-            )
+            ),
+            daemon=True
         )
-        self.sync_listener_process.start()
-
-    def _initialize_storage(self):
-        """Inicializa las estructuras de almacenamiento específicas para Q5Joiner."""
-        self.shared_state["games_per_client"] = self.manager.dict()
-        self.shared_state["negative_review_counts_per_client"] = self.manager.dict()
-        self.shared_state["fins_per_client"] = self.manager.dict()
-        logging.info("Replica: Almacenamiento inicializado.")
+        self.sync_listener_thread.start()
 
     def get_type(self):
         return NodeType.Q5_JOINER_REPLICA
@@ -41,12 +51,12 @@ class Q5JoinerReplica(Replica):
         with self.lock:
             response_data = PushDataMessage(
                 data={
-                    "last_msg_id": self.shared_state["last_msg_id"],
-                    "games_per_client": dict(self.shared_state["games_per_client"]),
+                    "last_msg_id": self.last_msg_id,
+                    "games_per_client": dict(self.games_per_client),
                     "negative_review_counts_per_client": {
-                        k: dict(v) for k, v in self.shared_state["negative_review_counts_per_client"].items()
+                        k: dict(v) for k, v in self.negative_review_counts_per_client.items()
                     },
-                    "fins_per_client": dict(self.shared_state["fins_per_client"]),
+                    "fins_per_client": dict(self.fins_per_client),
                 },
                 node_id=self.id,
             )
@@ -56,7 +66,7 @@ class Q5JoinerReplica(Replica):
         """Procesa los datos de un mensaje `PushDataMessage`."""
         state = msg.data
 
-        if msg.msg_id > self.shared_state["last_msg_id"] or msg.msg_id == 0:
+        if msg.msg_id > self.last_msg_id or msg.msg_id == 0:
             update_type = state.get("type")
             client_id = state.get("id")
 
@@ -72,41 +82,32 @@ class Q5JoinerReplica(Replica):
                 else:
                     logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
-                self.shared_state["last_msg_id"] = msg.msg_id
-                self.shared_state["sincronizado"] = True
+                self.last_msg_id = msg.msg_id
+                self.synchronized = True
 
     def _update_games(self, client_id: int, updates: dict):
         """Actualiza los juegos de un cliente en la réplica."""
-        client_games = self.shared_state["games_per_client"].get(client_id, {})
         for app_id, name in updates.items():
-            client_games[app_id] = name
-        self.shared_state["games_per_client"][client_id] = client_games
+            self.games_per_client[client_id][app_id] = name
 
     def _update_reviews(self, client_id: int, updates: dict):
         """Actualiza las reseñas negativas de un cliente en la réplica."""
-        client_reviews = self.shared_state["negative_review_counts_per_client"].get(client_id, {})
         for app_id, count in updates.items():
-            client_reviews[app_id] = count
-        self.shared_state["negative_review_counts_per_client"][client_id] = client_reviews
+            self.negative_review_counts_per_client[client_id][app_id] = count
 
     def _update_fins(self, client_id: int, updates: list):
         """Actualiza los estados de FIN de un cliente en la réplica."""
         if len(updates) == 2:
-            self.shared_state["fins_per_client"][client_id] = updates
+            self.fins_per_client[client_id] = updates
         else:
             logging.warning(f"Replica: Formato inválido para actualización de fins: {updates}")
 
     def _delete_client_state(self, client_id: int):
         """Elimina todas las referencias al cliente en el estado."""
-        if client_id in self.shared_state["games_per_client"]:
-            del self.shared_state["games_per_client"][client_id]
-            logging.info(f"Replica: Juegos eliminados para cliente {client_id}.")
-        if client_id in self.shared_state["negative_review_counts_per_client"]:
-            del self.shared_state["negative_review_counts_per_client"][client_id]
-            logging.info(f"Replica: Reseñas eliminadas para cliente {client_id}.")
-        if client_id in self.shared_state["fins_per_client"]:
-            del self.shared_state["fins_per_client"][client_id]
-            logging.info(f"Replica: Estado FIN eliminado para cliente {client_id}.")
+        self.games_per_client.pop(client_id, None)
+        self.negative_review_counts_per_client.pop(client_id, None)
+        self.fins_per_client.pop(client_id, None)
+        logging.info(f"Replica: Estado eliminado para client_id: {client_id}")
 
     def _load_state(self, msg: PushDataMessage):
         """Carga el estado completo recibido en la réplica."""
@@ -122,45 +123,40 @@ class Q5JoinerReplica(Replica):
                 for client_id, fins in state["fins_per_client"].items():
                     self._update_fins(client_id, fins)
             if "last_msg_id" in state:
-                self.shared_state["last_msg_id"] = state["last_msg_id"]
+                self.last_msg_id = state["last_msg_id"]
 
-        self.shared_state['sincronizado'] = True
-        logging.info(f"recibi este estado {self.shared_state['last_msg_id']}")
+        self.synchronized = True
+        logging.info(f"recibi este estado {self.last_msg_id}")
 
 
-def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exchange, shared_state, lock):
+def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exchange, state_vars, lock):
     """
-    Proceso dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
+    Hilo dedicado a escuchar mensajes SYNC_STATE.
     """
     sync_middleware = Middleware()
-    sigterm_received = False
-
-    def handle_sigterm(signal_received, frame):
-        nonlocal sync_middleware, sigterm_received
-        """Manejador de señal SIGTERM para salir limpiamente."""
-        logging.info(f"Replica {replica_id}: Señal SIGTERM recibida. Cerrando listener SYNC_STATE.")
-        sigterm_received = True
-        sync_middleware.close()
-
-    signal.signal(signal.SIGTERM, handle_sigterm)
+    synchronized, last_msg_id, games_per_client, negative_review_counts_per_client, fins_per_client = state_vars
 
     def _process_sync_message(ch, method, properties, raw_message):
         """Procesa mensajes de tipo SYNC_STATE_REQUEST."""
         try:
             msg = decode_msg(raw_message)
+            if msg.type == MsgType.CLOSE:
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+                ch.stop_consuming()
+                return
             if msg.type == MsgType.SYNC_STATE_REQUEST and msg.requester_id != replica_id:
                 logging.info(f"Replica {replica_id}: Procesando mensaje de sincronización de réplica {msg.requester_id}.")
 
                 with lock:
-                    if shared_state["sincronizado"]:
+                    if synchronized:
                         answer = PushDataMessage(
                             data={
-                                "last_msg_id": shared_state["last_msg_id"],
-                                "games_per_client": dict(shared_state["games_per_client"]),
+                                "last_msg_id": last_msg_id,
+                                "games_per_client": dict(games_per_client),
                                 "negative_review_counts_per_client": {
-                                    k: dict(v) for k, v in shared_state["negative_review_counts_per_client"].items()
+                                    k: dict(v) for k, v in negative_review_counts_per_client.items()
                                 },
-                                "fins_per_client": dict(shared_state["fins_per_client"]),
+                                "fins_per_client": dict(fins_per_client),
                             },
                             node_id=replica_id,
                         )
@@ -174,13 +170,13 @@ def _run_sync_listener(replica_id, listening_exchange, listening_queue, sync_exc
 
     try:
         sync_middleware.declare_exchange(sync_exchange, type='fanout')
-        sync_middleware.declare_exchange(listening_exchange, type="fanout")
+        sync_middleware.declare_exchange(listening_exchange)
         sync_middleware.declare_queue(listening_queue)
-        sync_middleware.bind_queue(listening_queue, listening_exchange)
-
+        sync_middleware.bind_queue(listening_queue, listening_exchange, "sync")
+        sync_middleware.bind_queue(listening_queue, listening_exchange, str(replica_id))
         sync_middleware.receive_from_queue(listening_queue, _process_sync_message, auto_ack=False)
+        logging.info("SALI CON CLOSE")
     except Exception as e:
-        if not sigterm_received:
-            logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
-        else:
-            logging.info(f"Replica {replica_id}: Listener SYNC_STATE cerrado de forma intencionada.")
+        logging.error(f"Replica {replica_id}: Error en el listener SYNC_STATE: {e}")
+    finally:
+        sync_middleware.close()

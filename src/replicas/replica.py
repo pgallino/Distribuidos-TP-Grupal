@@ -25,9 +25,8 @@ class Replica:
         self.timestamp = time.time()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
-        self.shared_state = {}
-        self.shared_state["sincronizado"] = False
-        self.shared_state["last_msg_id"] = 0
+        self.synchronized = False
+        self.last_msg_id = 0
 
         # Lock para proteger el acceso al estado compartido
         self.lock = threading.Lock()
@@ -55,7 +54,7 @@ class Replica:
 
         # A ESTE EXCHANGE ENVIO LOS SYNC_STATE_REQUEST
         self.sync_request_listener_exchange = E_REPLICA_SYNC_REQUEST_LISTENER + f"_{container_name}"
-        self._middleware.declare_exchange(self.sync_request_listener_exchange, type='fanout')
+        self._middleware.declare_exchange(self.sync_request_listener_exchange)
 
         # ESTA COLA LA UTILIZA EL PROCESO REQUEST_LISTENER PARA PROCESAR LAS SYNC_STATE_REQUEST EN PARALELO
         self.sync_request_listener_queue = Q_REPLICA_SYNC_REQUEST_LISTENER + f"_{container_name}_{self.id}"
@@ -71,8 +70,8 @@ class Replica:
     def run(self):
         """Inicia el consumo de mensajes en la cola de la réplica."""
         try:
-            self._initialize_storage()
             while not self.shutting_down:
+                self._initialize_storage()
                 # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
                 self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
                 self.recover_state()  # Método para solicitar sincronización
@@ -97,13 +96,12 @@ class Replica:
 
     def _process_pull_data(self):
         """Procesa un mensaje de solicitud de pull de datos."""
-
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA
         simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA"), probability=REPLICAS_PROB_FAILURE)
         # ==================================================================
 
-        answer = self._create_pull_answer() if self.shared_state['sincronizado'] else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
+        answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
         self._middleware.send_to_queue(self.send_exchange, answer.encode())
 
         # ==================================================================
@@ -123,11 +121,11 @@ class Replica:
         logging.info("action: shutdown_replica | result: in progress...")
         self.shutting_down = True
 
-        self._middleware.send_to_queue(self.sync_request_listener_exchange, SimpleMessage(type=MsgType.CLOSE).encode())
+        self._middleware.send_to_queue(self.sync_request_listener_exchange, SimpleMessage(type=MsgType.CLOSE).encode(), str(self.id))
 
         logging.info("ENVIE CLOSE A THREAD")
         # Detener y unir el hilo de sincronización si está en ejecución
-        if self.sync_listener_thread.is_alive():
+        if self.sync_listener_process and self.sync_listener_thread.is_alive():
             logging.info("action: shutdown_replica | stopping sync listener thread")
             self.sync_listener_thread.join()
 
@@ -153,11 +151,11 @@ class Replica:
         try:
             # ==================================================================
             # CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK
-            simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"), probability=REPLICAS_PROB_FAILURE)
+            # simulate_random_failure(self, log_with_location("CAIDA LUEGO DE CONSUMIR MENSAJE Y ANTES DE DAR EL ACK"), probability=REPLICAS_PROB_FAILURE)
             # ==================================================================
             msg = decode_msg(raw_message)
             # Determinar si la réplica necesita sincronización
-            if msg.msg_id > 0 and not self.shared_state['sincronizado']:
+            if msg.msg_id > 0 and not self.synchronized:
 
                 logging.info(f"NO ESTABA SINCRONIZADO Y LLEGO MSG ID: {msg.msg_id}")
                 # devuelvo el mensaje a la cola (si el msg_id es > 0 se trata de un push)
@@ -223,7 +221,7 @@ class Replica:
         # Enviar Sync_state
         sync_msg = SimpleMessage(type=MsgType.SYNC_STATE_REQUEST, requester_id=self.id)
         # Lo envio al exchange sync donde escuchan los procesos externos
-        self._middleware.send_to_queue(self.sync_request_listener_exchange, sync_msg.encode())
+        self._middleware.send_to_queue(self.sync_request_listener_exchange, sync_msg.encode(), key="sync")
 
         # ==================================================================
         # CAIDA LUEGO DE ENVIAR SYNC_MSG Y ANTES DE ESPERAR RESPUESTA
@@ -238,12 +236,12 @@ class Replica:
             msg = decode_msg(body)
 
             if isinstance(msg, SimpleMessage) and msg.type == MsgType.EMPTY_STATE:
-                logging.info(f"Master {self.id}: Recibido estado vacío de réplica {msg.node_id}.")
+                logging.info(f"Replica {self.id}: Recibido estado vacío de réplica {msg.node_id}.")
                 responses.add(msg.node_id)
 
             elif isinstance(msg, PushDataMessage):
-                logging.info(f"Master {self.id}: Recibido estado completo de réplica {msg.node_id}.")
-                if msg.data["last_msg_id"] > self.shared_state['last_msg_id']:
+                logging.info(f"Replica {self.id}: Recibido estado completo de réplica {msg.node_id}.")
+                if msg.data["last_msg_id"] > self.last_msg_id:
                     self._load_state(msg)
                 responses.add(msg.node_id)
                 # logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
@@ -269,7 +267,7 @@ class Replica:
             # ==================================================================
 
         self._middleware.receive_from_queue(self.sync_anonymous_queue, on_state_response, auto_ack=False)
-        self.shared_state['sincronizado'] = True
+        self.synchronized = True
 
 def init_listener(id, container_name, port):
     listener = ReplicaListener(id, container_name, port)

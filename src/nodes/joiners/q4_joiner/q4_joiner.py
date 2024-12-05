@@ -50,7 +50,7 @@ class Q4Joiner(Node):
             if self.n_replicas > 0: # verifico si se instanciaron replicas
                 # ==================================================================
                 # CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS
-                simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
+                # simulate_random_failure(self, log_with_location("CAIDA ANTES DE SINCRONIZAR CON LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
                 # ==================================================================
                 self._synchronize_with_replicas()
 
@@ -78,7 +78,7 @@ class Q4Joiner(Node):
 
             # ==================================================================
             # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
+            # simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
 
             self.push_update('games', msg.client_id, update)
@@ -121,7 +121,7 @@ class Q4Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK EN GAMES
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"), probability=ENDPOINTS_PROB_FAILURE)
+        # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
@@ -191,7 +191,7 @@ class Q4Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE HACER EL ACK EN REVIEWS
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"), probability=ENDPOINTS_PROB_FAILURE)
+        # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
     def send_reviews_v2(self, client_id, app_id, reviews):
@@ -360,5 +360,5 @@ class Q4Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE CARGAR EL ESTADO
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
+        # simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CARGAR EL ESTADO"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
