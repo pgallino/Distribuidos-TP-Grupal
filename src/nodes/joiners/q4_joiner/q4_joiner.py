@@ -7,7 +7,7 @@ from messages.reviews_msg import ReviewsType, TextReview
 from node import Node
 
 from utils.container_constants import ENDPOINTS_PROB_FAILURE
-from utils.middleware_constants import E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
+from utils.middleware_constants import E_FROM_PROP, E_FROM_Q4_JOINER, E_FROM_SCORE, K_FIN, K_NEGATIVE_TEXT, Q_SCORE_Q4_JOINER, Q_Q4_JOINER_ENGLISH, E_FROM_GENRE, K_SHOOTER_GAMES, Q_ENGLISH_Q4_JOINER, Q_GENRE_Q4_JOINER, Q_QUERY_RESULT_4
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q4Joiner(Node):
@@ -26,8 +26,10 @@ class Q4Joiner(Node):
         self._middleware.declare_queue(Q_QUERY_RESULT_4)
         self._middleware.declare_exchange(E_FROM_GENRE)
         self._middleware.declare_exchange(E_FROM_SCORE)
+        self._middleware.declare_exchange(E_FROM_Q4_JOINER, type='fanout')
         self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_GENRE, K_SHOOTER_GAMES)
         self._middleware.bind_queue(Q_SCORE_Q4_JOINER, E_FROM_SCORE, K_NEGATIVE_TEXT)
+        self._middleware.bind_queue(Q_Q4_JOINER_ENGLISH, E_FROM_Q4_JOINER)
 
         self._middleware.declare_exchange(E_FROM_PROP, type='topic')
         self._middleware.bind_queue(Q_GENRE_Q4_JOINER, E_FROM_PROP, key=K_FIN+f'.{container_name}_games') # hay que modificarlo en el propagator
@@ -37,7 +39,7 @@ class Q4Joiner(Node):
         # Estructuras de almacenamiento
         self.negative_reviews_count_per_client = defaultdict(lambda: defaultdict(int))  # Contará reseñas negativas en inglés, para cada cliente
         self.games_per_client = defaultdict(lambda: {})  # Detalles de juegos de acción/shooter
-        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False))) # Guarda las reviews negativas de los juegos
+        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False, 0))) # Guarda las reviews negativas de los juegos
         self.fins_per_client = defaultdict(lambda: [False, False]) #primer valor corresponde al fin de juegos, y el segundo al de reviews
         self.last_msg_id = 0
 
@@ -140,12 +142,12 @@ class Q4Joiner(Node):
                     # Debe funcionar appendiendo el elemento directamente de esta manera
                     game_reviews, _ = client_reviews[review.app_id]
                     game_reviews.append(review.text)
-                    if len(game_reviews) > self.n_reviews:
+                    if len(game_reviews) >= self.n_reviews:
                         # TODO: Mucho cuidado aca que ya envia reviews a la cola del english
                         #       Hay que ver que pasa si se cae justo antes de entrar, en el
                         #       medio del envio, o si se cae justo despues
                         self.send_reviews_v2(msg.client_id, review.app_id, game_reviews)
-                        client_reviews[review.app_id] = ([], True)
+                        client_reviews[review.app_id] = ([], True, 0)
                     update[review.app_id] = client_reviews[review.app_id]
 
             # ==================================================================
@@ -204,7 +206,7 @@ class Q4Joiner(Node):
             text_review_size = len(text_review.encode())
             if text_review_size + curr_reviews_batch_size > self.batch_size:
                 text_reviews = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
-                self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+                self._middleware.send_to_queue(E_FROM_Q4_JOINER, text_reviews.encode())
                 curr_reviews_batch_size = 0
                 reviews_batch = []
             curr_reviews_batch_size += text_review_size
@@ -213,14 +215,14 @@ class Q4Joiner(Node):
         # si me quedaron afuera    
         if reviews_batch:
             text_reviews = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
-            self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+            self._middleware.send_to_queue(E_FROM_Q4_JOINER, text_reviews.encode())
 
     def send_reviews(self, client_id):
         client_reviews = self.negative_reviews_per_client[client_id]
 
         # Revisa que juego tiene mas de 5000 resenia negativas
-        for app_id, (reviews, overpass_threshold) in client_reviews.items():
-            if overpass_threshold or len(reviews) > self.n_reviews:
+        for app_id, (reviews, overpass_threshold, reviews_sent) in client_reviews.items():
+            if overpass_threshold or len(reviews) >= self.n_reviews:
                 # manda las reviews del juego al filtro de ingles
                 reviews_batch = []
                 curr_reviews_batch_size = 0
@@ -229,7 +231,7 @@ class Q4Joiner(Node):
                     text_review_size = len(text_review.encode())
                     if text_review_size + curr_reviews_batch_size > self.batch_size:
                         text_reviews = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
-                        self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+                        self._middleware.send_to_queue(E_FROM_Q4_JOINER, text_reviews.encode())
                         curr_reviews_batch_size = 0
                         reviews_batch = []
                     curr_reviews_batch_size += text_review_size
@@ -238,7 +240,8 @@ class Q4Joiner(Node):
                 # si me quedaron afuera    
                 if reviews_batch:
                     text_reviews = ListMessage(type=MsgType.REVIEWS, item_type=ReviewsType.TEXTREVIEW, items=reviews_batch, client_id=client_id)
-                    self._middleware.send_to_queue(Q_Q4_JOINER_ENGLISH, text_reviews.encode())
+                    self._middleware.send_to_queue(E_FROM_Q4_JOINER, text_reviews.encode())
+                # client_reviews[app_id] = ([], True, 0)
 
         # Borro el diccionario de textos de reviews del cliente
         del self.negative_reviews_per_client[client_id]

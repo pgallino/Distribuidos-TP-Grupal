@@ -3,7 +3,7 @@ from typing import List, Tuple
 from messages.messages import ListMessage, MsgType, decode_msg
 from messages.reviews_msg import BasicReview, ReviewsType
 from node import Node  # Importa la clase base Node
-from utils.middleware_constants import E_FROM_PROP, K_NOTIFICATION, Q_ENGLISH_Q4_JOINER, Q_NOTIFICATION, Q_Q4_JOINER_ENGLISH, Q_TO_PROP
+from utils.middleware_constants import E_FROM_PROP, E_FROM_Q4_JOINER, K_NOTIFICATION, Q_ENGLISH_Q4_JOINER, Q_NOTIFICATION, Q_Q4_JOINER_ENGLISH, Q_TO_PROP
 import langid
 from utils.utils import NodeType
 
@@ -16,6 +16,8 @@ class EnglishFilter(Node):
         # Configura las colas y los intercambios específicos para EnglishFilter
         self._middleware.declare_queue(Q_ENGLISH_Q4_JOINER)
         self._middleware.declare_queue(Q_Q4_JOINER_ENGLISH)
+        self._middleware.declare_exchange(E_FROM_Q4_JOINER, type='fanout')
+        self._middleware.bind_queue(Q_Q4_JOINER_ENGLISH, E_FROM_Q4_JOINER)
 
         self._middleware.declare_queue(Q_TO_PROP)
         self.notification_queue = Q_NOTIFICATION + f'_{container_name}_{id}'

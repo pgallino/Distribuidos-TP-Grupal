@@ -2,14 +2,17 @@ from collections import defaultdict
 import logging
 from messages.messages import PushDataMessage
 from replica import Replica
+from utils.middleware_constants import E_FROM_Q4_JOINER
 from utils.utils import NodeType
 
 class Q4JoinerReplica(Replica):
     def _initialize_storage(self):
         """Inicializa las estructuras de almacenamiento específicas para Q4Joiner."""
+        self._middleware.declare_exchange(E_FROM_Q4_JOINER, type='fanout')
+        self._middleware.bind_queue(self.recv_queue, E_FROM_Q4_JOINER)
         self.negative_reviews_count_per_client = defaultdict(lambda: defaultdict(int))  # Contar reseñas negativas por cliente y juego
         self.games_per_client = defaultdict(dict)  # Detalles de juegos de acción/shooter (client_id -> {app_id: name})
-        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False)))  # Reviews negativas y estado (client_id -> app_id -> (reviews, processed))
+        self.negative_reviews_per_client = defaultdict(lambda: defaultdict(lambda: ([], False, 0)))  # Reviews negativas y estado (client_id -> app_id -> (reviews, processed, n_reviews_processed))
         self.fins_per_client = defaultdict(lambda: [False, False])  # Fines por cliente (client_id -> [fin_games, fin_reviews])
         
         logging.info("Replica: Almacenamiento inicializado.")
@@ -133,3 +136,12 @@ class Q4JoinerReplica(Replica):
             self.last_msg_id = state["last_msg_id"]
 
         logging.info(f"Replica: Estado completo cargado. Campos cargados: {list(state.keys())}")
+
+    def _process_review_message(self, msg):
+        client_id, app_id, n_reviews = msg.client_id, msg.items[0].app_id, len(msg.items)
+        curr_reviews, reviews_already_sent, curr_reviews_sent = self.negative_reviews_per_client[client_id][app_id]
+        curr_reviews_sent += n_reviews
+        self.negative_reviews_per_client[client_id][app_id] = (curr_reviews, reviews_already_sent, curr_reviews_sent)
+        if curr_reviews_sent > self.n_reviews:
+            diff = curr_reviews_sent - self.n_reviews
+            self.negative_reviews_per_client[client_id][app_id] = (curr_reviews, reviews_already_sent, curr_reviews_sent)

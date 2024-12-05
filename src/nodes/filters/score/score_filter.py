@@ -73,7 +73,7 @@ class ScoreFilter(Node):
 
         
 
-    def _process_reviews_message(self, msg):
+    def _process_reviews_message(self, msg: MsgType.REVIEWS):
         """Procesa mensajes de tipo REVIEWS y distribuye según el score."""
         negative_textreviews, positive_reviews, negative_reviews = [], [], []
 

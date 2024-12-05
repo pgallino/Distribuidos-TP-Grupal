@@ -73,6 +73,7 @@ Q3_JOINER_REPLICA_CONFIG_KEYS = [
 Q4_JOINER_REPLICA_CONFIG_KEYS = [
     "q4_joiner_replica_instances",
     "timeout",
+    "n_reviews"
 ] + GENERAL_CONFIG_KEYS
 
 Q5_JOINER_REPLICA_CONFIG_KEYS = [

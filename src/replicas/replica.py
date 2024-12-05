@@ -10,7 +10,7 @@ from utils.listener import ReplicaListener
 from utils.utils import simulate_random_failure, log_with_location
 
 class Replica:
-    def __init__(self, id: int, container_name: str, container_to_restart: str):
+    def __init__(self, id: int, container_name: str, container_to_restart: str, n_reviews=None):
         self.id = id
         self.shutting_down = False
         self._middleware = Middleware()
@@ -21,6 +21,8 @@ class Replica:
         self.sincronizado = False
         self.last_msg_id = 0
         self.timestamp = time.time()  # Marca de tiempo al iniciar
+        if n_reviews:
+            self.n_reviews = n_reviews
         # Manejo de señales
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -68,6 +70,9 @@ class Replica:
         pass
 
     def _process_fin_message(self, msg):
+        pass
+
+    def _process_review_message(self, msg):
         pass
 
     def _process_pull_data(self):
@@ -158,6 +163,12 @@ class Replica:
                     # CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK
                     simulate_random_failure(self, log_with_location("CAIDA POST PROCESAR MENSAJE PUSH Y ANTES DE DAR EL ACK"), probability=REPLICAS_PROB_FAILURE)
                     # ==================================================================
+
+            elif msg.type == MsgType.REVIEWS:
+                if msg.msg_id > self.last_msg_id:
+                    self.last_msg_id = msg.msg_id
+                    self.sincronizado = True
+                    self._process_review_message(msg)
             
             elif msg.type == MsgType.FIN:
                 # logging.info(f"RECIBI FIN CON ID: {msg.msg_id}")
