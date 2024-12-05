@@ -1,4 +1,5 @@
 import logging
+from multiprocessing import Process
 import signal
 import socket
 from messages.messages import MsgType, SimpleMessage, decode_msg
@@ -39,56 +40,23 @@ class Listener:
         self.shutdown()
 
     def process_msg(self, conn):
-        raise NotImplementedError("Implementacion a cargo de subclases")
+        raw_msg = recv_msg(conn)
+        msg = decode_msg(raw_msg)
+
+        if msg.type == MsgType.KEEP_ALIVE:
+            conn.sendall(SimpleMessage(type=MsgType.ALIVE, socket_compatible=True).encode())
     
     def run(self):
         """Proceso dedicado a manejar mensajes de Keep Alive."""
 
         while not self.shutting_down:
             try:
-                self.conn, addr = self.sock.accept()
+                self.conn, _ = self.sock.accept()
+                # logging.info(f"[Listener] Conexion recibida")
                 self.process_msg(self.conn)
-                # logging.info(f"KeepAliveHandler: Conexión recibida de {addr}")
                 self.conn.close()
             except Exception as e:
                 if not self.shutting_down:
                     logging.error(f"KeepAliveHandler: Error manejando conexión: {e}")
                     self.shutdown()
                     logging.info("KeepAliveHandler: Proceso terminado.")
-
-class ReplicaListener(Listener):
-
-    def process_msg(self, conn):
-        raw_msg = recv_msg(conn)
-        msg = decode_msg(raw_msg)
-
-        if msg.type == MsgType.KEEP_ALIVE:
-            pass
-
-            
-class NodeListener(Listener):
-    def __init__(self, id, ip_prefix, connected, port=LISTENER_PORT, backlog=5):
-        super().__init__(id, ip_prefix, port, backlog)
-
-        self.connected = connected
-
-    def process_msg(self, conn):
-        raw_msg = recv_msg(conn)
-        msg = decode_msg(raw_msg)
-
-        if msg.type == MsgType.KEEP_ALIVE:
-            pass
-        elif msg.type == MsgType.ASK_MASTER_CONNECTED:
-            # Construir y enviar la respuesta con el estado de conexión
-            response_msg = SimpleMessage(type=MsgType.MASTER_CONNECTED, socket_compatible=True, connected=self.connected.value) # 0 para False, 1 para True
-            conn.sendall(response_msg.encode())
-            logging.info(f"NodeListener: Respondí con estado 'connected={self.connected}'.")
-
-class PropagatorListener(Listener):
-
-    def process_msg(self, conn):
-        raw_msg = recv_msg(conn)
-        msg = decode_msg(raw_msg)
-
-        if msg.type == MsgType.KEEP_ALIVE:
-            pass

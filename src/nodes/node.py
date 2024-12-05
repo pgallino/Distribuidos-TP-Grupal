@@ -7,7 +7,7 @@ import time
 from middleware.middleware import Middleware
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_TO_PROP, E_FROM_REPLICA_PULL
-from utils.listener import NodeListener
+from listener import Listener
 from utils.utils import NodeType, simulate_random_failure, log_with_location
 from utils.container_constants import FILTERS_PROB_FAILURE
 
@@ -32,11 +32,9 @@ class Node:
         self.processing_client = Value('i', -1)  # 'i' indica un entero
         self.fin_to_ack = None
 
-        self.connected = Value('i', 0)  # 0 para False, 1 para True
-
         self.timestamp = time.time()  # Marca de tiempo al iniciar
 
-        self.listener = Process(target=init_listener, args=(id, container_name, self.connected))
+        self.listener = Process(target=init_listener, args=(id, container_name))
         self.listener.start()
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
@@ -94,7 +92,7 @@ class Node:
 
         # ==================================================================
         # CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {client_id}"), probability=FILTERS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location(f"CAIDA ESPERANDO NOTIFICION DE FIN CLIENTE {msg.client_id}"), probability=FILTERS_PROB_FAILURE)
         # ==================================================================
 
         if msg.type == MsgType.FIN_PROPAGATED:
@@ -161,8 +159,8 @@ class Node:
 
         self.last_msg_id += 1
 
-def init_listener(id, ip_prefix, connected):
-    listener = NodeListener(id, ip_prefix, connected)
+def init_listener(id, ip_prefix):
+    listener = Listener(id, ip_prefix)
     listener.run()
 
     

@@ -8,6 +8,7 @@ COPY src/nodes/filters/english/main.py /
 COPY src/nodes/filters/english/english_filter.py /
 
 COPY src/nodes/node.py /
+COPY src/listener/listener.py /
 
 # Copiar la carpeta completa middleware
 COPY src/middleware /middleware

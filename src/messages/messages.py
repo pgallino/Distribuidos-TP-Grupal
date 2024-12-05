@@ -27,7 +27,7 @@ class MsgType(Enum):
     ALIVE = 12
     ELECTION = 13
     OK_ELECTION = 14
-    LEADER_ELECTION = 15
+    COORDINATOR = 15
     COORDFIN_ACK = 16
     TASK_INTENT = 17
     TASK_COMPLETED = 18
@@ -40,6 +40,8 @@ class MsgType(Enum):
     FIN_NOTIFICATION = 25
     CLIENT_CLOSE = 26
     FIN_PROPAGATED = 27
+    ASK_LEADER = 28
+    NO_LEADER = 29
 
 class Dataset(Enum):
     """
@@ -219,7 +221,7 @@ class SimpleMessage(BaseMessage):
             MsgType.FIN: ["client_id", "node_type"],
             MsgType.ELECTION: ["node_id"],
             MsgType.OK_ELECTION: ["node_id"],
-            MsgType.LEADER_ELECTION: ["node_id"],
+            MsgType.COORDINATOR: ["node_id"],
             MsgType.COORDFIN: ["client_id", "node_id"],
             MsgType.COORDFIN_ACK: ["client_id"],
             MsgType.MASTER_CONNECTED: ["connected"],
@@ -772,10 +774,11 @@ MESSAGE_CLASSES = {
     MsgType.CLIENT_FIN: SimpleMessage,
     MsgType.ELECTION: SimpleMessage,
     MsgType.OK_ELECTION: SimpleMessage,
-    MsgType.LEADER_ELECTION: SimpleMessage,
+    MsgType.COORDINATOR: SimpleMessage,
     MsgType.COORDFIN: SimpleMessage,
     MsgType.COORDFIN_ACK: SimpleMessage,
     MsgType.KEEP_ALIVE: SimpleMessage,
+    MsgType.ALIVE: SimpleMessage,
     MsgType.TASK_INTENT: SimpleMessage,
     MsgType.TASK_COMPLETED: SimpleMessage,
     MsgType.MASTER_CONNECTED: SimpleMessage,
@@ -785,7 +788,9 @@ MESSAGE_CLASSES = {
     MsgType.EMPTY_STATE: SimpleMessage,
     MsgType.FIN_NOTIFICATION: SimpleMessage,
     MsgType.CLIENT_CLOSE: SimpleMessage,
-    MsgType.FIN_PROPAGATED: SimpleMessage
+    MsgType.FIN_PROPAGATED: SimpleMessage,
+    MsgType.ASK_LEADER: SimpleMessage,
+    MsgType.NO_LEADER: SimpleMessage
 }
 
 

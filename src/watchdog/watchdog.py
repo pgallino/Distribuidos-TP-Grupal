@@ -1,12 +1,16 @@
 # Clase watchdog
 import logging
 import signal
-from multiprocessing import Manager, Process, Lock
+from multiprocessing import Condition, Lock, Manager, Process, Value
 import socket
 import time
-from messages.messages import ActiveNodesMessage, MsgType, SimpleMessage, decode_msg
+from election.election_logic import initiate_election
+from messages.messages import MsgType, SimpleMessage, decode_msg
 from utils.container_constants import LISTENER_PORT
 from utils.utils import NodeType, reanimate_container, recv_msg
+from listener.watchdog_listener import WatchDogListener
+
+INITIAL_TRIES = 5
 
 class WatchDog:
     def __init__(self, id: int, n_watchdogs: int, container_name: str, nodes_to_monitor: list[tuple[NodeType, int]] = [], check_interval=2):
@@ -25,12 +29,19 @@ class WatchDog:
         self.check_interval = check_interval
         self.shutting_down = False
         self.listener_process = None
+        self.election_process = None
 
         self.manager = Manager()
-        self.nodes_state = self.manager.dict()
-        self.nodes_state_lock = Lock()
 
-        self._set_nodes_state(nodes_to_monitor)
+        # Variables compartidas
+        self.election_in_progress = self.manager.Value('b', False)  # Booleano
+        self.election_condition = self.manager.Condition()  # Condición para sincronización
+        self.waiting_ok = self.manager.Value('b', False)  # Booleano para esperar OKs
+        self.ok_condition = self.manager.Condition()  # Condición para sincronización de OKs
+        self.leader_id = self.manager.Value('i', -1)  # ID del líder (-1 indica sin líder)
+
+
+        self.nodes_to_monitor = nodes_to_monitor
 
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
@@ -40,54 +51,65 @@ class WatchDog:
         - Inicia el listener en un proceso separado.
         - Periódicamente verifica si los nodos están vivos.
         """
+
         self.init_listener_process()
+        self.search_leader()        
 
-        # if leader == self.id:
         while not self.shutting_down:
-            try:
-                for node_type, instances in self.nodes_state.items():
-                    for instance_id, is_alive in instances.items():
-                        if not self.shutting_down:
-                            self._check_node(node_type, instance_id)
-                time.sleep(self.check_interval)  # Esperar antes de la próxima verificación
-            except Exception as e:
-                logging.error(f"WatchDog {self.id}: Error en el proceso de verificación: {e}")
-        # TODO: Que haya varios watchdogs, si se cae el lider (el que vigila los nodos)
-        #       se inicia eleccion del lider, que se va a encargar de seguir vigilando
-        #       los nodos y de levantar el watchdog que origino la eleccion de lider.
-        # else:
-        #     while not self.shutting_down:
-        #         try:
-        #             self._check_node('watchdog', leader) # type: ignore
-        #             time.sleep(self.check_interval)  # Esperar antes de la próxima verificación
-        #         except Exception as e:
-        #             logging.error(f"WatchDog {self.id}: Error en el proceso de verificación: {e}")
-        #     pass
+            if self.leader_id.value == self.id:
+                try:
+                    for node_type, instances in self.nodes_to_monitor:
+                        for instance_id in range(1, instances+1):
+                            if not (self.shutting_down or (self.container_name == node_type and self.id == instance_id)):
+                                self._check_node(node_type, instance_id)
+                except Exception as e:
+                    logging.error(f"[Main]: Error en el proceso de verificación: {e}")
+            else:
+                try:
+                    if not self._check_node(self.container_name, self.leader_id.value): # type: ignore
+                        self.election_leader()
+                except Exception as e:
+                    logging.error(f"[Main]: Error en el proceso de verificación: {e}")
 
-    def _check_node(self, node_type: NodeType, instance_id: int):
+            time.sleep(self.check_interval)  # Esperar antes de la próxima verificación
+
+    def _check_node(self, node_type: str, instance_id: int):
         """
         Verifica si un nodo está vivo enviando un mensaje de conexión.
         
         :param node_type: Tipo del nodo.
         :param instance_id: ID de la instancia del nodo.
         """
-        node_address = f"{NodeType.node_type_to_string(node_type)}_{instance_id}"
+        node_address = f"{node_type}_{instance_id}"
         
         try:
-            with socket.create_connection((node_address, LISTENER_PORT), timeout=1) as sock:
+            with socket.create_connection((node_address, LISTENER_PORT), timeout=2) as sock:
+                
                 sock.sendall(SimpleMessage(type=MsgType.KEEP_ALIVE, socket_compatible=True).encode())
-                # logging.info(f"WatchDog {self.id}: KEEP_ALIVE enviado a {node_address}:{LISTENER_PORT}.")
-                self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
+                # logging.info(f"[MAIN] KEEP_ALIVE enviado a {node_address}:{LISTENER_PORT}.")
+
+                raw_msg = recv_msg(sock)
+                response = decode_msg(raw_msg)
+
+                if response.type != MsgType.ALIVE: # Esta corrompido
+                    if self.leader_id.value != self.id:
+                        return False
+                    if reanimate_container(node_address):
+                        logging.info(f"Updated state for {node_type} instance {instance_id} to alive.")
+
         except (ConnectionRefusedError, socket.timeout, socket.gaierror):
-            logging.warning(f"WatchDog {self.id}: Nodo {node_address}:{LISTENER_PORT} no responde.")
+            logging.warning(f"[Main] Nodo {node_address}:{LISTENER_PORT} no responde.")
+
             #TODO que reanimate retorne si lo logro o no
-            self.update_node_state(node_type, instance_id, False)  # Nodo está muerto
+            if self.leader_id.value != self.id:
+                return False
             if reanimate_container(node_address):
-                self.update_node_state(node_type, instance_id, True)  # Nodo está vivo
                 logging.info(f"Updated state for {node_type} instance {instance_id} to alive.")
+
         except Exception as e:
-            logging.error(f"WatchDog {self.id}: Error inesperado al verificar nodo {node_address}:{LISTENER_PORT}: {e}")
-            self.update_node_state(node_type, instance_id, False)
+            logging.error(f"[Main] Error inesperado al verificar nodo {node_address}:{LISTENER_PORT}: {e}")
+
+        return True
 
     def _shutdown(self):
         """Gracefully shuts down the node, stopping consumption and closing connections."""
@@ -96,6 +118,12 @@ class WatchDog:
         
         logging.info("action: shutdown_node | result: in progress...")
         self.shutting_down = True
+
+        self.manager.shutdown()
+
+        if self.election_process:
+            self.election_process.terminate()
+            self.election_process.join()
 
         if self.listener_process:
             self.listener_process.terminate()
@@ -108,91 +136,55 @@ class WatchDog:
         self._shutdown()
         exit(0)
 
-    def _set_nodes_state(self, nodes_to_monitor: list[tuple[NodeType, int]]):
-        """
-        Configura el estado inicial de los nodos.
-
-        `nodes_state` será un diccionario donde cada clave es un tipo de nodo y
-        su valor es otro diccionario que contiene `True` o `False` para indicar
-        si las instancias están vivas o muertas.
-        """
-        for node_type, instances in nodes_to_monitor:
-            # Inicializa cada tipo de nodo con sus instancias en estado `False` (muertas)
-            self.nodes_state[node_type] = self.manager.dict({instance: False for instance in range(1, instances+1)})
-
-
-    def update_node_state(self, node_type: NodeType, instance_id: int, is_alive: bool):
-        """
-        Actualiza el estado de un nodo específico.
-
-        :param node_type: Tipo de nodo (por ejemplo, "GENRE", "SCORE").
-        :param instance_id: ID de la instancia del nodo.
-        :param is_alive: Nuevo estado del nodo (`True` para vivo, `False` para muerto).
-        """
-        with self.nodes_state_lock:
-            if node_type in self.nodes_state:
-                if instance_id in self.nodes_state[node_type]:
-                    self.nodes_state[node_type][instance_id] = is_alive
-                else:
-                    logging.warning(f"Instance ID {instance_id} not found for node type {node_type}.")
-            else:
-                logging.warning(f"Node type {node_type} not found in nodes_state.")
-
-
     def init_listener_process(self):
-        process = Process(target=handle_listener_process, args=(self.container_name, self.id, 5, self.nodes_state, self.nodes_state_lock))
+        process = Process(target=init_listener, args=(self.id, self.container_name, self.n_watchdogs, self.election_in_progress, self.election_condition, self.waiting_ok, self.ok_condition, self.leader_id,))
         process.start()
         self.listener_process = process
 
-    def set_leader(self, leader_id):
-        self.leader = leader_id
+    def election_leader(self):
+        with self.election_condition:
+            if self.election_in_progress.value:
+                logging.info("Elección ya en proceso. Esperando a que termine...")
+                self.election_condition.wait()  # Espera a que termine la elección
+                return
+            self.election_in_progress.value = True
+            # logging.info("[Main] Inicializo el proceso de eleccion de leader")
+            self.election_process = Process(target=initiate_election, args=(self.id, [id for id in range(1, self.n_watchdogs+1)], self.container_name, self.election_in_progress, self.election_condition, self.waiting_ok, self.ok_condition, self.leader_id,))
+            self.election_process.start()
 
+        self.election_process.join()
 
-def get_active_nodes(nodes_state, lock_nodes_state, node_type: NodeType):
-    """
-    Obtiene una lista de IDs de nodos activos para un tipo de nodo específico.
+    def search_leader(self):
+        leader_found = False
+        for id in range(1, self.n_watchdogs+1):
+            if id == self.id: continue
+            node_address = f'{self.container_name}_{id}'
+            for _ in range(INITIAL_TRIES):
+                try:
+                    with socket.create_connection((node_address, LISTENER_PORT), timeout=2) as sock:
+                        sock.sendall(SimpleMessage(type=MsgType.ASK_LEADER, socket_compatible=True).encode())
+                        
+                        raw_msg = recv_msg(sock)
+                        response = decode_msg(raw_msg)
 
-    :param nodes_state: Diccionario con los estados de los nodos.
-    :param lock_nodes_state: Lock para acceder de forma segura al estado de los nodos.
-    :param node_type: Tipo de nodo.
-    :return: Lista de IDs de nodos activos.
-    """
+                        if response.type == MsgType.COORDINATOR:
+                            logging.info(f"Es un mensaje de COORDINATOR del nodo {response.node_id}")
+                            self.leader_id.value = response.node_id
+                            leader_found = True
+                        break
+                            
+                except (ConnectionRefusedError, socket.timeout, socket.gaierror):
+                    logging.warning(f"[MAIN] Nodo {node_address}:{LISTENER_PORT} no responde.")
 
-    with lock_nodes_state:
-        # Verifica que node_type está en nodes_state
-        if node_type not in nodes_state:
-            raise KeyError(f"Tipo de nodo '{node_type}' no encontrado en nodes_state")
+                except Exception as e:
+                    logging.error(f"[MAIN] Error inesperado al verificar nodo {node_address}:{LISTENER_PORT}: {e}")
+                time.sleep(2)
+
+            if leader_found: break
         
-        # Obtener los IDs de nodos activos (is_alive=True)
-        active_nodes = [
-            node_id for node_id, is_alive in nodes_state[node_type].items() if is_alive
-        ]
-    return active_nodes
+        if not leader_found:
+            self.leader_id.value = self.n_watchdogs
 
-
-def handle_listener_process(container_name, id, n_conn, nodes_state, lock_nodes_state): # n_conn es la cantidad de clases que existen de nodos filtro
-
-    #TODO: Armarle en handlesigterm y shutdown
-
-    try:
-        listener_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        logging.info(f"me bindee a {container_name}_{id}")
-        listener_socket.bind((f'{container_name}_{id}', LISTENER_PORT))
-        listener_socket.listen(n_conn)
-        logging.info(f"node {id}: Escuchando en el puerto {LISTENER_PORT}.")
-
-        while True:
-            conn, addr = listener_socket.accept()
-            logging.info(f"me llego una conexion de {addr}")
-            raw_msg = recv_msg(conn)
-            msg = decode_msg(raw_msg)
-            # TODO: pensar si conviene volver a chequear el estado de los nodos o simplemente no
-            if msg.type == MsgType.ASK_ACTIVE_NODES:
-                active_nodes = get_active_nodes(nodes_state, lock_nodes_state, NodeType(msg.node_type))
-                msg = ActiveNodesMessage(active_nodes=active_nodes)
-                conn.sendall(msg.encode())
-                logging.info(f"envie los ids a filtro {addr} -> {active_nodes}")
-
-            conn.close()
-    except Exception as e:
-        logging.error(f"node {id}: Error iniciando el servidor socket: {e.with_traceback()}")
+def init_listener(id, ip_prefix, n_watchdogs, election_in_progress, election_condition, waiting_ok, ok_condition, leader_id):
+    listener = WatchDogListener(id, ip_prefix, n_watchdogs, election_in_progress, election_condition, waiting_ok, ok_condition, leader_id)
+    listener.run()

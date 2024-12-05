@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 COPY src/nodes/counters/avg_counter/main.py /
 COPY src/nodes/counters/avg_counter/avg_counter.py /
 COPY src/nodes/node.py /
+COPY src/listener/listener.py /
 
 
 # Copiar la carpeta completa middleware

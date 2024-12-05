@@ -6,6 +6,7 @@ RUN pip install --no-cache-dir pika==1.2.0
 # Copiamos los archivos necesarios
 COPY src/propagator/main.py /
 COPY src/propagator/propagator.py /
+COPY src/listener/listener.py /
 
 COPY src/messages /messages
 COPY src/utils /utils

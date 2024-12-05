@@ -189,7 +189,7 @@ class NodeType(Enum):
         node_type_str = node_type_str.lower()
         if node_type_str in _STRING_TO_NODE_TYPE:
             return _STRING_TO_NODE_TYPE[node_type_str]
-        raise ValueError(f"'{node_type_str}' no es un tipo de nodo válido en NodeType.")
+        # raise ValueError(f"{node_type_str} no es un tipo de nodo válido en NodeType.")
         
     @staticmethod
     def node_type_to_string(node_type: 'NodeType') -> str:
@@ -201,7 +201,8 @@ class NodeType(Enum):
         :raises ValueError: Si el argumento no es un miembro de NodeType.
         """
         if not isinstance(node_type, NodeType):
-            raise ValueError(f"'{node_type}' no es un miembro válido de NodeType.")
+            pass
+            # raise ValueError(f"{node_type} no es un miembro válido de NodeType.")
         return node_type.name.lower()
 
     def get_next_nodes(node_type: 'NodeType') -> list['NodeType']:
