@@ -117,7 +117,7 @@ class Node:
     def _synchronize_with_replicas(self):
 
         """Solicita el estado a las réplicas y sincroniza el nodo."""
-        logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
+        logging.info(f"Replica {self.id}: Solicitando estado a las réplicas")
 
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
