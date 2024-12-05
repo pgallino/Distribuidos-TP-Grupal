@@ -57,6 +57,9 @@ class Middleware:
         return queue_name
         
     def bind_queue(self, queue_name, exchange, key=None):
+        """
+        Enlaza una cola con un exchange, y con una routing key si se especifica.
+        """
         if queue_name not in self.queues or exchange not in self.exchanges:
             raise ValueError(f"No se encontro la cola {queue_name} o el exchange {exchange}.")
         self.channel.queue_bind(queue=queue_name, exchange=exchange, routing_key=key)
@@ -89,6 +92,9 @@ class Middleware:
             raise ValueError(f"La cola '{destination}' no está declarada.")
     
     def receive_from_queue(self, queue_name, callback, auto_ack=True, get_blocked=True):
+        """
+        Comienza a consumir mensajes de una cola, utilizando una función callback para su procesamiento.
+        """
         if queue_name not in self.queues:
             raise ValueError(f"La cola '{queue_name}' no está declarada.")
 
@@ -104,6 +110,9 @@ class Middleware:
             self.channel.start_consuming()
     
     def receive_from_queues(self, queues_with_callbacks: List[Tuple[str, Callable]], auto_ack=True):
+        """
+        Comienza a consumir de múltiples colas con sus respectivas funciones callback para el procesamiento de mensajes.
+        """
         for queue_with_callback in queues_with_callbacks:
             queue_name, callback = queue_with_callback
             if queue_name not in self.queues:
@@ -120,6 +129,10 @@ class Middleware:
         self.channel.start_consuming()
 
     def receive_from_queue_with_timeout(self, queue_name, callback, inactivity_time, auto_ack=True):
+        """
+        Comienza a consumir mensajes de una cola, utilizando una función callback para su procesamiento.
+        En caso de que se exceda el tiempo de inactividad, salta el timeout y se deja de consumir.
+        """
         if queue_name not in self.queues:
             raise ValueError(f"La cola '{queue_name}' no está declarada.")
 
@@ -232,6 +245,9 @@ class Middleware:
             raise
 
     def _connect_to_rabbitmq(self):
+        """
+        Lógica de conexión a RabbitMQ con reintentos.
+        """
         retries = 10
         for i in range(retries):
             try:

@@ -3,11 +3,17 @@ from enum import Enum
 from typing import List
 
 class Genre(Enum):
+    """
+    Tipos de género de juego.
+    """
     INDIE = 0
     ACTION = 1
     OTHER = 2
 
     def from_string(genre: str) -> "Genre":
+        """
+        Traduce una string a un tipo de género de juego.
+        """
         if genre == "Indie":
             return Genre.INDIE
         elif genre == "Action":
@@ -15,6 +21,9 @@ class Genre(Enum):
         return Genre.OTHER
 
 class GamesType(Enum):
+    """
+    Tipos de juego para las distintas queries.
+    """
     BASICGAME = 0
     Q1GAMES = 1
     Q2GAMES = 2
@@ -22,6 +31,9 @@ class GamesType(Enum):
 
     @classmethod
     def get_class(cls, item_type: int):
+        """
+        Mapea un juego con su tipo.
+        """
         mapping = {
             cls.BASICGAME.value: BasicGame,
             cls.Q1GAMES.value: Q1Game,
@@ -96,6 +108,9 @@ class Q1Game(Game):
         return struct.pack('>I', len(body)) + body  # Incluye la longitud total
 
     def encode_platforms(self) -> int:
+        """
+        Codifica las plataformas soportadas en bytes.
+        """
         platforms = 0
         if self.windows:
             platforms |= 0b001
@@ -107,6 +122,9 @@ class Q1Game(Game):
 
     @staticmethod
     def decode(data: bytes) -> "Q1Game":
+        """
+        Decodifica bytes a un Q1Game.
+        """
         app_id, platforms = struct.unpack('>I B', data[:5])
         windows, linux, mac = bool(platforms & 0b001), bool(platforms & 0b010), bool(platforms & 0b100)
         return Q1Game(app_id, windows, linux, mac)
@@ -144,6 +162,9 @@ class Q2Game(Game):
 
     @staticmethod
     def decode(data: bytes) -> "Q2Game":
+        """
+        Decodifica bytes a un Q2Game.
+        """
         app_id, name_length = struct.unpack('>I B', data[:5])
         offset = 5
         name = data[offset:offset + name_length].decode('utf-8')
@@ -195,6 +216,9 @@ class GenreGame(Game):
 
     @staticmethod
     def decode(data: bytes) -> "GenreGame":
+        """
+        Decodifica bytes a un GenreGame.
+        """
         app_id, name_length = struct.unpack('>I B', data[:5])
         offset = 5
         name = data[offset:offset + name_length].decode('utf-8')

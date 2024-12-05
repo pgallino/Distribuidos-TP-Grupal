@@ -4,6 +4,7 @@ from election.election_listener import ElectionListener
 from election.election_logic import initiate_election
 
 def init_election_listener(id, ids, ip_prefix, port, election_in_progress, condition, waiting_ok, ok_condition, leader_id):
+    """Inicia el ElectionListener y lo pone a correr"""
     e_listener = ElectionListener(id, ids, ip_prefix, port, election_in_progress, condition, waiting_ok, ok_condition, leader_id)
     e_listener.run()
 

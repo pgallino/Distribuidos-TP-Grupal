@@ -8,8 +8,10 @@ from messages.results_msg import Q1Result, Q2Result, Q3Result, Q4Result, Q5Resul
 from messages.reviews_msg import BasicReview, Review, ReviewsType, TextReview
 from utils.utils import DecodeError, handle_encode_error
 
-# Definición de los tipos de mensajes
 class MsgType(Enum):
+    """
+    Definición de los tipos de mensajes del sistema.
+    """
     HANDSHAKE = 0
     DATA = 1
     FIN = 2
@@ -40,6 +42,9 @@ class MsgType(Enum):
     FIN_PROPAGATED = 27
 
 class Dataset(Enum):
+    """
+    Definición de los tipos de dataset soportados: juegos y reseñas.
+    """
     GAME = 0
     REVIEW = 1
 
@@ -534,6 +539,9 @@ class PushDataMessage(BaseMessage):
 # ===================================================================================================================== #
 
 class ResultMessage(BaseMessage):
+    """
+    Clase con los resultados de las queries.
+    """
 
     RESULT_CLASSES = {
         1: Q1Result,
@@ -619,6 +627,9 @@ class ResultMessage(BaseMessage):
 # ========================================================================================================== #
 
 class ListMessage(BaseMessage):
+    """
+    Clase de mensaje genérico para listas de elementos: juegos y reseñas.
+    """
 
     # Mapeo de MsgType a los diccionarios que relacionan subtipos con clases
     TYPE_CLASSES = {
@@ -779,6 +790,9 @@ MESSAGE_CLASSES = {
 
 
 def decode_msg(data: bytes) -> BaseMessage:
+    """
+    Decodifica bytes a un BaseMessage.
+    """
     try:
         type = MsgType(data[0])
         msg_class = MESSAGE_CLASSES.get(type)

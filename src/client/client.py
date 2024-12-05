@@ -11,6 +11,9 @@ from utils.utils import recv_msg
 class Client:
 
     def __init__(self, id: int, server_addr: tuple[str, id], max_batch_size, games, reviews):
+        """
+        Inicializa a la estructura interna del cliente: su estado, socket y signal handler.
+        """
         self.id = id
         self.server_addr = server_addr
         self.max_batch_size = max_batch_size * 1024
@@ -21,6 +24,11 @@ class Client:
         signal.signal(signal.SIGTERM, self._handle_sigterm)
     
     def run(self):
+        """
+        Inicia la lógica del cliente.
+        Se conecta al server, hace un handshake y envía primero el dataset de juegos y luego el de reviews.
+        Termina con un mensaje FIN y luego espera los resultados.
+        """
 
         try:
             self.client_socket.connect(self.server_addr)
@@ -47,6 +55,9 @@ class Client:
             self.client_socket.close()
 
     def send_dataset(self, fname, dataset_type: Dataset):
+        """
+        Envía el dataset pasado por parámetro al server, con batches configurables.
+        """
         # Chequear si existe el archivo
         with open(fname, mode='r') as file:
             next(file)  # Para saltearse el header
@@ -81,13 +92,17 @@ class Client:
         logging.info(f"action: send_data | result: success | dataset: {dataset_type}")
 
     def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal so the server closes gracefully."""
+        """
+        Maneja señales SIGTERM para hacer un graceful shutdown del cliente.
+        """
         logging.info("action: Received SIGTERM | shutting down server.")
         self.shutting_down = True
         self.client_socket.close()
 
     def recv_results(self):
-        """Receive and process results from the server."""
+        """
+        Recibe y procesa la respuesta con los resultados del server.
+        """
 
         logging.info(f"action: recv_results | result: in progress...")
         received_results = 0
@@ -126,14 +141,18 @@ class Client:
                 logging.error(f"Error receiving results: {e}")
 
     def save_to_file(self, filename: str, content: str, id: int):
-        """Saves the content to a specified file."""
+        """
+        Guarda el contenido de una query en un archivo especificado.
+        """
         results_dir = f"/results/results_client_{id}"  # Define el directorio de resultados para cada cliente
         os.makedirs(results_dir, exist_ok=True)
         with open(f"{results_dir}/{filename}", "w") as file:
             file.write(content)
         
     def process_q1_result(self, msg):
-        """Processes and prints Q1 result."""
+        """
+        Procesa, imprime y guarda en un archivo el resultado de Q1.
+        """
         output = (
             f"\nQ1: OS Count Summary:\n"
             f"- Windows: {msg.result.windows_count}\n"
@@ -144,7 +163,9 @@ class Client:
         self.save_to_file("Q1.txt", output, msg.client_id)
 
     def process_q2_result(self, msg):
-        """Processes and prints Q2 result."""
+        """
+        Procesa, imprime y guarda en un archivo el resultado de Q2.
+        """
         top_games_str = "\n".join(f"- {name}: {playtime} average playtime" for name, playtime in msg.result.top_games)
         output = (
             f"\nQ2: Names of the top 10 'Indie' genre games of the 2010s with the highest average historical playtime:\n"
@@ -154,7 +175,9 @@ class Client:
         self.save_to_file("Q2.txt", output, msg.client_id)
 
     def process_q3_result(self, msg):
-        """Processes and prints Q3 result."""
+        """
+        Procesa, imprime y guarda en un archivo el resultado de Q3.
+        """
         indie_games_str = "\n".join(
             f"{rank}. {name}: {reviews} positive reviews" for rank, (name, reviews) in enumerate(msg.result.top_indie_games, start=1)
         )
@@ -166,7 +189,9 @@ class Client:
         self.save_to_file("Q3.txt", output, msg.client_id)
 
     def process_q4_result(self, msg):
-        """Processes and prints Q4 result."""
+        """
+        Procesa, imprime y guarda en un archivo el resultado de Q4.
+        """
         negative_reviews_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.result.negative_reviews)
         output = (
             f"\nQ4: Action games with more than 5,000 negative reviews in English:\n"
@@ -176,7 +201,9 @@ class Client:
         self.save_to_file("Q4.txt", output, msg.client_id)
 
     def process_q5_result(self, msg):
-        """Processes and prints Q5 result."""
+        """
+        Procesa, imprime y guarda en un archivo el resultado de Q5.
+        """
         top_negative_str = "\n".join(f"- {name}: {count} negative reviews" for _, name, count in msg.result.top_negative_reviews)
         output = (
             f"\nQ5: Games in the 90th Percentile for Negative Reviews (Action Genre):\n"

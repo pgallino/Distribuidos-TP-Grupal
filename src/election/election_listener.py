@@ -8,6 +8,7 @@ from utils.utils import recv_msg
 
 class ElectionListener:
     def __init__(self, id, node_ids, ip_prefix, port, election_in_progress, condition, waiting_ok, ok_condition, leader_id):
+        """Inicializa a la estructura interna del ElectionListener: sus parámetros y signal handler."""
         self.id = id
         self.node_ids = node_ids
         self.ip_prefix = ip_prefix

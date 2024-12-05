@@ -2,6 +2,9 @@ from enum import Enum
 import struct
 
 class Score(Enum):
+    """
+    Clase con los tipos de Score de una review: positiva o negativa.
+    """
     POSITIVE = 0
     NEGATIVE = 1
 
@@ -9,6 +12,9 @@ class Score(Enum):
         return Score.POSITIVE if int(score) > 0 else Score.NEGATIVE
 
 class ReviewsType(Enum):
+    """
+    Clase con los tipos de reviews: completa, básica o texto.
+    """
     FULLREVIEW = 0
     BASICREVIEW = 1
     TEXTREVIEW = 2
