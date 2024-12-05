@@ -30,11 +30,17 @@ class WatchDogListener(Listener):
         elif msg.type == MsgType.ELECTION:
             self._handle_election_message(msg)
 
-        elif msg.type == MsgType.LEADER_ELECTION:
+        elif msg.type == MsgType.COORDINATOR:
             self._handle_leader_election_message(msg)
 
         elif msg.type == MsgType.OK_ELECTION:
             self._handle_ok_election_message(msg.node_id)
+        
+        elif msg.type == MsgType.ASK_LEADER:
+            if self.leader_id.value == self.id:
+                conn.sendall(SimpleMessage(type=MsgType.COORDINATOR, socket_compatible=True, node_id=self.id).encode())
+            else:
+                conn.sendall(SimpleMessage(type=MsgType.NO_LEADER, socket_compatible=True).encode())
     
     def _handle_election_message(self, msg):
         """Procesa un mensaje de tipo ELECTION."""
@@ -42,7 +48,7 @@ class WatchDogListener(Listener):
         try:
             if self.leader_id.value == self.id:
                 with socket.create_connection((f'{self.ip_prefix}_{msg.node_id}', self.port), timeout=3) as response_socket:
-                    ok_msg = SimpleMessage(type=MsgType.LEADER_ELECTION, socket_compatible=True, node_id=self.id)
+                    ok_msg = SimpleMessage(type=MsgType.COORDINATOR, socket_compatible=True, node_id=self.id)
                     response_socket.sendall(ok_msg.encode())
                     logging.info(f"[Listener] Enviado Leader a {self.ip_prefix}_{msg.node_id}:{self.port}")
                     return
@@ -75,7 +81,7 @@ class WatchDogListener(Listener):
             self.election_process.start()
 
     def _handle_leader_election_message(self, msg):
-        """Procesa un mensaje de tipo LEADER_ELECTION."""
+        """Procesa un mensaje de tipo COORDINATOR."""
         logging.info(f"[Listener] Llego un mensaje Leader {msg.node_id}")
 
         with self.ok_condition:
@@ -104,21 +110,25 @@ class WatchDogListener(Listener):
             self.waiting_ok.value = False
             self.ok_condition.notify_all()
 
-    def stop(self):
-        """Detiene el listener y libera recursos."""
-        if self.listener_socket:
-            self.listener_socket.close()
-            self.listener_socket = None
-
     def _shutdown(self):
         """Cierra la réplica de forma segura."""
         if self.shutting_down:
             return
-
-        logging.info("action: shutdown_election_listener | result: in progress...")
+        
         self.shutting_down = True
 
-        self.stop()
+        # Cierro conexion
+        if self.conn:
+            self.conn.close()
+
+        # Cierro el socket
+        if self.sock:
+            self.sock.close()
+        
+        # Si habia un proceso de eleccion corriendo, lo termino y joineo
+        if self.election_process:
+            self.election_process.terminate()
+            self.election_process.join()
 
     def _handle_sigterm(self, sig, frame):
         """Maneja la señal SIGTERM para cerrar la réplica de forma segura."""

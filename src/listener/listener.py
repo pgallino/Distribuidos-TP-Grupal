@@ -51,10 +51,10 @@ class Listener:
 
         while not self.shutting_down:
             try:
-                conn, addr = self.sock.accept()
+                self.conn, _ = self.sock.accept()
                 # logging.info(f"[Listener] Conexion recibida")
-                self.process_msg(conn)
-                conn.close()
+                self.process_msg(self.conn)
+                self.conn.close()
             except Exception as e:
                 if not self.shutting_down:
                     logging.error(f"KeepAliveHandler: Error manejando conexión: {e}")

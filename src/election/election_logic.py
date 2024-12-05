@@ -50,7 +50,7 @@ def _wait_for_ok_or_leader(node_id, node_ids, ip_prefix, election_in_progress, e
             logging.info(f"[Manager] OK ya recibido antes de esperar. Continuando.")
         else:
             # Esperar por el OK con timeout
-            if not ok_condition.wait_for(lambda: not waiting_ok.value, timeout=20):
+            if not ok_condition.wait_for(lambda: not waiting_ok.value, timeout=10):
                 logging.info(f"[Manager] Timeout esperando OK. Declarándose líder.")
                 declare_leader(node_id, node_ids, ip_prefix, election_in_progress, election_condition, leader_id)
                 return
@@ -78,7 +78,7 @@ def _notify_leader_selected(node_id, node_ids, ip_prefix, election_in_progress, 
         if nid != node_id:
             try:
                 with socket.create_connection((f'{ip_prefix}_{nid}', LISTENER_PORT), timeout=TIMEOUT) as sock:
-                    leader_msg = SimpleMessage(type=MsgType.LEADER_ELECTION, socket_compatible=True, node_id=node_id)
+                    leader_msg = SimpleMessage(type=MsgType.COORDINATOR, socket_compatible=True, node_id=node_id)
                     sock.sendall(leader_msg.encode())
                     # logging.info(f"[Manager] Notificación de liderazgo enviada a Node {nid}.")
             except (ConnectionRefusedError, socket.timeout, socket.gaierror):

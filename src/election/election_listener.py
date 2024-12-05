@@ -42,7 +42,7 @@ class ElectionListener:
                 if msg.type == MsgType.ELECTION:
                     self._handle_election_message(msg)
 
-                elif msg.type == MsgType.LEADER_ELECTION:
+                elif msg.type == MsgType.COORDINATOR:
                     self._handle_leader_election_message(msg)
 
                 elif msg.type == MsgType.OK_ELECTION:
@@ -85,7 +85,7 @@ class ElectionListener:
 
 
     def _handle_leader_election_message(self, msg):
-        """Procesa un mensaje de tipo LEADER_ELECTION."""
+        """Procesa un mensaje de tipo COORDINATOR."""
         logging.info(f"node {self.id}: Llego un mensaje Leader")
         with self.condition:
             self.leader_id.value = msg.node_id
