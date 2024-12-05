@@ -58,9 +58,6 @@ class Listener:
 
 class ReplicaListener(Listener):
 
-    def __init__(self, id, ip_prefix, port=LISTENER_PORT, backlog=5 ):
-        super().__init__(id, ip_prefix, port, backlog)
-
     def process_msg(self, conn):
         raw_msg = recv_msg(conn)
         msg = decode_msg(raw_msg)

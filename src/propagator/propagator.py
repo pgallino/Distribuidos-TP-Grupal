@@ -5,10 +5,9 @@ from multiprocessing import Process
 import socket
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
 from middleware.middleware import Middleware
-from utils.container_constants import ENDPOINTS_PROB_FAILURE
 from utils.listener import PropagatorListener
 from utils.utils import log_with_location, recv_msg, NodeType, simulate_random_failure
-from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, E_FROM_REPLICA_PULL_ANS, K_FIN, K_NOTIFICATION, Q_TO_PROP
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, E_FROM_REPLICA_PULL, K_FIN, K_NOTIFICATION, Q_TO_PROP
 
 class Propagator:
     def __init__(self, id: int, container_name: str, nodes_instances: dict[str, int], n_replicas: int):
@@ -79,7 +78,7 @@ class Propagator:
             node = NodeType(msg.node_type)
         except:
             logging.warning(f"No existe enum de NodeType para valor {msg.node_type}")
-        # logging.info(f'Llego un una notificacion de fin cliente {msg.client_id} de {node.name} {msg.node_instance}')
+        logging.info(f'Llego un una notificacion de fin cliente {msg.client_id} de {node.name} {msg.node_instance}')
         if msg.client_id not in self.nodes_fins_state:
             self._add_new_client_state(msg.client_id)
 
@@ -91,7 +90,7 @@ class Propagator:
         self.push_update('node_fin_state', msg.client_id, update=(node.name, msg.node_instance, True))
         # ==================================================================
         # CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"), probability=0.01)
         # ==================================================================
 
         # nos fijamos si se puede propagar el fin
@@ -105,21 +104,21 @@ class Propagator:
 
         # ==================================================================
         # CAIDA POST PROPAGACION DE FINS DE CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"), probability=0.01)
         # ==================================================================
         
         # notificamos a los nodos que ya propagamos el fin
-        # logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
+        logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
         fin_propagated_msg = SimpleMessage(type=MsgType.FIN_PROPAGATED, client_id=msg.client_id, node_type=node.value)
         self._middleware.send_to_queue(E_FROM_PROP, fin_propagated_msg.encode(), key=K_NOTIFICATION + f'_{NodeType.node_type_to_string(node)}')
 
         # ==================================================================
         # CAIDA POST NOTIFICACION DE FINS CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST NOTIFICACION DE FINS DE CLIENTE {msg.client_id} A {node.name}"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location(f"CAIDA POST NOTIFICACION DE FINS DE CLIENTE {msg.client_id} A {node.name}"), probability=0.01)
         # ==================================================================
 
     def _process_delete_client(self, msg: SimpleMessage):
-        # logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
+        logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
         if msg.client_id in self.nodes_fins_state:
             del self.nodes_fins_state[msg.client_id]
             # pushear el cambio de estado a las replicas
@@ -127,7 +126,7 @@ class Propagator:
 
     def _propagate_fins(self, nodes_client_fins: dict[int, bool], client_id: int, origin_node: NodeType):
         fins_propagated = nodes_client_fins['fins_propagated'] # lo consigue gracias a las replicas
-        # logging.info(f'Se propagan los fins del cliente {client_id}, desde {origin_node.name}. Ya habia {fins_propagated} fins propagados')
+        logging.info(f'Se propagan los fins del cliente {client_id}, desde {origin_node.name}. Ya habia {fins_propagated} fins propagados')
         next_nodes = NodeType.get_next_nodes(origin_node)
         
         aggregate = 0
@@ -164,13 +163,13 @@ class Propagator:
                 # CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE
                 simulate_random_failure(self, log_with_location(f"CAIDA EN MEDIO DE PROPAGACION FINS CLIENTE {client_id} de {origin_node.name}"), probability=0.001)
                 # ==================================================================
-                # logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
+                logging.info(f"Envie fin con key {K_FIN+f'_{name}'}")
                 self._middleware.send_to_queue(E_FROM_PROP, fin_msg.encode(), key=K_FIN+f'.{name}')
                 self.last_msg_id += 1 # se le agrega 1
             aggregate += curr_instances
 
         nodes_client_fins['fins_propagated'] = aggregate
-        # logging.info(f'Fins del cliente {client_id} propagados desde {origin_node.name}')
+        logging.info(f'Fins del cliente {client_id} propagados desde {origin_node.name}')
     
     def _shutdown(self):
         """Gracefully shuts down the node, stopping consumption and closing connections."""
@@ -187,7 +186,7 @@ class Propagator:
             self._middleware.close()
             logging.info("action: shutdown_node | result: success")
         except Exception as e:
-            logging.error(f"action: shutdown_node | result: ENDPOINTS_PROB_FAILUREl | error: {e}")
+            logging.error(f"action: shutdown_node | result: fail | error: {e}")
         
         self._middleware.check_closed()
 
@@ -214,31 +213,31 @@ class Propagator:
 
             initial_nodes_states[name]['fins_propagated'] = 0
         
-        # logging.info(f'Se crea el diccionario {initial_nodes_states} para el cliente {client_id}')
+        logging.info(f'Se crea el diccionario {initial_nodes_states} para el cliente {client_id}')
         self.nodes_fins_state[client_id] = initial_nodes_states
         self.push_update('new_client', client_id, update=initial_nodes_states)
 
     def _synchronize_with_replicas(self):
         """Solicita el estado a las réplicas y sincroniza el nodo."""
-        # logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
+        logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
 
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
-        self.pull_exchange_name = E_FROM_REPLICA_PULL_ANS + f'_{self.container_name}_{self.id}'
+        self.pull_exchange_name = E_FROM_REPLICA_PULL + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.pull_exchange_name)
         self.recv_queue = self._middleware.declare_anonymous_queue(self.pull_exchange_name)
 
         # Enviar un PULL_DATA a todas las réplicas
         pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
         self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
-        # logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
+        logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
 
         def on_response(ch, method, properties, body):
             """Callback para manejar las respuestas de las réplicas."""
             msg = decode_msg(body)
 
             if isinstance(msg, PushDataMessage):
-                # logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id}. con {msg.data}")
+                logging.info(f"Master {self.id}: RECIBI PULL: de {msg.node_id}. con {msg.data}")
                 self.load_state(msg)
             ch.basic_ack(delivery_tag=method.delivery_tag)
             ch.stop_consuming()

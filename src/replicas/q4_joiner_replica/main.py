@@ -14,8 +14,7 @@ def main():
         replica = Q4JoinerReplica(
             id=config_params["instance_id"],
             container_name="q4_joiner_replica",
-            master_name="q4_joiner_1",
-            n_replicas=config_params["q4_joiner_replica_instances"]
+            container_to_restart="q4_joiner_1",
         )
         
         logging.info(f"Q4JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")

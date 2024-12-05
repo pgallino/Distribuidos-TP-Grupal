@@ -88,7 +88,7 @@ class Q5Joiner(Node):
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
-            # logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[0] = True
 
@@ -143,7 +143,7 @@ class Q5Joiner(Node):
             # ==================================================================
 
         elif msg.type == MsgType.FIN:
-            # logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
             client_fins = self.fins_per_client[msg.client_id]
             client_fins[1] = True
 

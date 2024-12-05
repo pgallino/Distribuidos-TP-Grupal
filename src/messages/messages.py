@@ -40,7 +40,6 @@ class MsgType(Enum):
     FIN_NOTIFICATION = 25
     CLIENT_CLOSE = 26
     FIN_PROPAGATED = 27
-    CLOSE = 28
 
 class Dataset(Enum):
     """
@@ -231,7 +230,7 @@ class SimpleMessage(BaseMessage):
             MsgType.EMPTY_STATE: ["node_id"],
             MsgType.FIN_NOTIFICATION: ["client_id", "node_type", "node_instance"],
             MsgType.CLIENT_CLOSE: ["client_id"],
-            MsgType.FIN_PROPAGATED: ["client_id", "node_type"],
+            MsgType.FIN_PROPAGATED: ["client_id", "node_type"]
         }
 
         # Decodificar los campos comunes (`type` y `msg_id`)
@@ -465,30 +464,26 @@ def convert_keys_to_int(obj):
 import json
 
 class PushDataMessage(BaseMessage):
-    def __init__(self, data: dict, node_id: int = 0, msg_id: int = 0, socket_compatible: bool = False):
+    def __init__(self, data: dict, node_id: int = 0, msg_id: int = 0):
         """
         Mensaje genérico para enviar datos arbitrarios entre nodos y réplicas.
 
         :param msg_id: Identificador único del mensaje.
         :param data: Diccionario con los datos a enviar.
-        :param node_id: ID del nodo.
-        :param socket_compatible: Flag para incluir la longitud total en la codificación.
         """
         super().__init__(MsgType.PUSH_DATA, msg_id=msg_id, data=data, node_id=node_id)
-        self.socket_compatible = socket_compatible
 
     @handle_encode_error
     def encode(self) -> bytes:
         """
         Codifica el mensaje en formato binario.
 
-        Incluye el msg_id, tipo de mensaje (`type`), y los datos serializados.
-        Si `socket_compatible` es True, incluye la longitud total al inicio.
+        Incluye el msg_id, tipo de mensaje (`type`) y los datos serializados.
         """
         # Codificar los campos comunes (`type` y `msg_id`)
         base_data = self.base_encode()
 
-        # Codificar el campo node_id como un entero
+        # Codificar el campo last_msg_id como un entero
         node_id = struct.pack('>B', self.node_id)
 
         # Serializar el diccionario de datos a JSON
@@ -499,13 +494,7 @@ class PushDataMessage(BaseMessage):
         body = struct.pack('>I', len(data_bytes)) + data_bytes
 
         # Concatenar la base, el node_id y el cuerpo
-        encoded_message = base_data + node_id + body
-
-        # Agregar longitud total si es necesario
-        if self.socket_compatible:
-            encoded_message = self.add_msg_len(encoded_message)
-
-        return encoded_message
+        return base_data + node_id + body
 
     @classmethod
     def decode(cls: Type[T], data: bytes) -> T:
@@ -513,14 +502,7 @@ class PushDataMessage(BaseMessage):
         Decodifica un mensaje `PushDataMessage` desde binario.
 
         Extrae el msg_id, tipo de mensaje y los datos serializados.
-        Maneja compatibilidad con sockets si el mensaje incluye la longitud total.
         """
-        # Verificar si incluye la longitud total
-        if len(data) >= 4:
-            total_length = struct.unpack('>I', data[:4])[0]
-            if total_length == len(data) - 4:
-                data = data[4:]  # Eliminar el prefijo de longitud
-
         # Decodificar los campos comunes (`type` y `msg_id`)
         msg_type, msg_id, remaining_data = cls.base_decode(data)
 
@@ -548,22 +530,11 @@ class PushDataMessage(BaseMessage):
         parsed_data = convert_keys_to_int(parsed_data)
         return cls(data=parsed_data, node_id=node_id, msg_id=msg_id)
 
-    def add_msg_len(self, encoded_message: bytes) -> bytes:
-        """
-        Agrega la longitud total al inicio del mensaje codificado.
-
-        :param encoded_message: Mensaje codificado.
-        :return: Mensaje con la longitud total prefijada.
-        """
-        message_len = len(encoded_message)
-        return struct.pack('>I', message_len) + encoded_message
-
     def __str__(self):
         """
         Representación legible del mensaje.
         """
-        return f"PushDataMessage(msg_id={self.msg_id}, data={self.data}, node_id={self.node_id})"
-
+        return f"PushDataMessage(msg_id={self.msg_id}, data={self.data})"
     
 # ===================================================================================================================== #
 
@@ -814,8 +785,7 @@ MESSAGE_CLASSES = {
     MsgType.EMPTY_STATE: SimpleMessage,
     MsgType.FIN_NOTIFICATION: SimpleMessage,
     MsgType.CLIENT_CLOSE: SimpleMessage,
-    MsgType.FIN_PROPAGATED: SimpleMessage,
-    MsgType.CLOSE: SimpleMessage
+    MsgType.FIN_PROPAGATED: SimpleMessage
 }
 
 

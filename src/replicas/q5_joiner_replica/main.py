@@ -14,8 +14,7 @@ def main():
         replica = Q5JoinerReplica(
             id=config_params["instance_id"],
             container_name="q5_joiner_replica",
-            master_name="q5_joiner_1",
-            n_replicas=config_params["q5_joiner_replica_instances"]
+            container_to_restart="q5_joiner_1"
         )
         
         logging.info(f"Q5JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")
