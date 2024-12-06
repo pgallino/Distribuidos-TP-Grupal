@@ -77,7 +77,7 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
     
     def _process_fin_message(self, ch, method, client_id: int):
-        logging.info(f'Llego un FIN del cliente {client_id}')
+        # logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(type=MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
         # ==================================================================
@@ -100,7 +100,7 @@ class Node:
             if self.fin_to_ack:
                 client_id, fin_ch, tag = self.fin_to_ack
                 if msg.client_id == client_id:
-                    logging.info(f'Llego notificacion de FIN propagado para el cliente {client_id}')
+                    #logging.info(f'Llego notificacion de FIN propagado para el cliente {client_id}')
                     fin_ch.basic_ack(delivery_tag=tag)
                     self.fin_to_ack = None
                     ch.stop_consuming()
@@ -137,21 +137,25 @@ class Node:
             nonlocal responses
             msg = decode_msg(body)
 
-            if isinstance(msg, SimpleMessage) and msg.type == MsgType.EMPTY_STATE:
-                logging.info(f"Master {self.id}: Recibido estado vacío de réplica {msg.node_id}.")
-                responses.add(msg.node_id)
-
-            elif isinstance(msg, PushDataMessage):
-                logging.info(f"Master {self.id}: Recibido estado completo de réplica {msg.node_id}.")
-                if msg.data["last_msg_id"] > self.last_msg_id:
-                    self.load_state(msg)
-                responses.add(msg.node_id)
+            if not msg.node_id in responses:
+                if isinstance(msg, SimpleMessage) and msg.type == MsgType.EMPTY_STATE:
+                    logging.info(f"Master {self.id}: Recibido estado vacío de réplica {msg.node_id}.")
+                    responses.add(msg.node_id)
+                elif isinstance(msg, PushDataMessage):
+                    last_msg_id = msg.data['last_msg_id']
+                    logging.info(f"Master {self.id}: Recibido estado completo de réplica {msg.node_id}. last_msg_id = {last_msg_id}")
+                    if msg.data["last_msg_id"] > self.last_msg_id:
+                        logging.info(f"CARGUE DATA. last_msg_id = {last_msg_id}")
+                        self.load_state(msg)
+                    responses.add(msg.node_id)
+            else:
+                logging.info(f"RECIBI PULL REPETIDO DE {msg.node_id}")
 
             ch.basic_ack(delivery_tag=method.delivery_tag)
 
             # Detener el consumo si ya se recibió una respuesta de cada réplica compañera
             if len(responses) >= self.n_replicas:
-
+                logging.info("RECIBI TODOS LOS PULLS")
                 ch.stop_consuming()
 
         # Escuchar respuestas hasta recibir de todas las réplicas

@@ -23,7 +23,7 @@ class OsCounter(Node):
 
         self._middleware.declare_exchange(E_FROM_PROP, type='topic')
         fin_key = K_FIN+f'.{container_name}'
-        logging.info(f'Bindeo cola {Q_TRIMMER_OS_COUNTER} a {E_FROM_PROP} con key {fin_key}')
+        # logging.info(f'Bindeo cola {Q_TRIMMER_OS_COUNTER} a {E_FROM_PROP} con key {fin_key}')
         self._middleware.bind_queue(Q_TRIMMER_OS_COUNTER, E_FROM_PROP, key=fin_key)
 
         self.os_count = {}
@@ -59,7 +59,7 @@ class OsCounter(Node):
             self._process_game_message(msg)
         
         elif msg.type == MsgType.FIN:
-            logging.info(f"Llego un FIN de cliente {msg.client_id}")
+            # logging.info(f"Llego un FIN de cliente {msg.client_id}")
             self._process_fin_message(msg)
 
         # ==================================================================

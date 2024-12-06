@@ -21,11 +21,11 @@ class Replica:
         self.listener = None
         self.container_name = container_name
         self.port = LISTENER_PORT
-        self.sincronizado = False
         self.timestamp = time.time()
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         self.synchronized = False
+        self.connected = False
         self.last_msg_id = 0
 
         # Lock para proteger el acceso al estado compartido
@@ -63,6 +63,8 @@ class Replica:
         self.sync_exchange = E_SYNC_STATE + f'_{container_name}'
         self._middleware.declare_exchange(self.sync_exchange, type='fanout')
 
+        self._initialize_storage()
+
         # Proceso de escucha principal
         self.listener = Process(target=init_listener, args=(id, container_name, self.port,))
         self.listener.start()
@@ -71,7 +73,6 @@ class Replica:
         """Inicia el consumo de mensajes en la cola de la réplica."""
         try:
             while not self.shutting_down:
-                self._initialize_storage()
                 # AHORA REVIVE EL WATCHDOG A LOS MASTERS, NO NECESITO VERIFICAR CON TIMEOUT
                 self._middleware.receive_from_queue(self.recv_queue, self.process_replica_message, auto_ack=False)
                 self.recover_state()  # Método para solicitar sincronización
@@ -103,6 +104,11 @@ class Replica:
 
         answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
         self._middleware.send_to_queue(self.send_exchange, answer.encode())
+        if self.synchronized:
+            last_msg_id = answer.data["last_msg_id"]
+            logging.info(f"ENVIE PULL A MASTER CON last_msg_id = {last_msg_id}")
+        else:
+            logging.info("ENVIE PULL EMPTY")
 
         # ==================================================================
         # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
@@ -232,21 +238,23 @@ class Replica:
             nonlocal responses
             msg = decode_msg(body)
 
-            if isinstance(msg, SimpleMessage) and msg.type == MsgType.EMPTY_STATE:
-                logging.info(f"Replica {self.id}: Recibido estado vacío de réplica {msg.node_id}.")
-                responses.add(msg.node_id)
+            if not msg.node_id in responses:
+                if isinstance(msg, SimpleMessage) and msg.type == MsgType.EMPTY_STATE:
+                    logging.info(f"Replica {self.id}: Recibido estado vacío de réplica {msg.node_id}. ")
+                    responses.add(msg.node_id)
 
-            elif isinstance(msg, PushDataMessage):
-                logging.info(f"Replica {self.id}: Recibido estado completo de réplica {msg.node_id}.")
-                if msg.data["last_msg_id"] > self.last_msg_id:
-                    self._load_state(msg)
-                responses.add(msg.node_id)
-                # logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
+                elif isinstance(msg, PushDataMessage):
+                    last_msg_id = msg.data['last_msg_id']
+                    logging.info(f"Replica {self.id}: Recibido estado completo de réplica {msg.node_id}. last_msg_id = {last_msg_id}")
+                    if msg.data["last_msg_id"] > self.last_msg_id:
+                        self._load_state(msg)
+                    responses.add(msg.node_id)
+                    # logging.info(f"Replica {self.id}: Estado recuperado de la réplica compañera.")
                 
             ch.basic_ack(delivery_tag=method.delivery_tag)
             # Detener el consumo si ya se recibió una respuesta de cada réplica
             if len(responses) >= self.n_replicas-1:
-
+                logging.info("recibi todas las respues de mis compañeras")
                 ch.stop_consuming()
                 # Eliminar la cola después de procesar el mensaje
                 self._middleware.delete_queue(self.sync_anonymous_queue)
