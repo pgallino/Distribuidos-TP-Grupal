@@ -5,7 +5,7 @@ from messages.results_msg import Q5Result, QueryNumber
 from node import Node
 import numpy as np # type: ignore # genera 7 pids en docker stats
 from utils.container_constants import ENDPOINTS_PROB_FAILURE
-from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE, K_SHOOTER_GAMES, Q_GENRE_Q5_JOINER, Q_QUERY_RESULT_5, Q_SCORE_Q5_JOINER
+from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_NEGATIVE, K_SHOOTER_GAMES, Q_Q5_JOINER, Q_QUERY_RESULT_5
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q5Joiner(Node):
@@ -15,21 +15,17 @@ class Q5Joiner(Node):
         self.n_replicas = n_replicas
 
         # Configurar colas y enlaces
-        self._middleware.declare_queue(Q_GENRE_Q5_JOINER)
+        self._middleware.declare_queue(Q_Q5_JOINER)
         self._middleware.declare_exchange(E_FROM_GENRE)
-        self._middleware.bind_queue(Q_GENRE_Q5_JOINER, E_FROM_GENRE, K_SHOOTER_GAMES)
-
-        self._middleware.declare_queue(Q_SCORE_Q5_JOINER)
+        self._middleware.bind_queue(Q_Q5_JOINER, E_FROM_GENRE, K_SHOOTER_GAMES)
         self._middleware.declare_exchange(E_FROM_SCORE)
-        self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
+        self._middleware.bind_queue(Q_Q5_JOINER, E_FROM_SCORE, K_NEGATIVE)
         
         self._middleware.declare_exchange(E_FROM_PROP, type='topic')
         fin_games_key = K_FIN+f'.{container_name}_games'
-        #logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_games_key}')
-        self._middleware.bind_queue(Q_GENRE_Q5_JOINER, E_FROM_PROP, key=fin_games_key) # hay que modificarlo en el propagator
+        self._middleware.bind_queue(Q_Q5_JOINER, E_FROM_PROP, key=fin_games_key)
         fin_reviews_key = K_FIN+f'.{container_name}_reviews'
-        #logging.info(f'Bindeo cola {Q_GENRE_Q5_JOINER} a {E_FROM_PROP} con key {fin_reviews_key}')
-        self._middleware.bind_queue(Q_SCORE_Q5_JOINER, E_FROM_PROP, key=fin_reviews_key)
+        self._middleware.bind_queue(Q_Q5_JOINER, E_FROM_PROP, key=fin_reviews_key)
 
         self._middleware.declare_queue(Q_QUERY_RESULT_5)
 
@@ -54,125 +50,101 @@ class Q5Joiner(Node):
                 self._synchronize_with_replicas()
 
             # Consumir mensajes de ambas colas con sus respectivos callbacks en paralelo
-            self._middleware.receive_from_queues([(Q_GENRE_Q5_JOINER, self.process_game_message), (Q_SCORE_Q5_JOINER, self.process_review_message)], auto_ack=False)
+            self._middleware.receive_from_queue(Q_Q5_JOINER, self.process_message, auto_ack=False)
         
         except Exception as e:
             if not self.shutting_down:
                 logging.error(f"action: listen_to_queue | result: fail | error: {e.with_traceback()}")
                 self._shutdown()
 
-    def process_game_message(self, ch, method, properties, raw_message):
-        """Procesa mensajes de la cola `Q_GENRE_Q5_JOINER`."""
+    def process_message(self, ch, method, properties, raw_message):
+
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.GAMES:
-            
-            # Inicializar diccionario de actualizaciones
-            update = {}
-            client_games = self.games_per_client[msg.client_id]
-            for game in msg.items:
-                client_games[game.app_id] = game.name
-                # Registrar el cambio en el diccionario de actualizaciones
-                update[game.app_id] = game.name
-
-            # ==================================================================
-            # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
-
-            self.push_update('games', msg.client_id, update)
-
-            # ==================================================================
-            # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
-
+            self.process_game_message(msg)
+        elif msg.type == MsgType.REVIEWS:
+            self.process_review_message(msg)
         elif msg.type == MsgType.FIN:
-            # logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
-            client_fins = self.fins_per_client[msg.client_id]
-            client_fins[0] = True
-
-            # ==================================================================
-            # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
-
-            self.push_update('fins', msg.client_id, client_fins)
-
-            # ==================================================================
-            # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
-
-            if client_fins[0] and client_fins[1]:
-                self.join_results(msg.client_id)
-            
+            self.process_fin_message(msg)
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
+    def process_game_message(self, msg):
+        """Procesa mensajes de la cola `Q_GENRE_Q5_JOINER`."""
+        # Inicializar diccionario de actualizaciones
+        update = {}
+        client_games = self.games_per_client[msg.client_id]
+        for game in msg.items:
+            client_games[game.app_id] = game.name
+            # Registrar el cambio en el diccionario de actualizaciones
+            update[game.app_id] = game.name
+
         # ==================================================================
-        # CAIDA DESPUES DE HACER EL ACK EN GAMES
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN GAMES"), probability=ENDPOINTS_PROB_FAILURE)
+        # CAIDA ANTES DE ENVIAR ACTUALIZACION A LAS REPLICAS
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
-    def process_review_message(self, ch, method, properties, raw_message):
+        self.push_update('games', msg.client_id, update)
+
+        # ==================================================================
+        # CAIDA DESPUES DE ENVIAR ACTUALIZACION A LAS REPLICAS
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+        # ==================================================================
+
+    def process_review_message(self, msg):
         """Procesa mensajes de la cola `Q_SCORE_Q5_JOINER`."""
-        msg = decode_msg(raw_message)
 
-        if msg.type == MsgType.REVIEWS:
+        # Inicializar diccionario de actualizaciones
+        update = {}
+        client_reviews = self.negative_review_counts_per_client[msg.client_id]
+        client_games = self.games_per_client[msg.client_id]
+        games_fin_received = self.fins_per_client[msg.client_id][0]
+        for review in msg.items:
+            if (not games_fin_received) or review.app_id in client_games:
+                client_reviews[review.app_id] += 1
+                update[review.app_id] = client_reviews[review.app_id]
 
-            # Inicializar diccionario de actualizaciones
-            update = {}
-            client_reviews = self.negative_review_counts_per_client[msg.client_id]
-            client_games = self.games_per_client[msg.client_id]
-            games_fin_received = self.fins_per_client[msg.client_id][0]
-            for review in msg.items:
-                if (not games_fin_received) or review.app_id in client_games:
-                    client_reviews[review.app_id] += 1
-                    update[review.app_id] = client_reviews[review.app_id]
+        # ==================================================================
+        # CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
+        # ==================================================================
+        
+        self.push_update('reviews', msg.client_id, update)
 
-            # ==================================================================
-            # CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
-            
-            self.push_update('reviews', msg.client_id, update)
+        # ==================================================================
+        # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+        # ==================================================================
 
-            # ==================================================================
-            # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
+    def process_fin_message(self, msg):
 
-        elif msg.type == MsgType.FIN:
-            # logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
-            client_fins = self.fins_per_client[msg.client_id]
+        # logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
+        client_fins = self.fins_per_client[msg.client_id]
+        if msg.node_type == NodeType.GENRE.value:
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
+            client_fins[0] = True
+        else:
+            logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
             client_fins[1] = True
 
-            # ==================================================================
-            # CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN REVIEWS A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
+        # ==================================================================
+        # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
+        # ==================================================================
 
-            self.push_update('fins', msg.client_id, client_fins)
-
-            # ==================================================================
-            # CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
-            # ==================================================================
-
-            if client_fins[0] and client_fins[1]:
-                self.join_results(msg.client_id)
-
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        self.push_update('fins', msg.client_id, client_fins)
 
         # ==================================================================
-        # CAIDA DESPUES DE HACER EL ACK EN REVIEWS
-        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE HACER EL ACK EN REVIEWS"), probability=ENDPOINTS_PROB_FAILURE)
+        # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS -> los fins son idempotentes
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
+
+        if client_fins[0] and client_fins[1]:
+            self.join_results(msg.client_id)
 
     def join_results(self, client_id):
         client_games = self.games_per_client[client_id]
         client_reviews = self.negative_review_counts_per_client[client_id]
-        logging.info(f"LA LONGITUD DE REVIEWS ES: {len(client_reviews)}")
         client_reviews = {app_id: count for app_id, count in client_reviews.items() if app_id in client_games}
 
         # Calcular el percentil 90 de las reseñas negativas
@@ -202,7 +174,7 @@ class Q5Joiner(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ENVIAR RESULTADO Q5
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q5 ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR RESULTADO Q5"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos

@@ -43,6 +43,7 @@ Q_TO_PROP = 'propagation'
 Q_NOTIFICATION = 'notification'
 Q_REPLICA_SYNC_REQUEST_LISTENER = 'replica-sync-request-listener'
 Q_Q3_JOINER = 'q3-joiner'
+Q_Q5_JOINER = 'q5-joiner'
 
 # Exchange Names
 E_FROM_TRIMMER = 'trimmer-filters'

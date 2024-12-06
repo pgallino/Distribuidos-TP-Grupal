@@ -5,7 +5,7 @@ from multiprocessing import Process, Value, Condition
 import time
 from middleware.middleware import Middleware
 from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
-from utils.middleware_constants import E_FROM_MASTER_PUSH, Q_TO_PROP, E_FROM_REPLICA_PULL_ANS
+from utils.middleware_constants import E_FROM_MASTER_PUSH, E_REPLICA_SYNC_REQUEST_LISTENER, Q_TO_PROP, E_FROM_REPLICA_PULL_ANS
 from utils.listener import NodeListener
 from utils.utils import NodeType, simulate_random_failure, log_with_location
 from utils.container_constants import FILTERS_PROB_FAILURE
@@ -116,18 +116,27 @@ class Node:
 
     def _synchronize_with_replicas(self):
 
+        time.sleep(10)
+
         """Solicita el estado a las réplicas y sincroniza el nodo."""
         logging.info(f"Replica {self.id}: Solicitando estado a las réplicas")
 
+        # A ESTE EXCHANGE ENVIO LOS MENSAJES PUSH
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.push_exchange_name, type="fanout")
+
+        # DE ESTE EXCHANGE RECIBO LAS RESPUESTAS LAS REPLICAS A MIS PULLS
         self.pull_exchange_name = E_FROM_REPLICA_PULL_ANS + f'_{self.container_name}_{self.id}'
         self._middleware.declare_exchange(self.pull_exchange_name)
         self.recv_queue = self._middleware.declare_anonymous_queue(self.pull_exchange_name)
 
+        # A ESTE EXCHANGE ENVIO LOS MENSAJES PULL
+        self.sync_request_exchange = E_REPLICA_SYNC_REQUEST_LISTENER + f"_{self.container_name}_{self.id}"
+        self._middleware.declare_exchange(self.sync_request_exchange)
+
         # Enviar un PULL_DATA a todas las réplicas
         pull_msg = SimpleMessage(type=MsgType.PULL_DATA)
-        self._middleware.send_to_queue(self.push_exchange_name, pull_msg.encode())
+        self._middleware.send_to_queue(self.sync_request_exchange, pull_msg.encode(), "pull")
         logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
 
         responses = set()

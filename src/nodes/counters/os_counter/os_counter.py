@@ -104,7 +104,6 @@ class OsCounter(Node):
 
         # TODO: Como no es atómico puede romper justo despues de enviarlo a la replica y no hacer el ACK
         # TODO: Posible Solucion: Ids en los mensajes para que si la replica recibe repetido lo descarte
-        # TODO: Opcion 2: si con el delivery_tag se puede chequear si se recibe un mensaje repetido
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA
@@ -131,11 +130,8 @@ class OsCounter(Node):
 
             # ==================================================================
             # CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO
-            # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+            simulate_random_failure(self, log_with_location("CAIDA DESPUES DE CREAR EL MENSAJE DE RESULTADO Y DESPUES DE ENVIARLO"), probability=ENDPOINTS_PROB_FAILURE)
             # ==================================================================
-
-            # TODO: Como no es atomico esto y el ACK, podria mandar repetido un resultado al dispatcher
-            # TODO: Descartar mensajes repetidos en el dispatcher
             
             # Limpiar el heap para este cliente
             del self.os_count[msg.client_id]

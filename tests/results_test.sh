@@ -87,7 +87,7 @@ do
   echo "Ejecutando prueba $i..."
 
   # Crear el subdirectorio para logs y diff
-  test_dir="./restultados_replicas/test_$i"
+  test_dir="./resultados_replicas/test_$i"
   mkdir -p "$test_dir/logs"  # Crear el subdirectorio para logs
   mkdir -p "$test_dir/diffs"  # Crear el subdirectorio para los resultados de diff
   echo "Subdirectorios $test_dir/logs y $test_dir/diffs creados."

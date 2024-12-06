@@ -6,7 +6,7 @@ from node import Node
 import heapq
 
 from utils.container_constants import ENDPOINTS_PROB_FAILURE
-from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_INDIE_BASICGAMES, K_POSITIVE, Q_GENRE_Q3_JOINER, Q_Q3_JOINER, Q_QUERY_RESULT_3, Q_SCORE_Q3_JOINER
+from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, K_FIN, K_INDIE_BASICGAMES, K_POSITIVE, Q_Q3_JOINER, Q_QUERY_RESULT_3
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q3Joiner(Node):
@@ -91,30 +91,6 @@ class Q3Joiner(Node):
         # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE JUEGOS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
-    def process_fin_message(self, msg):
-        logging.info(f"Llego FIN de cliente {msg.client_id}")
-        client_fins = self.fins_per_client[msg.client_id]
-        if msg.node_type == NodeType.GENRE.value:
-            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
-            client_fins[0] = True
-        else:
-            logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
-            client_fins[1] = True
-        # ==================================================================
-        # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
-        # ==================================================================
-
-        self.push_update('fins', msg.client_id, client_fins)
-
-        # ==================================================================
-        # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
-        # ==================================================================
-
-        if client_fins[0] and client_fins[1]:
-            self.join_results(msg.client_id)
-
     def process_review_message(self, msg):
         """Procesa mensajes de la cola `Q_SCORE_Q3_JOINER`."""
 
@@ -139,6 +115,30 @@ class Q3Joiner(Node):
         # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS
         # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR ACTUALIZACION DE REVIEWS A LAS REPLICAS ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
+
+    def process_fin_message(self, msg):
+        logging.info(f"Llego FIN de cliente {msg.client_id}")
+        client_fins = self.fins_per_client[msg.client_id]
+        if msg.node_type == NodeType.GENRE.value:
+            logging.info(f"Llego FIN GAMES de cliente {msg.client_id}")
+            client_fins[0] = True
+        else:
+            logging.info(f"Llego FIN REVIEWS de cliente {msg.client_id}")
+            client_fins[1] = True
+        # ==================================================================
+        # CAIDA ANTES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
+        # ==================================================================
+
+        self.push_update('fins', msg.client_id, client_fins)
+
+        # ==================================================================
+        # CAIDA DESPUES DE ENVIAR ACTUALIZACION DE FIN GAMES A LAS REPLICAS -> no pasa nada el fin es idempotente
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR FIN GAMES A LAS REPLICAS"), probability=ENDPOINTS_PROB_FAILURE)
+        # ==================================================================
+
+        if client_fins[0] and client_fins[1]:
+            self.join_results(msg.client_id)
     
     def join_results(self, client_id: int):
 
@@ -164,14 +164,14 @@ class Q3Joiner(Node):
 
         # ==================================================================
         # CAIDA ANTES DE ENVIAR RESULTADO Q3
-        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q3"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location("CAIDA ANTES DE ENVIAR RESULTADO Q3"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         self._middleware.send_to_queue(Q_QUERY_RESULT_3, result_message.encode())
 
         # ==================================================================
         # CAIDA DESPUES DE ENVIAR RESULTADO Q3
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ENVIAR RESULTADO Q3 ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ENVIAR RESULTADO Q3"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
 
         # Borro los diccionarios de clientes ya resueltos

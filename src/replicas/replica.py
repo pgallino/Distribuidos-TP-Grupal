@@ -21,11 +21,10 @@ class Replica:
         self.listener = None
         self.container_name = container_name
         self.port = LISTENER_PORT
-        self.timestamp = time.time()
+        self.master_name = master_name
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
         self.synchronized = False
-        self.connected = False
         self.last_msg_id = 0
 
         # Lock para proteger el acceso al estado compartido
@@ -39,31 +38,34 @@ class Replica:
 
         # Configuración de colas y exchanges
 
-        # DE ESTE EXCHANGE RECIBO PULLS, PUSHS Y FINS DEL MASTER
+        # DE ESTE EXCHANGE RECIBO PUSHS Y FINS DEL MASTER
         self.recv_exchange = E_FROM_MASTER_PUSH + f"_{master_name}"
         self._middleware.declare_exchange(self.recv_exchange, type="fanout")
 
-        # DE ESTA COLA RECIBO LOS PULLS, PUSHS Y FINS DEL MASTER -> LA BINDEO AL EXCHANGE E_FROM_MASTER_PUSH
+        # DE ESTA COLA RECIBO LOS PUSHS Y FINS DEL MASTER -> LA BINDEO AL EXCHANGE E_FROM_MASTER_PUSH
         self.recv_queue = Q_MASTER_REPLICA + f"_{container_name}_{self.id}"
         self._middleware.declare_queue(self.recv_queue)
         self._middleware.bind_queue(self.recv_queue, self.recv_exchange)
 
-        # A ESTE EXCHANGE ENVIO LOS ESTADOS AL MASTER -> LE RESPONDO LOS PULL
-        self.send_exchange = E_FROM_REPLICA_PULL_ANS + f'_{master_name}'
-        self._middleware.declare_exchange(self.send_exchange)
-
         # A ESTE EXCHANGE ENVIO LOS SYNC_STATE_REQUEST
-        self.sync_request_listener_exchange = E_REPLICA_SYNC_REQUEST_LISTENER + f"_{container_name}"
+        self.sync_request_listener_exchange = E_REPLICA_SYNC_REQUEST_LISTENER + f"_{master_name}"
         self._middleware.declare_exchange(self.sync_request_listener_exchange)
 
-        # ESTA COLA LA UTILIZA EL PROCESO REQUEST_LISTENER PARA PROCESAR LAS SYNC_STATE_REQUEST EN PARALELO
-        self.sync_request_listener_queue = Q_REPLICA_SYNC_REQUEST_LISTENER + f"_{container_name}_{self.id}"
+        # ESTA COLA LA UTILIZA EL THREAD SYNC_REQUEST_LISTENER PARA PROCESAR LAS SYNC_STATE_REQUEST EN PARALELO
+        self.sync_request_listener_queue = Q_REPLICA_SYNC_REQUEST_LISTENER + f"_{master_name}_{self.id}"
 
         # EN ESTE EXCHANGE RECIBO LAS RESPUESTAS A MIS SYNC_STATE_REQUEST CON ESTADOS DE OTRAS REPLICAS -> LUEGO ME BINDEO CON UNA COLA ANONIMA PARA RECIBIR DE EL.
         self.sync_exchange = E_SYNC_STATE + f'_{container_name}'
         self._middleware.declare_exchange(self.sync_exchange, type='fanout')
 
         self._initialize_storage()
+
+        # Hilo para manejar solicitudes de sincronización
+        self.sync_listener_thread = threading.Thread(
+            target=self._run_sync_listener,
+            daemon=True
+        )
+        self.sync_listener_thread.start()
 
         # Proceso de escucha principal
         self.listener = Process(target=init_listener, args=(id, container_name, self.port,))
@@ -94,26 +96,6 @@ class Replica:
 
     def _process_fin_message(self, msg):
         pass
-
-    def _process_pull_data(self):
-        """Procesa un mensaje de solicitud de pull de datos."""
-        # ==================================================================
-        # CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA
-        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA ANTES DE ENVIAR RESPUESTA"), probability=REPLICAS_PROB_FAILURE)
-        # ==================================================================
-
-        answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
-        self._middleware.send_to_queue(self.send_exchange, answer.encode())
-        if self.synchronized:
-            last_msg_id = answer.data["last_msg_id"]
-            logging.info(f"ENVIE PULL A MASTER CON last_msg_id = {last_msg_id}")
-        else:
-            logging.info("ENVIE PULL EMPTY")
-
-        # ==================================================================
-        # CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA
-        simulate_random_failure(self, log_with_location("CAIDA PROCESANDO PULL_DATA LUEGO DE ENVIAR RESPUESTA"), probability=REPLICAS_PROB_FAILURE)
-        # ==================================================================
 
     def _create_pull_answer(self):
         pass
@@ -174,8 +156,6 @@ class Replica:
                 logging.info(f"Replica {self.id}: Recibiendo primer mensaje con ID {msg.msg_id} de tipo {msg.type}. Iniciando sincronización.")
                 return # ya me sincronicé y me vuelvo a consumir por la cola principal
             
-            if msg.type == MsgType.PULL_DATA: # respondo pull si estoy sincronizado
-                self._process_pull_data()
 
             elif msg.type == MsgType.PUSH_DATA:
                 # Procesar solo mensajes con un ID mayor al último procesado
@@ -199,13 +179,6 @@ class Replica:
 
         except Exception as e:
             logging.error(f"action: process_replica_message | result: fail | error: {e.with_traceback()}")
-        
-    def simulate_failure(self, id):
-        """Simula la caída del id"""
-
-        if self.id == id:
-            self._shutdown()
-            exit(0)
     
     def recover_state(self):
         """
@@ -271,6 +244,61 @@ class Replica:
 
         self._middleware.receive_from_queue(self.sync_anonymous_queue, on_state_response, auto_ack=False)
         self.synchronized = True
+
+    def _run_sync_listener(self):
+        """
+        Proceso dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
+        """
+        _sync_middleware = Middleware()
+
+        def _process_sync_message(ch, method, properties, raw_message):
+            """Procesa mensajes de tipo SYNC_STATE_REQUEST."""
+            try:
+                msg = decode_msg(raw_message)
+                if msg.type == MsgType.CLOSE:
+                    ch.basic_ack(delivery_tag=method.delivery_tag)
+                    ch.stop_consuming()
+                    return
+                elif msg.type == MsgType.SYNC_STATE_REQUEST and msg.requester_id != self.id:
+                    logging.info(f"Replica {self.id}: Procesando mensaje de sincronización de réplica {msg.requester_id}.")
+
+                    with self.lock:
+                        logging.info(f"me llego un sync y estoy: {self.synchronized}")
+                        answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
+
+                    _sync_middleware.send_to_queue(self.sync_exchange, answer.encode(), str(msg.requester_id))
+                    logging.info(f"envie estado a replica a {self.sync_exchange}, {msg.requester_id}")
+                
+                elif msg.type == MsgType.PULL_DATA:
+                    logging.info(f"Replica {self.id}: Procesando mensaje de pull de master.")
+
+                    with self.lock:
+                        logging.info(f"me llego un pull y estoy: {self.synchronized}")
+                        answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
+
+                    _sync_middleware.send_to_queue(self.send_exchange, answer.encode())
+                    logging.info(f"envie pull a master a {self.send_exchange}")
+
+                ch.basic_ack(delivery_tag=method.delivery_tag)
+            except Exception as e:
+                logging.error(f"Replica {self.id}: Error procesando mensaje SYNC_STATE: {e}")
+
+        try:
+            _sync_middleware.declare_exchange(self.sync_exchange, type='fanout')
+            _sync_middleware.declare_exchange(self.sync_request_listener_exchange)
+            _sync_middleware.declare_queue(self.sync_request_listener_queue)
+            # A ESTE EXCHANGE ENVIO LOS ESTADOS AL MASTER -> LE RESPONDO LOS PULL
+            self.send_exchange = E_FROM_REPLICA_PULL_ANS + f'_{self.master_name}'
+            _sync_middleware.declare_exchange(self.send_exchange)
+            _sync_middleware.bind_queue(self.sync_request_listener_queue, self.sync_request_listener_exchange, "sync")
+            _sync_middleware.bind_queue(self.sync_request_listener_queue, self.sync_request_listener_exchange, str(self.id))
+            _sync_middleware.bind_queue(self.sync_request_listener_queue, self.sync_request_listener_exchange, "pull")
+            _sync_middleware.receive_from_queue(self.sync_request_listener_queue, _process_sync_message, auto_ack=False)
+
+        except Exception as e:
+            logging.error(f"Replica {self.id}: Error en el listener SYNC_STATE: {e}")
+        finally:
+            _sync_middleware.close()
 
 def init_listener(id, container_name, port):
     listener = ReplicaListener(id, container_name, port)

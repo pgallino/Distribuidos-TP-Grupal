@@ -19,31 +19,22 @@ class Q3JoinerReplica(Replica):
         
         logging.info("Replica: Almacenamiento inicializado.")
 
-        # Hilo para manejar solicitudes de sincronización
-        self.sync_listener_thread = threading.Thread(
-            target=self._run_sync_listener,
-            daemon=True
-        )
-        self.sync_listener_thread.start()
-        
-
     def get_type(self):
         return NodeType.Q3_JOINER_REPLICA
 
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
-        with self.lock:
-            response_data = PushDataMessage(
-                data={
-                    "last_msg_id": self.last_msg_id,
-                    "games_per_client": dict(self.games_per_client),
-                    "review_counts_per_client": {
-                        k: dict(v) for k, v in self.review_counts_per_client.items()
-                    },
-                    "fins_per_client": dict(self.fins_per_client),
+        response_data = PushDataMessage(
+            data={
+                "last_msg_id": self.last_msg_id,
+                "games_per_client": dict(self.games_per_client),
+                "review_counts_per_client": {
+                    k: dict(v) for k, v in self.review_counts_per_client.items()
                 },
-                node_id=self.id,
-            )
+                "fins_per_client": dict(self.fins_per_client),
+            },
+            node_id=self.id,
+        )
         return response_data
 
 
@@ -145,56 +136,3 @@ class Q3JoinerReplica(Replica):
             self.synchronized = True
         
         logging.info(f"recibi este estado {state['last_msg_id']}")
-
-
-    def _run_sync_listener(self):
-        """
-        Proceso dedicado a escuchar mensajes SYNC_STATE, utilizando su propio Middleware.
-        """
-        sync_middleware = Middleware()
-
-        def _process_sync_message(ch, method, properties, raw_message):
-            """Procesa mensajes de tipo SYNC_STATE_REQUEST."""
-            try:
-                msg = decode_msg(raw_message)
-                if msg.type == MsgType.CLOSE:
-                    ch.basic_ack(delivery_tag=method.delivery_tag)
-                    ch.stop_consuming()
-                    return
-                if msg.type == MsgType.SYNC_STATE_REQUEST and msg.requester_id != self.id:
-                    logging.info(f"Replica {self.id}: Procesando mensaje de sincronización de réplica {msg.requester_id}.")
-
-                    with self.lock:
-                        logging.info(f"me llego un sync y estoy: {self.synchronized}")
-                        if self.synchronized:
-                            answer = PushDataMessage(
-                                data={
-                                    "last_msg_id": self.last_msg_id,
-                                    "games_per_client": dict(self.games_per_client),
-                                    "review_counts_per_client": {
-                                        k: dict(v) for k, v in self.review_counts_per_client.items()
-                                    },
-                                    "fins_per_client": dict(self.fins_per_client),
-                                },
-                                node_id=self.id,
-                            )
-                        else:
-                            answer = SimpleMessage(type=MsgType.EMPTY_STATE, node_id=self.id)
-
-                    sync_middleware.send_to_queue(self.sync_exchange, answer.encode(), str(msg.requester_id))
-                ch.basic_ack(delivery_tag=method.delivery_tag)
-            except Exception as e:
-                logging.error(f"Replica {self.id}: Error procesando mensaje SYNC_STATE: {e}")
-
-        try:
-            sync_middleware.declare_exchange(self.sync_exchange, type='fanout')
-            sync_middleware.declare_exchange(self.sync_request_listener_exchange)
-            sync_middleware.declare_queue(self.sync_request_listener_queue)
-            sync_middleware.bind_queue(self.sync_request_listener_queue, self.sync_request_listener_exchange, "sync")
-            sync_middleware.bind_queue(self.sync_request_listener_queue, self.sync_request_listener_exchange, str(self.id))
-            sync_middleware.receive_from_queue(self.sync_request_listener_queue, _process_sync_message, auto_ack=False)
-            logging.info("SALI CON CLOSE")
-        except Exception as e:
-            logging.error(f"Replica {self.id}: Error en el listener SYNC_STATE: {e}")
-        finally:
-            sync_middleware.close()
