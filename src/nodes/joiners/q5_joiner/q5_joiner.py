@@ -9,7 +9,15 @@ from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_SCORE, 
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class Q5Joiner(Node):
+    """
+    Clase del nodo Q5Joiner.
+    """
+
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
+        """
+        Inicializa el nodo Q5Joiner.
+        Declara colas y exchanges necesarios e instancia su estado interno.
+        """
         super().__init__(id, n_nodes, container_name)
 
         self.n_replicas = n_replicas
@@ -40,9 +48,16 @@ class Q5Joiner(Node):
         self.last_msg_id = 0
 
     def get_type(self) -> NodeType:
+        """
+        Devuelve el tipo de nodo correspondiente al Q5 Joiner.
+        """
         return NodeType.Q5_JOINER
 
     def run(self):
+        """
+        Inicia la lógica del Q5 Joiner.
+        Se sincroniza con sus réplicas y comienza a recibir mensajes por su cola principal.
+        """
 
         try:
 
@@ -62,7 +77,10 @@ class Q5Joiner(Node):
                 self._shutdown()
 
     def process_game_message(self, ch, method, properties, raw_message):
-        """Procesa mensajes de la cola `Q_GENRE_Q5_JOINER`."""
+        """
+        Procesa mensajes de la cola `Q_GENRE_Q5_JOINER`.
+        Envía mensaje push a las réplicas con el estado actualizado.
+        """
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.GAMES:
@@ -115,7 +133,10 @@ class Q5Joiner(Node):
         # ==================================================================
 
     def process_review_message(self, ch, method, properties, raw_message):
-        """Procesa mensajes de la cola `Q_SCORE_Q5_JOINER`."""
+        """
+        Procesa mensajes de la cola `Q_SCORE_Q5_JOINER`.
+        Envía mensaje push a las réplicas con el estado actualizado.
+        """
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.REVIEWS:
@@ -170,6 +191,11 @@ class Q5Joiner(Node):
         # ==================================================================
 
     def join_results(self, client_id):
+        """
+        Calcula los resultados de la query para un cliente ante la llegada de un mensaje FIN.
+        Para ello, une los juegos y reviews filtrados y obtiene aquellos que superan el umbral del percentil 90 de reseñas negativas.
+        Envía un mensaje push a las réplicas para eliminar a ese cliente.
+        """
         client_games = self.games_per_client[client_id]
         client_reviews = self.negative_review_counts_per_client[client_id]
         client_reviews = {app_id: count for app_id, count in client_reviews.items() if app_id in client_games}
@@ -213,7 +239,9 @@ class Q5Joiner(Node):
         # PERO SI LLEGASTE HASTA ACA ES PORQUE YA ENVIASTE LA RESPUESTA AL CLIENTE POR LO QUE NO TE IMPORTA PERDERLO
 
     def load_state(self, msg: PushDataMessage):
-        """Carga el estado completo recibido en la réplica."""
+        """
+        Carga el estado completo recibido en la réplica.
+        """
         state = msg.data
 
         # Actualizar juegos por cliente

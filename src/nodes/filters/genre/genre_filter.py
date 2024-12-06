@@ -8,7 +8,14 @@ from utils.utils import NodeType
 from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, E_FROM_TRIMMER, K_FIN, K_GENREGAME, K_INDIE_BASICGAMES, K_INDIE_Q2GAMES, K_NOTIFICATION, K_SHOOTER_GAMES, Q_NOTIFICATION, Q_TO_PROP, Q_TRIMMER_GENRE_FILTER
 
 class GenreFilter(Node):
+    """
+    Clase del nodo GenreFilter.
+    """
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
+        """
+        Inicializa el nodo GenreFilter.
+        Declara colas y exchanges necesarios.
+        """
         # Inicializa la clase base Node
         super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
 
@@ -28,9 +35,15 @@ class GenreFilter(Node):
         self._middleware.bind_queue(Q_TRIMMER_GENRE_FILTER, E_FROM_PROP, key=fin_key)
 
     def get_type(self):
+        """
+        Devuelve el tipo de nodo correspondiente al GenreFilter.
+        """
         return NodeType.GENRE
 
     def get_keys(self):
+        """
+        Obtiene un listado de keys de los siguientes nodos.
+        """
         keys = []
         for node, n_nodes in self.n_next_nodes:
             if node == RELEASE_DATE_CONTAINER_NAME:
@@ -42,7 +55,9 @@ class GenreFilter(Node):
         return keys
     
     def run(self):
-        """Inicia la recepción de mensajes de la cola."""
+        """
+        Inicia la recepción de mensajes de la cola principal.
+        """
         while not self.shutting_down:
             try:
                 logging.info("Empiezo a consumir de la cola de DATA")
@@ -56,7 +71,9 @@ class GenreFilter(Node):
                     self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
-        """Callback para procesar mensajes de la cola Q_TRIMMER_GENRE_FILTER."""
+        """
+        Callback para procesar mensajes de la cola Q_TRIMMER_GENRE_FILTER.
+        """
         msg = decode_msg(raw_message)
         if msg.type == MsgType.GAMES:
             self._process_games_message(msg)
@@ -67,7 +84,9 @@ class GenreFilter(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_games_message(self, msg):
-        """Filtra juegos por género y los envía a las colas correspondientes."""
+        """
+        Filtra juegos por género y los envía a las colas correspondientes.
+        """
         indie_basic_games, indie_q2_games, shooter_games = [], [], []
 
         for game in msg.items:

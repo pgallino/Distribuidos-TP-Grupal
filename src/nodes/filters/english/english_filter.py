@@ -9,7 +9,14 @@ from utils.utils import NodeType
 
 
 class EnglishFilter(Node):
+    """
+    Clase del nodo EnglishFilter.
+    """
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
+        """
+        Inicializa el nodo EnglishFilter.
+        Declara colas y exchanges necesarios.
+        """
         # Inicializa la clase base Node
         super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
 
@@ -24,13 +31,21 @@ class EnglishFilter(Node):
         self._middleware.bind_queue(self.notification_queue, E_FROM_PROP, key=K_NOTIFICATION+f'_{container_name}')
 
     def get_type(self):
+        """
+        Devuelve el tipo de nodo correspondiente al EnglishFilter.
+        """
         return NodeType.ENGLISH
 
     def get_keys(self):
+        """
+        Obtiene un listado de keys de los siguientes nodos (no hay keys para los siguientes nodos en este caso).
+        """
         return [('', 1)]
 
     def run(self):
-        """Inicia la recepción de mensajes de la cola."""
+        """
+        Inicia la recepción de mensajes de la cola principal.
+        """
         while not self.shutting_down:
             try:
                 logging.info("Empiezo a consumir de la cola de DATA")
@@ -44,7 +59,9 @@ class EnglishFilter(Node):
                     self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
-        """Callback para procesar mensajes de la cola Q_SCORE_ENGLISH."""
+        """
+        Callback para procesar mensajes de la cola Q_SCORE_ENGLISH.
+        """
         msg = decode_msg(raw_message)
         
         if msg.type == MsgType.REVIEWS:
@@ -57,7 +74,9 @@ class EnglishFilter(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_reviews_message(self, msg):
-        """Filtra y envía reseñas en inglés a la cola correspondiente."""
+        """
+        Filtra y envía reseñas en inglés a la cola correspondiente.
+        """
         en_reviews = [
             BasicReview(review.app_id) for review in msg.items if self.is_english(review.text)
         ]
@@ -67,6 +86,8 @@ class EnglishFilter(Node):
             self._middleware.send_to_queue(Q_ENGLISH_Q4_JOINER, english_reviews_msg.encode())
 
     def is_english(self, text):
-        """Detecta si el texto está en inglés usando langid."""
+        """
+        Detecta si el texto está en inglés usando langid.
+        """
         lang, _ = langid.classify(text)
         return lang == 'en'  # Retorna True si el idioma detectado es inglés

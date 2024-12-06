@@ -9,8 +9,15 @@ from utils.utils import NodeType, log_with_location, simulate_random_failure
 from utils.middleware_constants import E_FROM_PROP, E_FROM_TRIMMER, K_FIN, K_Q1GAME, Q_QUERY_RESULT_1, Q_TRIMMER_OS_COUNTER
 
 class OsCounter(Node):
+    """
+    Clase de nodo Counter de sistemas operativos soportados por juegos.
+    """
 
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
+        """
+        Inicializa el nodo de Counter de sistemas operativos.
+        Declara colas y exchanges necesarios e instancia su estado interno.
+        """
         super().__init__(id, n_nodes, container_name)
 
         self.n_replicas = n_replicas
@@ -30,6 +37,10 @@ class OsCounter(Node):
         self.last_msg_id = 0
 
     def run(self):
+        """
+        Inicia la lógica del Counter de sistemas operativos.
+        Se sincroniza con sus réplicas y comienza a recibir mensajes por su cola principal.
+        """
 
         try:
             
@@ -51,7 +62,9 @@ class OsCounter(Node):
 
 
     def _process_message(self, ch, method, properties, raw_message):
-        """Callback para procesar el mensaje de la cola."""
+        """
+        Callback para procesar el mensaje de la cola principal.
+        """
 
         msg = decode_msg(raw_message)
 
@@ -76,9 +89,16 @@ class OsCounter(Node):
 
     
     def get_type(self):
+        """
+        Devuelve el tipo de nodo correspondiente al Counter de sistemas operativos.
+        """
         return NodeType.OS_COUNTER
     
     def _process_game_message(self, msg):
+        """
+        Procesa los mensajes con juegos y actualiza su estado interno.
+        Envía mensaje push a las réplicas con el estado actualizado.
+        """
         # Actualizar los contadores
         client_counters = self.os_count.get(msg.client_id, (0, 0, 0))
         windows, mac, linux = client_counters
@@ -113,6 +133,10 @@ class OsCounter(Node):
 
 
     def _process_fin_message(self, msg):
+        """
+        Calcula los resultados de la query para un cliente ante la llegada de un mensaje FIN.
+        Envía un mensaje push a las réplicas para eliminar a ese cliente.
+        """
 
         # Obtener el contador final para el id del mensaje
         if msg.client_id in self.os_count:
@@ -142,7 +166,9 @@ class OsCounter(Node):
             self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
-        """Carga el estado completo recibido en la réplica."""
+        """
+        Carga el estado completo recibido en la réplica.
+        """
 
         # ==================================================================
         # CAIDA ANTES DE CARGAR EL ESTADO

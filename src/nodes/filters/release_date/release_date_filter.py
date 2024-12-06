@@ -8,7 +8,14 @@ from utils.utils import NodeType
 from utils.middleware_constants import E_FROM_GENRE, E_FROM_PROP, K_FIN, K_INDIE_Q2GAMES, K_NOTIFICATION, Q_NOTIFICATION, Q_RELEASE_DATE_AVG_COUNTER, Q_GENRE_RELEASE_DATE, Q_TO_PROP
 
 class ReleaseDateFilter(Node):
+    """
+    Clase del nodo ReleaseDateFilter.
+    """
     def __init__(self, id: int, n_nodes: int, n_next_nodes: List[Tuple[str, int]], container_name):
+        """
+        Inicializa el nodo ReleaseDateFilter.
+        Declara colas y exchanges necesarios.
+        """
         # Inicializa la clase base Node
         super().__init__(id, n_nodes, container_name, n_next_nodes=n_next_nodes)
         
@@ -26,13 +33,21 @@ class ReleaseDateFilter(Node):
         self._middleware.bind_queue(Q_GENRE_RELEASE_DATE, E_FROM_PROP, key=K_FIN+f'.{container_name}')
 
     def get_type(self):
+        """
+        Devuelve el tipo de nodo correspondiente al ReleaseDateFilter.
+        """
         return NodeType.RELEASE_DATE
     
     def get_keys(self):
+        """
+        Obtiene un listado de keys de los siguientes nodos (no hay keys para los siguientes nodos en este caso).
+        """
         return [('', 1)]
 
     def run(self):
-        """Inicia la recepción de mensajes de la cola."""
+        """
+        Inicia la recepción de mensajes de la cola principal.
+        """
         while not self.shutting_down:
             try:
                 logging.info("Empiezo a consumir de la cola de DATA")
@@ -46,7 +61,9 @@ class ReleaseDateFilter(Node):
                     self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
-        """Callback para procesar mensajes de la cola Q_GENRE_RELEASE_DATE."""
+        """
+        Callback para procesar mensajes de la cola Q_GENRE_RELEASE_DATE.
+        """
         msg = decode_msg(raw_message)
         
         if msg.type == MsgType.GAMES:
@@ -58,7 +75,9 @@ class ReleaseDateFilter(Node):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_games_message(self, msg):
-        """Filtra y envía juegos lanzados en 2010 o después."""
+        """
+        Filtra y envía juegos lanzados en 2010 o después.
+        """
         batch = [game for game in msg.items if "201" in game.release_date]
         if batch:
             games_msg = ListMessage(type=MsgType.GAMES, item_type=GamesType.Q2GAMES, items=batch, client_id=msg.client_id)

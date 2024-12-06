@@ -12,6 +12,9 @@ from utils.utils import NodeType, simulate_random_failure, log_with_location
 from utils.container_constants import FILTERS_PROB_FAILURE
 
 class Node:
+    """
+    Clase del nodo genérico.
+    """
     def __init__(self, id: int, n_nodes: int, container_name: str, n_next_nodes: list = []):
         """
         Base class for nodes to avoid code repetition.
@@ -40,7 +43,9 @@ class Node:
         signal.signal(signal.SIGTERM, self._handle_sigterm)
 
     def _shutdown(self):
-        """Gracefully shuts down the node, stopping consumption and closing connections."""
+        """
+        Gracefully shuts down the node, stopping consumption and closing connections.
+        """
         if self.shutting_down:
             return
         
@@ -59,12 +64,16 @@ class Node:
         self._middleware.check_closed()
 
     def _handle_sigterm(self, sig, frame):
-        """Handle SIGTERM signal to close the node gracefully."""
+        """
+        Handle SIGTERM signal to close the node gracefully.
+        """
         logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
 
     def _setup_coordination_queue(self, queue_prefix, exchange_name):
-        """Sets up the coordination queue if there are multiple nodes."""
+        """
+        Sets up the coordination queue if there are multiple nodes.
+        """
 
     def run(self):
         raise NotImplementedError("Debe implementarse en las subclases")
@@ -76,6 +85,9 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
     
     def _process_fin_message(self, ch, method, client_id: int):
+        """
+        Callback para procesar los mensajes FIN de los clientes.
+        """
         logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(type=MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
@@ -87,7 +99,9 @@ class Node:
         ch.stop_consuming()
     
     def _process_notification(self, ch, method, properties, raw_message):
-        """Callback para procesar las notificaciones de fins propagados"""
+        """
+        Callback para procesar las notificaciones de FINs propagados
+        """
         msg = decode_msg(raw_message)
 
         # ==================================================================
@@ -114,9 +128,11 @@ class Node:
         raise NotImplementedError("Debe implementarse en las subclases")
 
     def _synchronize_with_replicas(self):
-
+        """
+        Solicita el estado a las réplicas y sincroniza el nodo.
+        """
         #TODO: PODRIA ENVIARSE UN PULL A CADA REPLICA Y LA PRIMERA QUE RESPONDE ME LO QUEDO
-        """Solicita el estado a las réplicas y sincroniza el nodo."""
+
         logging.info(f"Replica {self.id}: Solicitando estado a las réplicas compañeras.")
 
         self.push_exchange_name = E_FROM_MASTER_PUSH + f'_{self.container_name}_{self.id}'
@@ -131,7 +147,9 @@ class Node:
         logging.info(f"Master {self.id}: Mensaje PULL_DATA enviado a todas las réplicas.")
 
         def on_response(ch, method, properties, body):
-            """Callback para manejar las respuestas de las réplicas."""
+            """
+            Callback para manejar las respuestas de las réplicas.
+            """
             msg = decode_msg(body)
 
             if isinstance(msg, PushDataMessage):
@@ -147,6 +165,9 @@ class Node:
         self._middleware.delete_queue(self.recv_queue)
 
     def push_update(self, type: str, client_id: int, update = None):
+        """
+        Lógica del mensaje push para actualizar el estado de las réplicas.
+        """
 
         if self.n_replicas > 0:
             if update:
@@ -160,6 +181,9 @@ class Node:
         self.last_msg_id += 1
 
 def init_listener(id, ip_prefix):
+    """
+    Inicia el proceso Listener del nodo.
+    """
     listener = Listener(id, ip_prefix)
     listener.run()
 
