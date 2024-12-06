@@ -116,8 +116,6 @@ class Node:
 
     def _synchronize_with_replicas(self):
 
-        time.sleep(10)
-
         """Solicita el estado a las réplicas y sincroniza el nodo."""
         logging.info(f"Replica {self.id}: Solicitando estado a las réplicas")
 

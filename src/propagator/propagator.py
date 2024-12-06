@@ -195,7 +195,6 @@ class Propagator:
         """Handle SIGTERM signal to close the node gracefully."""
         logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
-        exit(0)
 
     def _add_new_client_state(self, client_id: int):
         """

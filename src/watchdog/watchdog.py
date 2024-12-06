@@ -106,7 +106,6 @@ class WatchDog:
         """Handle SIGTERM signal to close the node gracefully."""
         logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
-        exit(0)
 
     def _set_nodes_state(self, nodes_to_monitor: list[tuple[NodeType, int]]):
         """
