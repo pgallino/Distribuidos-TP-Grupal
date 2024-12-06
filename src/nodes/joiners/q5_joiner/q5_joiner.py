@@ -172,7 +172,6 @@ class Q5Joiner(Node):
     def join_results(self, client_id):
         client_games = self.games_per_client[client_id]
         client_reviews = self.negative_review_counts_per_client[client_id]
-        logging.info(f"LA LONGITUD DE REVIEWS ES: {len(client_reviews)}")
         client_reviews = {app_id: count for app_id, count in client_reviews.items() if app_id in client_games}
 
         # Calcular el percentil 90 de las reseñas negativas

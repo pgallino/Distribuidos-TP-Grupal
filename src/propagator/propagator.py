@@ -25,6 +25,7 @@ class Propagator:
         self.shutting_down = False
         self.listener = None
         self.n_replicas = n_replicas
+        self.clients_closed = set()
 
         self.nodes_instances = nodes_instances
         self.nodes_fins_state = {}
@@ -75,38 +76,39 @@ class Propagator:
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
     def _process_fin_notification(self, msg: SimpleMessage):
-        try:
-            node = NodeType(msg.node_type)
-        except:
-            logging.warning(f"No existe enum de NodeType para valor {msg.node_type}")
-        logging.info(f'Llego un una notificacion de fin cliente {msg.client_id} de {node.name} {msg.node_instance}')
-        if msg.client_id not in self.nodes_fins_state:
-            self._add_new_client_state(msg.client_id)
+        if not msg.client_id in self.clients_closed:
+            try:
+                node = NodeType(msg.node_type)
+            except:
+                logging.warning(f"No existe enum de NodeType para valor {msg.node_type}")
+            logging.info(f'Llego un una notificacion de fin cliente {msg.client_id} de {node.name} {msg.node_instance}')
+            if msg.client_id not in self.nodes_fins_state:
+                self._add_new_client_state(msg.client_id)
 
-        nodes_client_fins = self.nodes_fins_state[msg.client_id][node.name]
-        nodes_client_fins[msg.node_instance] = True
+            nodes_client_fins = self.nodes_fins_state[msg.client_id][node.name]
+            nodes_client_fins[msg.node_instance] = True
 
-        # logging.info(f'Se actualiza el diccionario: {self.nodes_fins_state[msg.client_id]}')
-        # pusheamos el cambio de estado a las replicas
-        self.push_update('node_fin_state', msg.client_id, update=(node.name, msg.node_instance, True))
-        # ==================================================================
-        # CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"), probability=PROP_PROB_FAILURE)
-        # ==================================================================
+            # logging.info(f'Se actualiza el diccionario: {self.nodes_fins_state[msg.client_id]}')
+            # pusheamos el cambio de estado a las replicas
+            self.push_update('node_fin_state', msg.client_id, update=(node.name, msg.node_instance, True))
+            # ==================================================================
+            # CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE
+            simulate_random_failure(self, log_with_location(f"CAIDA POST PUSHEAR LLEGADA DE FIN CLIENTE {msg.client_id} de {node.name} {msg.node_instance}"), probability=PROP_PROB_FAILURE)
+            # ==================================================================
 
-        # nos fijamos si se puede propagar el fin
-        for fin_received in nodes_client_fins:
-            # logging.info(f"Fin_received de {node.name} {fin_received} esta en {nodes_client_fins[fin_received]}")
-            # logging.info(f"Primera condicion: {isinstance(nodes_client_fins[fin_received], bool)}")
-            if not fin_received == 'fins_propagated' and not nodes_client_fins[fin_received]: # no se puede
-                return
-        # se puede propagar el fin
-        self._propagate_fins(nodes_client_fins, msg.client_id, node)
+            # nos fijamos si se puede propagar el fin
+            for fin_received in nodes_client_fins:
+                # logging.info(f"Fin_received de {node.name} {fin_received} esta en {nodes_client_fins[fin_received]}")
+                # logging.info(f"Primera condicion: {isinstance(nodes_client_fins[fin_received], bool)}")
+                if not fin_received == 'fins_propagated' and not nodes_client_fins[fin_received]: # no se puede
+                    return
+            # se puede propagar el fin
+            self._propagate_fins(nodes_client_fins, msg.client_id, node)
 
-        # ==================================================================
-        # CAIDA POST PROPAGACION DE FINS DE CLIENTE
-        simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"), probability=PROP_PROB_FAILURE)
-        # ==================================================================
+            # ==================================================================
+            # CAIDA POST PROPAGACION DE FINS DE CLIENTE
+            simulate_random_failure(self, log_with_location(f"CAIDA POST PROPAGACION DE FINS DE CLIENTE {msg.client_id} DE {node.name}"), probability=PROP_PROB_FAILURE)
+            # ==================================================================
         
         # notificamos a los nodos que ya propagamos el fin
         logging.info(f'Se notifica a {node.name} que ya se propagaron los fins del cliente {msg.client_id}')
@@ -122,6 +124,7 @@ class Propagator:
         logging.info(f'Me llego un CLIENT_CLOSE del cliente {msg.client_id}')
         if msg.client_id in self.nodes_fins_state:
             del self.nodes_fins_state[msg.client_id]
+            self.clients_closed.add(msg.client_id)
             # pushear el cambio de estado a las replicas
             self.push_update('delete', msg.client_id)
 

@@ -259,7 +259,7 @@ def simulate_random_failure(node, log_message, probability=0.01):
         probability (float): Probabilidad de simular una caída (entre 0 y 1).
     """
     replicas = {NodeType.AVG_COUNTER_REPLICA, NodeType.OS_COUNTER_REPLICA, NodeType.Q3_JOINER_REPLICA, NodeType.Q4_JOINER_REPLICA, NodeType.Q5_JOINER_REPLICA, NodeType.PROPAGATOR_REPLICA}
-    masters = {NodeType.AVG_COUNTER, NodeType.OS_COUNTER, NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER}
+    masters = {NodeType.AVG_COUNTER, NodeType.OS_COUNTER, NodeType.Q3_JOINER, NodeType.Q4_JOINER, NodeType.Q5_JOINER, NodeType.PROPAGATOR}
     if (node.get_type() in replicas) and node.id == 1: #SI ES EL NODO 1 NO LO TIRO NUNCA SI ES UNA REPLICA
         return
 
