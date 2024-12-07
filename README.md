@@ -71,3 +71,20 @@ Los distintos tipos de datasets se pueden descargar aqui: [Datasets](https://dri
 Para seleccionar los datasets a utilizar, debe modificarse el config.ini del client.
 
 Además los datasets deben colocarse en la carpeta ./datasets en la raiz del proyecto.
+
+### Umbral Q4
+
+En el config.ini del Q4joiner se puede modificar el umbral de la query 4. Por default es 5000 pero si se trabaja con datasets reducidos es conveniente modificarlo.
+
+### Simulación de Fallas.
+
+En el archivo [container_constants.py](src\utils\container_constants.py) se encuentran las distintas probabilidades utilizadas por el simulador de fallas.
+
+```
+ENDPOINTS_PROB_FAILURE = 0.00001 # últimos nodos del pipeline
+REPLICAS_PROB_FAILURE = 0.00001 # réplicas
+PROP_PROB_FAILURE = 0.0001 # propagador
+FILTERS_PROB_FAILURE = 0.0001 # nodos filtro
+```
+
+Pueden modificarse esos valores para reducir o aumentar las caidas del sistema.
