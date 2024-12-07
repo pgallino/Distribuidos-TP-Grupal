@@ -88,4 +88,3 @@ class ElectionManager:
             self.listener_process.join()
 
         logging.info(f"ElectionManager {self.node_id}: Recursos limpiados exitosamente.")
-

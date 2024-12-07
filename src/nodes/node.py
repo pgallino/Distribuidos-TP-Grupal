@@ -88,7 +88,6 @@ class Node:
         """
         Callback para procesar los mensajes FIN de los clientes.
         """
-        logging.info(f'Llego un FIN del cliente {client_id}')
         fin_notify_msg = SimpleMessage(type=MsgType.FIN_NOTIFICATION, client_id=client_id, node_type=self.get_type().value, node_instance=self.id)
         self._middleware.send_to_queue(Q_TO_PROP, fin_notify_msg.encode())
         # ==================================================================
@@ -165,7 +164,7 @@ class Node:
                     last_msg_id = msg.data['last_msg_id']
                     logging.info(f"Master {self.id}: Recibido estado completo de réplica {msg.node_id}. last_msg_id = {last_msg_id}")
                     if msg.data["last_msg_id"] > self.last_msg_id:
-                        logging.info(f"CARGUE DATA. last_msg_id = {last_msg_id}")
+                        logging.info(f"action: cargar estado | last_msg_id = {last_msg_id}")
                         self.load_state(msg)
                     responses.add(msg.node_id)
             else:
@@ -175,7 +174,6 @@ class Node:
 
             # Detener el consumo si ya se recibió una respuesta de cada réplica compañera
             if len(responses) >= self.n_replicas:
-                logging.info("RECIBI TODOS LOS PULLS")
                 ch.stop_consuming()
 
         # Escuchar respuestas hasta recibir de todas las réplicas

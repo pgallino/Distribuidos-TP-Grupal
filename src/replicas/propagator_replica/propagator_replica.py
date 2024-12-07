@@ -1,7 +1,5 @@
 import logging
-import threading
-from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_msg
-from middleware.middleware import Middleware
+from messages.messages import PushDataMessage
 from replica import Replica
 from utils.middleware_constants import E_FROM_PROP, K_FIN
 from utils.utils import NodeType

@@ -29,7 +29,7 @@ class Middleware:
         if queue_name not in self.queues:
             self.channel.queue_declare(queue=queue_name, durable=True)
             self.queues.add(queue_name)
-            #logging.info(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
+            logging.info(f"action: middleware declare_queue | result: success | queue_name: {queue_name}")
         else:
             logging.error(f"action: middleware declare_queue | result: fail | queue_name: {queue_name} already exist")
     
@@ -41,7 +41,7 @@ class Middleware:
         if exchange not in self.exchanges:
             self.channel.exchange_declare(exchange=exchange, exchange_type=type)
             self.exchanges.add(exchange)
-            #logging.info(f"action: middleware declare_exchange | result: success | exchange: {exchange}")
+            logging.info(f"action: middleware declare_exchange | result: success | exchange: {exchange}")
         else:
             logging.error(f"action: middleware declare_exchange | result: fail | exchange: {exchange} already exist")
 

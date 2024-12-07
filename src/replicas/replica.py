@@ -261,7 +261,6 @@ class Replica:
                     logging.info(f"Replica {self.id}: Procesando mensaje de sincronización de réplica {msg.requester_id}.")
 
                     with self.lock:
-                        logging.info(f"me llego un sync y estoy: {self.synchronized}")
                         answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
 
                     _sync_middleware.send_to_queue(self.sync_exchange, answer.encode(), str(msg.requester_id))
@@ -271,7 +270,6 @@ class Replica:
                     logging.info(f"Replica {self.id}: Procesando mensaje de pull de master.")
 
                     with self.lock:
-                        logging.info(f"me llego un pull y estoy: {self.synchronized}")
                         answer = self._create_pull_answer() if self.synchronized else SimpleMessage(type=MsgType.EMPTY_STATE, node_id = self.id)
 
                     _sync_middleware.send_to_queue(self.send_exchange, answer.encode())
@@ -279,7 +277,7 @@ class Replica:
 
                 ch.basic_ack(delivery_tag=method.delivery_tag)
             except Exception as e:
-                logging.error(f"Replica {self.id}: Error procesando mensaje SYNC_STATE: {e}")
+                logging.error(f"Replica {self.id}: Error procesando mensaje en sync_state_: {e.with_traceback()}")
 
         try:
             _sync_middleware.declare_exchange(self.sync_exchange, type='fanout')
@@ -294,7 +292,7 @@ class Replica:
             _sync_middleware.receive_from_queue(self.sync_request_listener_queue, _process_sync_message, auto_ack=False)
 
         except Exception as e:
-            logging.error(f"Replica {self.id}: Error en el listener SYNC_STATE: {e}")
+            logging.error(f"Replica {self.id}: Error en el listener SYNC_STATE: {e.with_traceback()}")
         finally:
             _sync_middleware.close()
 

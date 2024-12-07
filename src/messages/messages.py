@@ -28,20 +28,14 @@ class MsgType(Enum):
     ELECTION = 13
     OK_ELECTION = 14
     COORDINATOR = 15
-    COORDFIN_ACK = 16
-    TASK_INTENT = 17
-    TASK_COMPLETED = 18
-    MASTER_CONNECTED = 19
-    ASK_MASTER_CONNECTED = 20
-    ACTIVE_NODES = 21
-    ASK_ACTIVE_NODES = 22
-    SYNC_STATE_REQUEST = 23
-    EMPTY_STATE = 24
-    FIN_NOTIFICATION = 25
-    CLIENT_CLOSE = 26
-    FIN_PROPAGATED = 27
-    ASK_LEADER = 28
-    NO_LEADER = 29
+    SYNC_STATE_REQUEST = 16
+    EMPTY_STATE = 17
+    FIN_NOTIFICATION = 18
+    CLIENT_CLOSE = 19
+    FIN_PROPAGATED = 20
+    ASK_LEADER = 21
+    NO_LEADER = 22
+    CLOSE = 23
 
 class Dataset(Enum):
     """
@@ -223,11 +217,6 @@ class SimpleMessage(BaseMessage):
             MsgType.OK_ELECTION: ["node_id"],
             MsgType.COORDINATOR: ["node_id"],
             MsgType.COORDFIN: ["client_id", "node_id"],
-            MsgType.COORDFIN_ACK: ["client_id"],
-            MsgType.MASTER_CONNECTED: ["connected"],
-            MsgType.TASK_COMPLETED: ["node_id", "task_type"],
-            MsgType.TASK_INTENT: ["node_id", "task_type"],
-            MsgType.ASK_ACTIVE_NODES: ["node_type"],
             MsgType.SYNC_STATE_REQUEST: ["requester_id"],
             MsgType.EMPTY_STATE: ["node_id"],
             MsgType.FIN_NOTIFICATION: ["client_id", "node_type", "node_instance"],
@@ -485,7 +474,6 @@ class PushDataMessage(BaseMessage):
         # Codificar los campos comunes (`type` y `msg_id`)
         base_data = self.base_encode()
 
-        # Codificar el campo last_msg_id como un entero
         node_id = struct.pack('>B', self.node_id)
 
         # Serializar el diccionario de datos a JSON
@@ -766,7 +754,6 @@ MESSAGE_CLASSES = {
     MsgType.CLIENT_DATA: ClientData,
     MsgType.DATA: Data,
     MsgType.PUSH_DATA: PushDataMessage,
-    MsgType.ACTIVE_NODES: ActiveNodesMessage,
     #========== SimpleMessages ==========#
     MsgType.HANDSHAKE: SimpleMessage,
     MsgType.FIN: SimpleMessage,
@@ -776,21 +763,16 @@ MESSAGE_CLASSES = {
     MsgType.OK_ELECTION: SimpleMessage,
     MsgType.COORDINATOR: SimpleMessage,
     MsgType.COORDFIN: SimpleMessage,
-    MsgType.COORDFIN_ACK: SimpleMessage,
     MsgType.KEEP_ALIVE: SimpleMessage,
     MsgType.ALIVE: SimpleMessage,
-    MsgType.TASK_INTENT: SimpleMessage,
-    MsgType.TASK_COMPLETED: SimpleMessage,
-    MsgType.MASTER_CONNECTED: SimpleMessage,
-    MsgType.ASK_MASTER_CONNECTED: SimpleMessage,
-    MsgType.ASK_ACTIVE_NODES: SimpleMessage,
     MsgType.SYNC_STATE_REQUEST: SimpleMessage,
     MsgType.EMPTY_STATE: SimpleMessage,
     MsgType.FIN_NOTIFICATION: SimpleMessage,
     MsgType.CLIENT_CLOSE: SimpleMessage,
     MsgType.FIN_PROPAGATED: SimpleMessage,
     MsgType.ASK_LEADER: SimpleMessage,
-    MsgType.NO_LEADER: SimpleMessage
+    MsgType.NO_LEADER: SimpleMessage,
+    MsgType.CLOSE: SimpleMessage
 }
 
 

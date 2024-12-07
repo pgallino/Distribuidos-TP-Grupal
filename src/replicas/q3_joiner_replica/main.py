@@ -14,7 +14,8 @@ def main():
         replica = Q3JoinerReplica(
             id=config_params["instance_id"],
             container_name="q3_joiner_replica",
-            container_to_restart="q3_joiner_1",
+            master_name="q3_joiner_1",
+            n_replicas=config_params["q3_joiner_replica_instances"]
         )
         
         logging.info(f"Q3JoinerReplica {config_params['instance_id']} iniciada. Esperando mensajes...")

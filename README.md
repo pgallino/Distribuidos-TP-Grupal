@@ -3,8 +3,6 @@ Trabajo Práctico grupal de Sistemas Distribuidos I FIUBA
 
 [Informe](https://docs.google.com/document/d/1iqc8opaCAxscQxfFTXVvwTvbmNUf0Dy8diEn1TYtEW4/edit?usp=sharing)
 
-[Diagramas](https://drive.google.com/file/d/1Cm5oy1AQicfzJ9OTNVRzGIoBI0zwK73y/view?usp=sharing)
-
 ### Ejecución del programa
 
 Para correr el programa, ejecutar el siguiente comando en la terminal:
@@ -45,6 +43,7 @@ english=1
 client=2
 
 # Número de Replicas
+propagator_replica=0
 os_counter_replica=0
 avg_counter_replica=0
 q3_joiner_replica=0
@@ -62,8 +61,13 @@ Luego debe ejecutarse el siguiente script que modifica el archivo de Docker Comp
 ```
 
 De todas maneras, al correr docker compose-up-logs eso ya corre el script para generar el compose.
+El comando docker compose-up-logs muestra por pantalla directamente los logs luego de levantar el sistema.
 
 
 ### Datasets
 
 Los distintos tipos de datasets se pueden descargar aqui: [Datasets](https://drive.google.com/drive/folders/1Oqcfio45qJbm07X3Ks3lup3A9c42F1HM?usp=drive_link)
+
+Para seleccionar los datasets a utilizar, debe modificarse el config.ini del client.
+
+Además los datasets deben colocarse en la carpeta ./datasets en la raiz del proyecto.

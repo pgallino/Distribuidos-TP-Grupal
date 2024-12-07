@@ -7,7 +7,7 @@ from messages.messages import MsgType, PushDataMessage, SimpleMessage, decode_ms
 from middleware.middleware import Middleware
 from listener import Listener
 from utils.container_constants import PROP_PROB_FAILURE
-from utils.utils import log_with_location, recv_msg, NodeType, simulate_random_failure
+from utils.utils import log_with_location, NodeType, simulate_random_failure
 from utils.middleware_constants import E_FROM_MASTER_PUSH, E_FROM_PROP, E_FROM_REPLICA_PULL_ANS, E_REPLICA_SYNC_REQUEST_LISTENER, K_FIN, K_NOTIFICATION, Q_TO_PROP
 
 class Propagator:
@@ -268,7 +268,6 @@ class Propagator:
 
             # Detener el consumo si ya se recibió una respuesta de cada réplica compañera
             if len(responses) >= self.n_replicas:
-                logging.info("RECIBI TODOS LOS PULLS")
                 ch.stop_consuming()
 
         # Escuchar respuestas hasta recibir de todas las réplicas
