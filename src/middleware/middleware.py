@@ -18,7 +18,7 @@ class Middleware:
             self.connection = self._connect_to_rabbitmq()
             self.channel = self.connection.channel()
             self.channel.basic_qos(prefetch_count=1)
-            logging.info(f"action: middleware init_middleware | result: success | host: {host}")
+            #logging.info(f"action: middleware init_middleware | result: success | host: {host}")
         except Exception as e:
             raise Exception(f"action: middleware init_middleware | result: fail | error: {e}")
 

@@ -10,15 +10,8 @@ from utils.middleware_constants import E_FROM_PROP, K_FIN, Q_RELEASE_DATE_AVG_CO
 from utils.utils import NodeType, log_with_location, simulate_random_failure
 
 class AvgCounter(Node):
-    """
-    Clase del nodo Counter de average playtime de juegos.
-    """
 
     def __init__(self, id: int, n_nodes: int, container_name: str, n_replicas: int):
-        """
-        Inicializa el nodo de Counter de average playtime.
-        Declara colas y exchanges necesarios e instancia su estado interno.
-        """
         super().__init__(id, n_nodes, container_name)
 
         self.n_replicas = n_replicas
@@ -32,16 +25,9 @@ class AvgCounter(Node):
         self.last_msg_id = 0
 
     def get_type(self) -> NodeType:
-        """
-        Devuelve el tipo de nodo correspondiente al Counter de average playtime.
-        """
         return NodeType.AVG_COUNTER
 
     def run(self):
-        """
-        Inicia la lógica del Counter de average playtime.
-        Se sincroniza con sus réplicas y comienza a recibir mensajes por su cola principal.
-        """
 
         try:
 
@@ -61,21 +47,18 @@ class AvgCounter(Node):
                 self._shutdown()
 
     def _process_message(self, ch, method, properties, raw_message):
-        """
-        Callback para procesar el mensaje de la cola principal.
-        """
+        """Callback para procesar el mensaje de la cola."""
         msg = decode_msg(raw_message)
 
         if msg.type == MsgType.GAMES:
             self._process_game_message(msg)
 
         elif msg.type == MsgType.FIN:
-            logging.info(f"Llego un FIN de cliente {msg.client_id}")
             self._process_fin_message(msg)
 
         # ==================================================================
         # CAIDA ANTES DE HACER EL ACK AL MENSAJE
-        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"), probability=ENDPOINTS_PROB_FAILURE)
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA ANTES DE HACER EL ACK AL MENSAJE ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -86,10 +69,6 @@ class AvgCounter(Node):
         # ==================================================================
     
     def _process_game_message(self, msg):
-        """
-        Procesa los mensajes con juegos y actualiza su estado interno.
-        Envía mensaje push a las réplicas con el estado actualizado.
-        """
         client_id = msg.client_id  # Asumo que cada mensaje tiene un client_id
 
         # Obtener el heap para este cliente
@@ -115,14 +94,10 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
     
     def _process_fin_message(self, msg):
-        """
-        Calcula los resultados de la query para un cliente ante la llegada de un mensaje FIN.
-        Envía un mensaje push a las réplicas para eliminar a ese cliente.
-        """
 
         client_id = msg.client_id  # Usar el client_id del mensaje FIN
         # TODO: Hacer el push:Fin
@@ -157,9 +132,7 @@ class AvgCounter(Node):
         self.push_update('delete', msg.client_id)
 
     def load_state(self, msg: PushDataMessage):
-        """
-        Carga el estado completo recibido en la réplica.
-        """
+        """Carga el estado completo recibido en la réplica."""
 
         # ==================================================================
         # CAIDA ANTES DE CARGAR EL ESTADO

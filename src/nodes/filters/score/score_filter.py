@@ -33,7 +33,7 @@ class ScoreFilter(Node):
         self._middleware.declare_exchange(E_FROM_PROP, type='topic')
         self._middleware.bind_queue(self.notification_queue, E_FROM_PROP, key=K_NOTIFICATION+f'_{container_name}')
         fin_key = K_FIN+f'.{container_name}'
-        logging.info(f'Bindeo cola {Q_TRIMMER_SCORE_FILTER} a {E_FROM_PROP} con key {fin_key}')
+        # logging.info(f'Bindeo cola {Q_TRIMMER_SCORE_FILTER} a {E_FROM_PROP} con key {fin_key}')
         self._middleware.bind_queue(Q_TRIMMER_SCORE_FILTER, E_FROM_PROP, key=fin_key)
 
     def get_type(self):
@@ -62,7 +62,7 @@ class ScoreFilter(Node):
         """
         while not self.shutting_down:
             try:
-                logging.info("Empiezo a consumir de la cola de DATA")
+                #logging.info("Empiezo a consumir de la cola de DATA")
                 self._middleware.receive_from_queue(Q_TRIMMER_SCORE_FILTER, self._process_message, auto_ack=False)
                 # Empieza a escuchar por la cola de notificaciones
                 self._middleware.receive_from_queue(self.notification_queue, self._process_notification, auto_ack=False)

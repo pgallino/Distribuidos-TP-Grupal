@@ -25,7 +25,7 @@ class Listener:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.bind((f'{self.ip_prefix}_{self.id}', self.port))
         self.sock.listen(self.backlog)
-        logging.info(f"KeepAliveHandler: Escuchando mensajes en {f'{self.ip_prefix}_{self.id}'}:{self.port}")
+        # logging.info(f"KeepAliveHandler: Escuchando mensajes en {f'{self.ip_prefix}_{self.id}'}:{self.port}")
 
     def shutdown(self):
         self.shutting_down = True
