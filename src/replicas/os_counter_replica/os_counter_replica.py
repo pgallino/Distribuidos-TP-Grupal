@@ -6,45 +6,48 @@ from utils.utils import NodeType
 
 class OsCounterReplica(Replica):
 
-    def get_type(self):
-            return NodeType.OS_COUNTER_REPLICA
-    
-    def _initialize_storage(self):
-        """Inicializa las estructuras de almacenamiento específicas para OsCounter."""
-        self.os_count = defaultdict(lambda: (0, 0, 0))  # Diccionario con contadores para Windows, Mac y Linux
-          # Último mensaje procesado
+    def __init__(self, id: int, container_name: str, master_name: str, n_replicas: int):
+        super().__init__(id, container_name, master_name, n_replicas)
 
-        logging.info("Replica: Almacenamiento inicializado para OsCounter.")
+    def _initialize_storage(self):
+        """Inicializa las estructuras de almacenamiento específicas."""
+
+        self.os_count = defaultdict(lambda: defaultdict(int))
+        logging.info("Replica: Almacenamiento inicializado.")
+
+    def get_type(self):
+        return NodeType.OS_COUNTER_REPLICA
 
     def _process_push_data(self, msg: PushDataMessage):
         """Procesa los datos de un mensaje `PushDataMessage`."""
+        if msg.msg_id > self.last_msg_id or msg.msg_id == 0:
+            state = msg.data
+            update_type = state.get("type")
+            client_id = state.get("id")
 
-        state = msg.data
+            with self.lock:
+                if update_type == "os_count":
+                    updated_counters = state.get("update", {})
+                    self.os_count[client_id] = updated_counters
 
-        # Identificar el tipo de actualización
-        update_type = state.get("type")
-        client_id = state.get("id")
+                elif update_type == "delete":
+                    self._delete_client_state(client_id)
 
-        if update_type == "os_count":
-            updated_counters = state.get("update")
-            if updated_counters:
-                self.os_count[client_id] = updated_counters
+                else:
+                    logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
 
-        elif update_type == "delete":
-            self._delete_client_state(client_id)
-
-        else:
-            logging.warning(f"Replica: Tipo de actualización desconocido '{update_type}' para client_id: {client_id}")
-
-        # Actualizar last_msg_id después de procesar un mensaje válido
-        self.last_msg_id = msg.msg_id
+                self.last_msg_id = msg.msg_id
+                self.synchronized = True
 
     def _create_pull_answer(self):
         """Procesa un mensaje de solicitud de pull de datos."""
-        response_data = PushDataMessage(data={
-            "last_msg_id": self.last_msg_id,
-            "os_count": dict(self.os_count)  # Convierte defaultdict a dict estándar
-        }, node_id=self.id)
+        response_data = PushDataMessage(
+            data={
+                "last_msg_id": self.last_msg_id,
+                "os_count": dict(self.os_count)
+            },
+            node_id=self.id
+        )
         return response_data
 
     def _delete_client_state(self, client_id):
@@ -58,15 +61,13 @@ class OsCounterReplica(Replica):
     def _load_state(self, msg: PushDataMessage):
         """Carga el estado completo recibido en la réplica."""
         state = msg.data
+        with self.lock:
+            if "os_count" in state:
+                for client_id, counters in state["os_count"].items():
+                    self.os_count[client_id] = counters
 
-        # Actualizar contadores de sistemas operativos por cliente
-        if "os_count" in state:
-            for client_id, (windows, mac, linux) in state["os_count"].items():
-                self.os_count[client_id] = (windows, mac, linux)
-            logging.info(f"Replica: Contadores de sistemas operativos actualizados desde estado recibido.")
+            if "last_msg_id" in state:
+                self.last_msg_id = state["last_msg_id"]
 
-        # Actualizar el último mensaje procesado
-        if "last_msg_id" in state:
-            self.last_msg_id = state.get('last_msg_id')
-
-        logging.info(f"last_id actualizado {self.last_msg_id}")
+            self.synchronized = True
+            logging.info(f"Replica: Estado cargado. Último mensaje ID: {self.last_msg_id}")

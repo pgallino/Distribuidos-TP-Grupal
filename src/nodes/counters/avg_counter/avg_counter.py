@@ -70,12 +70,11 @@ class AvgCounter(Node):
             self._process_game_message(msg)
 
         elif msg.type == MsgType.FIN:
-            logging.info(f"Llego un FIN de cliente {msg.client_id}")
             self._process_fin_message(msg)
 
         # ==================================================================
         # CAIDA ANTES DE HACER EL ACK AL MENSAJE
-        # simulate_random_failure(self, log_with_location("CAIDA ANTES DE HACER EL ACK AL MENSAJE"), probability=ENDPOINTS_PROB_FAILURE)
+        # simulate_random_failure(self, log_with_location("⚠️ CAIDA ANTES DE HACER EL ACK AL MENSAJE ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
         
         ch.basic_ack(delivery_tag=method.delivery_tag)
@@ -115,7 +114,7 @@ class AvgCounter(Node):
 
         # ==================================================================
         # CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA
-        # simulate_random_failure(self, log_with_location("⚠️ CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA ⚠️"), probability=ENDPOINTS_PROB_FAILURE)
+        simulate_random_failure(self, log_with_location("CAIDA DESPUES DE ACTUALIZAR LOS CONTADORES Y DESPUES DE ENVIAR A LA REPLICA"), probability=ENDPOINTS_PROB_FAILURE)
         # ==================================================================
     
     def _process_fin_message(self, msg):

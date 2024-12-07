@@ -134,7 +134,6 @@ class WatchDog:
         """Handle SIGTERM signal to close the node gracefully."""
         logging.info("action: Received SIGTERM | shutting down gracefully.")
         self._shutdown()
-        exit(0)
 
     def init_listener_process(self):
         process = Process(target=init_listener, args=(self.id, self.container_name, self.n_watchdogs, self.election_in_progress, self.election_condition, self.waiting_ok, self.ok_condition, self.leader_id,))
